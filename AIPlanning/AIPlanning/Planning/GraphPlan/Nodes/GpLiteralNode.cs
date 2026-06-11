@@ -7,7 +7,9 @@ namespace AIPlanning.Planning.GraphPlan {
             Literal = literal;
         }
 
-        public ISentence Literal { get; set; }
+        // Get-only: this node's hash is derived from the literal, and nodes live in hash-based
+        // sets — swapping the literal after construction would silently corrupt those sets.
+        public ISentence Literal { get; }
 
         public override string ToString() {
             return $"{Literal} [m:{MutexRelation.Aggregate("", (s, m) => $"{s}{m}, ")}]";

@@ -14,14 +14,19 @@ namespace AIPlanning.Planning.GraphPlan {
         public OperatorGraph(GpProblem problem)
         {
             _problem = problem;
-            _actions = problem.Actions;
+            // Work on clones: graph construction accumulates grounding state on the actions
+            // (AddUnificators) and Init injects the synthetic Start/Finish actions. None of that
+            // may leak into the caller's problem — a GpProblem must stay reusable across solves.
+            _actions = problem.Actions.Select(action => action.Clone()).ToList();
             Init();
         }
 
         private void Init()
         {
-            var startNode = new GpActionNode(new GpAction("Start", new List<ISentence>(), _problem.InitialState));
-            var finishNode = new GpActionNode(new GpAction("Finish", _problem.Goals, new List<ISentence>()));
+            var startNode = new GpActionNode(new GpAction("Start",
+                new List<ISentence>(), new List<ISentence>(_problem.InitialState)));
+            var finishNode = new GpActionNode(new GpAction("Finish",
+                new List<ISentence>(_problem.Goals), new List<ISentence>()));
 
             //init the effects of start as preconditions
             foreach (var preCon in startNode.GpAction.Effects)
