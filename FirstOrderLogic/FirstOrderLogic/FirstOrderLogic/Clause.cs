@@ -9,7 +9,14 @@ namespace FirstOrderLogic {
     
         public Clause(params ISentence[] literals)
         {
-            if (literals.Any(t => !t.IsLiteral)) return;
+            // An empty literal list must always mean "empty clause" (= contradiction) — silently
+            // dropping bad input here would let a malformed sentence masquerade as a refutation.
+            var nonLiteral = literals.FirstOrDefault(t => !t.IsLiteral);
+            if (nonLiteral != null)
+            {
+                throw new ArgumentException($"{nonLiteral} is not a literal", nameof(literals));
+            }
+
             Literals = new List<ISentence>(literals);
         }
     

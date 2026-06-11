@@ -87,7 +87,10 @@ bool entailed = new Resolution().Resolve(skolem, goal); // True
 ```
 
 `new Resolution(useSubsumption: true)` enables clause subsumption (helps on large,
-redundant problems; off by default). A runnable version lives in
+redundant problems; off by default). `new Resolution(maxRounds: n)` bounds the
+saturation loop — FOL entailment is only semi-decidable, so a non-entailed KB with
+function symbols can otherwise grow clauses forever; exceeding the budget throws
+`InvalidOperationException`. A runnable version lives in
 `FirstOrderLogic/FirstOrderLogicExample/Program.cs`.
 
 ## Kernel sets

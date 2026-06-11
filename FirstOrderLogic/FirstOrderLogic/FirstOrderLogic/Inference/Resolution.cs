@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace FirstOrderLogic {
@@ -11,22 +12,41 @@ namespace FirstOrderLogic {
         // therefore opt-in and off by default. Tautology elimination and factoring are always on.
         private readonly bool _useSubsumption;
 
-        public Resolution(bool useSubsumption = false)
+        // FOL entailment is only semi-decidable: a non-entailed KB with function symbols can grow
+        // the clause set forever. maxRounds (0 = unlimited) caps the saturation loop and throws
+        // when exceeded, so callers can bound the search instead of hanging.
+        private readonly int _maxRounds;
+
+        // Fresh names for standardizing clauses apart. '$' cannot appear in parsed identifiers,
+        // so these never collide with user variables; the counter keeps them distinct from each
+        // other. Canonical resolvent names (CanonicalizeVariables) use the "x$" prefix, fresh
+        // standardize-apart names the "y$" prefix — the two schemes never overlap.
+        private int _freshVarCounter;
+
+        public Resolution(bool useSubsumption = false, int maxRounds = 0)
         {
             _useSubsumption = useSubsumption;
+            _maxRounds = maxRounds;
         }
 
         private List<Resolvent> GetResolvents(Clause clause1, Clause clause2)
         {
             var resolvents = new List<Resolvent>();
 
+            // Standardize apart: each clause's variables are universally quantified locally, so a
+            // name shared between the two clauses is a coincidence, not a constraint. Unifying
+            // without renaming wrongly ties such occurrences together (e.g. {P(x,A)} and {¬P(B,x)}
+            // would fail to resolve even though P(B,A) refutes them). Rename clause2's colliding
+            // variables on clones; clause1 and the original clause2 stay untouched.
+            var literals2 = StandardizeApart(clause1.Literals, clause2.Literals);
+
             // i indexes clause1's literals, j indexes clause2's — independent lists, so j starts at 0.
             for (var i = 0; i < clause1.Literals.Count; i++)
             {
-                for (var j = 0; j < clause2.Literals.Count; j++)
+                for (var j = 0; j < literals2.Count; j++)
                 {
                     var lit1 = clause1.Literals[i];
-                    var lit2 = clause2.Literals[j];
+                    var lit2 = literals2[j];
 
                     // Resolution needs one positive and one negative literal.
                     if (lit1.IsNegation == lit2.IsNegation) continue;
@@ -36,11 +56,11 @@ namespace FirstOrderLogic {
 
                     // Clone only the kept literals (the resolved-on pair is dropped anyway) and
                     // substitute on those clones, so the source clauses are never mutated in place.
-                    var kept = new List<ISentence>(clause1.Literals.Count + clause2.Literals.Count - 2);
+                    var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
                         if (k != i) kept.Add(clause1.Literals[k].Clone());
-                    for (var k = 0; k < clause2.Literals.Count; k++)
-                        if (k != j) kept.Add(clause2.Literals[k].Clone());
+                    for (var k = 0; k < literals2.Count; k++)
+                        if (k != j) kept.Add(literals2[k].Clone());
 
                     foreach (var pair in unify.Substitutions)
                         foreach (var literal in kept)
@@ -52,11 +72,102 @@ namespace FirstOrderLogic {
                     foreach (var literal in kept)
                         if (!res.Contains(literal)) res.Add(literal);
 
+                    // Canonicalize variable names so alpha-variant resolvents (same clause up to
+                    // renaming — inevitable once clauses are standardized apart) compare equal in
+                    // the seen-set. Without this, saturation would never be detected and
+                    // non-entailed queries could loop forever.
+                    CanonicalizeVariables(res);
+
                     resolvents.Add(new Resolvent(clause1, clause2, res.ToArray()));
                 }
             }
 
             return resolvents;
+        }
+
+        // Returns `right` unchanged when no variable name collides with `left`; otherwise returns
+        // clones of `right` with every colliding variable renamed to a fresh "y$n". Never mutates
+        // either input.
+        private List<ISentence> StandardizeApart(List<ISentence> left, List<ISentence> right)
+        {
+            var leftNames = new HashSet<string>();
+            foreach (var literal in left)
+                foreach (var variable in VariablesOf(literal))
+                    leftNames.Add(variable.TermSymbol);
+
+            if (leftNames.Count == 0) return right;
+
+            var renames = new Dictionary<string, Variable>();
+            foreach (var literal in right)
+                foreach (var variable in VariablesOf(literal))
+                    if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
+                        renames.Add(variable.TermSymbol, new Variable($"y${++_freshVarCounter}"));
+
+            if (renames.Count == 0) return right;
+
+            var renamed = new List<ISentence>(right.Count);
+            foreach (var literal in right)
+            {
+                var clone = literal.Clone();
+                foreach (var pair in renames)
+                    clone.SubstituteTerm(new Variable(pair.Key), pair.Value);
+                renamed.Add(clone);
+            }
+
+            return renamed;
+        }
+
+        // Renames the clause's variables in place to x$1, x$2, … by first occurrence over a
+        // name-insensitive literal order, so any two alpha-variant clauses end up syntactically
+        // equal (and thus dedup in the seen-set). Only ever called on freshly cloned literals.
+        private static void CanonicalizeVariables(List<ISentence> literals)
+        {
+            // Order literals by their structure with variable names blanked out, so alpha-variants
+            // enumerate their variables in the same order regardless of how they were derived.
+            var ordered = literals
+                .Select(literal => (literal, key: StructuralKey(literal)))
+                .OrderBy(pair => pair.key, StringComparer.Ordinal);
+
+            var canonical = new Dictionary<string, Variable>();
+            foreach (var (literal, _) in ordered)
+                foreach (var variable in VariablesOf(literal))
+                    if (!canonical.ContainsKey(variable.TermSymbol))
+                        canonical.Add(variable.TermSymbol, new Variable($"x${canonical.Count + 1}"));
+
+            if (canonical.Count == 0) return;
+            if (canonical.All(pair => pair.Key == pair.Value.TermSymbol)) return;
+
+            // Two-phase rename via unique temporaries: source and target names may overlap
+            // (e.g. x$2→x$1 while x$1→x$2), and a direct rename would merge distinct variables.
+            var temps = new Dictionary<string, Variable>();
+            foreach (var name in canonical.Keys)
+                temps.Add(name, new Variable($"t${temps.Count + 1}"));
+
+            foreach (var literal in literals)
+                foreach (var pair in temps)
+                    literal.SubstituteTerm(new Variable(pair.Key), pair.Value);
+
+            foreach (var literal in literals)
+                foreach (var pair in temps)
+                    literal.SubstituteTerm(pair.Value, canonical[pair.Key]);
+        }
+
+        // The literal's string form with every variable replaced by the same placeholder —
+        // identical for alpha-variant literals, distinct for structurally different ones.
+        private static string StructuralKey(ISentence literal)
+        {
+            var clone = literal.Clone();
+            foreach (var variable in VariablesOf(clone))
+                clone.SubstituteTerm(variable, Placeholder);
+            return clone.ToString();
+        }
+
+        private static readonly Variable Placeholder = new("$");
+
+        private static Variable[] VariablesOf(ISentence literal)
+        {
+            var atom = literal.IsNegation ? literal.Children[0] : literal;
+            return atom is IPredicate predicate ? predicate.GetVariables() : Array.Empty<Variable>();
         }
 
         public bool Resolve(ISentence knowledgeBase, ISentence consequence)
@@ -94,9 +205,14 @@ namespace FirstOrderLogic {
             // (their resolvents are already in `seen`), so each round only considers pairs where
             // at least one clause is new since the last round.
             var resolvedUpTo = 0;
+            var rounds = 0;
 
             while (true)
             {
+                if (_maxRounds > 0 && ++rounds > _maxRounds)
+                    throw new InvalidOperationException(
+                        $"Resolution did not saturate within {_maxRounds} rounds; the query is undecided.");
+
                 var count = clauses.Count;
                 var unitsBefore = unitLiterals.Count;
                 var fresh = new List<Clause>();

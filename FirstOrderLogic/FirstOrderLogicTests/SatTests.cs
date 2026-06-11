@@ -30,6 +30,20 @@ namespace FolTests {
             Assert.That(Sat.WalkSAT(clauses, 0.5f, 100), Is.Null);
         }
 
+        // p = 1 forces the random-walk branch on every iteration. Satisfying (¬A) AND (A OR B)
+        // requires flipping B, so the walk must be able to reach ANY symbol of an unsatisfied
+        // clause — the old code only ever flipped the first literal of a random clause (always A
+        // here) and got stuck whenever B started out false.
+        [Test]
+        public void WalkSat_RandomWalk_CanFlipAnySymbolOfUnsatisfiedClause() {
+            var clauses = S("(NOT A) AND (A OR B)").GetClauseSet();
+            for (var i = 0; i < 10; i++) {
+                var model = Sat.WalkSAT(clauses, 1f, 1000);
+                Assert.That(model, Is.Not.Null);
+                Assert.That(model!.Evaluate(clauses), Is.True);
+            }
+        }
+
         // WalkSAT is propositional only; first-order clauses must be rejected.
         [Test]
         public void WalkSat_RejectsNonPropositional() {
