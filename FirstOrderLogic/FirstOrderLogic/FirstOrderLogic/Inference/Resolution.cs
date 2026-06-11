@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -88,14 +88,14 @@ namespace FirstOrderLogic {
         {
             var leftNames = new HashSet<string>();
             foreach (var literal in left)
-                foreach (var variable in VariablesOf(literal))
+                foreach (var variable in Bindings.VariablesOf(literal))
                     leftNames.Add(variable.TermSymbol);
 
             if (leftNames.Count == 0) return right;
 
             var renames = new Dictionary<string, Variable>();
             foreach (var literal in right)
-                foreach (var variable in VariablesOf(literal))
+                foreach (var variable in Bindings.VariablesOf(literal))
                     if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
                         renames.Add(variable.TermSymbol, new Variable($"y${++_freshVarCounter}"));
 
@@ -126,7 +126,7 @@ namespace FirstOrderLogic {
 
             var canonical = new Dictionary<string, Variable>();
             foreach (var (literal, _) in ordered)
-                foreach (var variable in VariablesOf(literal))
+                foreach (var variable in Bindings.VariablesOf(literal))
                     if (!canonical.ContainsKey(variable.TermSymbol))
                         canonical.Add(variable.TermSymbol, new Variable($"x${canonical.Count + 1}"));
 
@@ -151,32 +151,31 @@ namespace FirstOrderLogic {
         private static string StructuralKey(ISentence literal)
         {
             var clone = literal.Clone();
-            foreach (var variable in VariablesOf(clone))
+            foreach (var variable in Bindings.VariablesOf(clone).ToList())
                 clone.SubstituteTerm(variable, Placeholder);
             return clone.ToString();
         }
 
         private static readonly Variable Placeholder = new("$");
 
-        private static Variable[] VariablesOf(ISentence literal)
-        {
-            var atom = literal.IsNegation ? literal.Children[0] : literal;
-            return atom is IPredicate predicate ? predicate.GetVariables() : Array.Empty<Variable>();
-        }
+        // Refutation: KB ⊨ consequence iff KB ∧ ¬consequence is unsatisfiable.
+        public bool Resolve(ISentence knowledgeBase, ISentence consequence) =>
+            IsUnsatisfiable(new ComplexSentence(
+                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negate()));
 
-        public bool Resolve(ISentence knowledgeBase, ISentence consequence)
+        // True iff the clause set derives the empty clause, i.e. `sentence` has no model. Also the
+        // direct entry point for consistency checks (a KB is inconsistent iff its conjunction is
+        // unsatisfiable).
+        public bool IsUnsatisfiable(ISentence sentence)
         {
-            ISentence joined = new ComplexSentence(
-                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negate());
-
-            // The negated consequence may be a complex (non-CNF) sentence, so normalize the whole
-            // refutation set to CNF before clausifying it.
-            if (!joined.IsCNF())
+            // The input may be a complex (non-CNF) sentence — e.g. Resolve's negated consequence —
+            // so normalize the whole set to CNF before clausifying it.
+            if (!sentence.IsCNF())
             {
-                joined = Logic.ToConjunctiveNormalForm(joined);
+                sentence = Logic.ToConjunctiveNormalForm(sentence);
             }
 
-            var clauses = joined.GetClauseSet();
+            var clauses = sentence.GetClauseSet();
 
             // A clause holding both a literal and its negation is a tautology (always true): it can
             // never contribute to deriving the empty clause, so it is pure overhead. Dropping it is

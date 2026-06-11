@@ -7,7 +7,7 @@ namespace FolTests {
         private bool Entails(params string[] kbThenGoal) {
             var goal = S(kbThenGoal.Last());
             var kb = Set(kbThenGoal.Take(kbThenGoal.Length - 1).ToArray());
-            return new ForwardChaining().Entails(kb, goal);
+            return ForwardChaining.Entails(kb, goal);
         }
 
         [Test]
@@ -64,7 +64,7 @@ namespace FolTests {
 
         [Test]
         public void Saturate_ReturnsDeductiveClosure() {
-            var closure = new ForwardChaining().Saturate(
+            var closure = ForwardChaining.Saturate(
                 Set("P(a)", "P(x) => Q(x)", "Q(x) => R(x)"));
             Assert.That(closure, Has.Member(S("P(a)")));
             Assert.That(closure, Has.Member(S("Q(a)")));
@@ -82,7 +82,7 @@ namespace FolTests {
 
         [Test]
         public void Saturate_NegativeHead_InClosure() {
-            var closure = new ForwardChaining().Saturate(Set(
+            var closure = ForwardChaining.Saturate(Set(
                 "IsFemale(mySelf)", "Role(mySelf,Female)",
                 "IsFemale(z) => NOT Work(z)", "Role(z,Female) => CanCook(z)"));
             Assert.That(closure, Has.Member(S("NOT Work(mySelf)")));
@@ -119,7 +119,7 @@ namespace FolTests {
         // not an explosion).
         [Test]
         public void ComplementaryLiterals_Coexist() {
-            var closure = new ForwardChaining().Saturate(Set("P(a)", "NOT P(a)"));
+            var closure = ForwardChaining.Saturate(Set("P(a)", "NOT P(a)"));
             Assert.That(closure, Has.Member(S("P(a)")));
             Assert.That(closure, Has.Member(S("NOT P(a)")));
             Assert.That(closure.Count, Is.EqualTo(2));

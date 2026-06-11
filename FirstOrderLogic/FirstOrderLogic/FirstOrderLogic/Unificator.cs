@@ -202,14 +202,14 @@ namespace FirstOrderLogic
 
         public void Substitute(Clause clause)
         {
-            clause.Literals.ForEach(lit => Substitute(ref lit));
+            clause.Literals.ForEach(Substitute);
         }
-        
-        public void Substitute(ref ISentence sentence)
+
+        public void Substitute(ISentence sentence)
         {
             if (!IsUnifiable)
             {
-                throw new Exception("Unifactor is not usable!");
+                throw new Exception("Unificator is not usable!");
             }
 
             foreach (var pair in Substitutions)

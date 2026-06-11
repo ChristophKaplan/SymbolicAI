@@ -10,6 +10,8 @@ namespace FirstOrderLogic
     // "not entailed"). Non-rule sentences in the KB are ignored.
     public class BackwardChaining
     {
+        private static readonly HashSet<string> NoAbducibles = new();
+
         private readonly int _maxDepth;
 
         public BackwardChaining(int maxDepth = 500)
@@ -20,22 +22,26 @@ namespace FirstOrderLogic
         public bool Entails(IEnumerable<ISentence> kb, ISentence query)
         {
             if (!query.IsLiteral) return false;
-            var clauses = kb.Select(Rule.From).Where(c => c != null).Select(c => c!).ToList();
-            var goals = new List<ISentence> { query };
-            return Prove(clauses, goals, new Dictionary<Variable, Term>(), 0, new Counter()).Any();
+            return Prove(Rule.FromAll(kb), new List<ISentence> { query },
+                    new Dictionary<Variable, Term>(), new List<ISentence>(),
+                    0, new Counter(), NoAbducibles, _maxDepth)
+                .Any();
         }
 
-        // Every answer substitution for `goals` (a conjunction proved left-to-right).
-        private IEnumerable<Dictionary<Variable, Term>> Prove(
+        // Every proof of `goals` (a conjunction, proved left-to-right), yielded as the literals it
+        // assumed along the way. A ground goal over an abducible predicate may be assumed instead
+        // of proven — with no abducibles this is plain backward chaining and yields empty lists.
+        internal static IEnumerable<List<ISentence>> Prove(
             List<Rule> clauses, IReadOnlyList<ISentence> goals,
-            Dictionary<Variable, Term> theta, int depth, Counter counter)
+            Dictionary<Variable, Term> theta, List<ISentence> assumed,
+            int depth, Counter counter, HashSet<string> abducibles, int maxDepth)
         {
             if (goals.Count == 0)
             {
-                yield return theta;
+                yield return assumed;
                 yield break;
             }
-            if (depth > _maxDepth) yield break;
+            if (depth > maxDepth) yield break;
 
             var goal = Bindings.Apply(goals[0], theta);
             var rest = goals.Skip(1).ToList();
@@ -47,17 +53,28 @@ namespace FirstOrderLogic
                 if (Bindings.Signature(fresh.Head) != sig) continue;
                 if (!Bindings.TryUnify(goal, fresh.Head, out var mgu)) continue;
 
-                var theta2 = Bindings.Extend(theta, mgu);
                 var subgoals = new List<ISentence>(fresh.Premises);
                 subgoals.AddRange(rest);
 
-                foreach (var solution in Prove(clauses, subgoals, theta2, depth + 1, counter))
+                foreach (var solution in Prove(clauses, subgoals, Bindings.Extend(theta, mgu),
+                             assumed, depth + 1, counter, abducibles, maxDepth))
                     yield return solution;
             }
+
+            if (!abducibles.Contains(Bindings.SymbolOf(goal)) || !goal.IsGround()) yield break;
+            if (assumed.Any(a => a.IsNegationOf(goal))) yield break;
+
+            var extended = assumed.Any(a => a.Equals(goal))
+                ? assumed
+                : new List<ISentence>(assumed) { goal };
+
+            foreach (var solution in Prove(clauses, rest, theta, extended,
+                         depth + 1, counter, abducibles, maxDepth))
+                yield return solution;
         }
 
         // A holder rather than a ref int because iterator methods cannot take by-reference parameters.
-        private sealed class Counter
+        internal sealed class Counter
         {
             public int Next;
         }

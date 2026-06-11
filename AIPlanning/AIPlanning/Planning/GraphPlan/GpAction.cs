@@ -84,16 +84,8 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public void SpecifyAction(Unificator unificator) {
-            foreach (var preCon in Preconditions) {
-                var tempPreCon = preCon;
-                unificator.Substitute(ref tempPreCon);
-            }
-
-            foreach (var effect in Effects) {
-                var tempEffect = effect;
-                unificator.Substitute(ref tempEffect);
-            }
-        
+            foreach (var preCon in Preconditions) unificator.Substitute(preCon);
+            foreach (var effect in Effects) unificator.Substitute(effect);
             UpdateHashCode();
         }
 

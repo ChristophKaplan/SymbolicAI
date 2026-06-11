@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Substitution plumbing shared by the chaining procedures. Internal — not part of the public
+    // Substitution plumbing shared by the inference procedures. Internal — not part of the public
     // FOL vocabulary (which exposes Unificator for one-shot unification).
     internal static class Bindings
     {
@@ -75,6 +75,12 @@ namespace FirstOrderLogic
                 ? predicate.Symbol + "/" + predicate.Arity
                 : ((IAtomicSentence)atom).Symbol + "/0";
             return literal.IsNegation ? "¬" + tag : tag;
+        }
+
+        public static string SymbolOf(ISentence literal)
+        {
+            var atom = literal.IsNegation ? literal.Children[0] : literal;
+            return atom is IPredicate predicate ? predicate.Symbol : ((IAtomicSentence)atom).Symbol;
         }
     }
 }

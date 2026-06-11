@@ -19,6 +19,10 @@ namespace FirstOrderLogic
             Premises = premises;
         }
 
+        // The rule subset of `kb`; non-rule sentences are dropped.
+        public static List<Rule> FromAll(IEnumerable<ISentence> kb) =>
+            kb.Select(From).OfType<Rule>().ToList();
+
         // Null if `sentence` is not a rule (bare literal, or literal-conjunction ⇒ literal; a
         // leading universal-quantifier prefix is tolerated). Works on a clone.
         public static Rule? From(ISentence sentence)

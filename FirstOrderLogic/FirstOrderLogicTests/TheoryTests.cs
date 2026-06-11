@@ -176,6 +176,27 @@ namespace FolTests
         }
 
         [Test]
+        public void Semantic_IsConsistentWith_CatchesJointInconsistency()
+        {
+            // Each side alone is consistent, and no single sentence of one is refuted by the other
+            // (the clash needs premises from both sides), so only the union check can see it.
+            var a = new Theory(Set("P", "P => Q"));
+            var b = new Theory(Set("Q => R", "NOT R"));
+            Assert.That(a.Compare(b, ComparisonMode.Semantic).IsConsistent, Is.True);
+            Assert.That(b.Compare(a, ComparisonMode.Semantic).IsConsistent, Is.True);
+            Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
+            Assert.That(b.IsConsistentWith(a, ComparisonMode.Semantic), Is.False);
+        }
+
+        [Test]
+        public void Semantic_IsConsistentWith_True_WhenUnionSatisfiable()
+        {
+            var a = new Theory(Set("P", "P => Q"));
+            var b = new Theory(Set("Q => R"));
+            Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.True);
+        }
+
+        [Test]
         public void IsConsistentWith_IsSymmetric_ForChainedContradiction()
         {
             // The contradiction only surfaces when scanning A's `Rich(Alice)` against B's rules,
@@ -185,6 +206,98 @@ namespace FolTests
             Assert.That(b.Compare(a, ComparisonMode.Semantic).IsConsistent, Is.True);
             Assert.That(b.IsConsistentWith(a, ComparisonMode.Semantic), Is.False);
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
+        }
+
+        // ── Compare: chaining mode ──────────────────────────────────────────────
+
+        [Test]
+        public void Chaining_FindsDerivedAgreement()
+        {
+            // Syntactically silent (Mortal never literally stated), but the closure derives it.
+            var cmp = new Theory(Set("Mortal(Sokrates)"))
+                .Compare(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Chaining);
+            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
+            Assert.That(cmp.Alignment, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void Chaining_FindsDerivedContradiction()
+        {
+            var cmp = new Theory(Set("Rich(Alice)"))
+                .Compare(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Chaining);
+            Assert.That(cmp.IsConsistent, Is.False);
+            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
+            Assert.That(cmp.Contradictions[0].Counter.ToString(), Is.EqualTo(S("-Rich(Alice)").ToString()));
+        }
+
+        [Test]
+        public void Chaining_NonLiterals_CompareByIdentity()
+        {
+            // A shared rule counts as agreement; chaining adds nothing for non-literals.
+            var cmp = new Theory(Set("Human(x) => Mortal(x)"))
+                .Compare(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Chaining);
+            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Chaining_NonLiterals_ContradictByIdentity()
+        {
+            // The complement of a stated rule counts as a contradiction, same as Syntactic would.
+            var rule = S("Human(x) => Mortal(x)");
+            var cmp = new Theory(new List<ISentence> { rule })
+                .Compare(new Theory(new List<ISentence> { rule.Clone().Negate() }), ComparisonMode.Chaining);
+            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Chaining_IsConsistentWith_CatchesJointInconsistency()
+        {
+            // Each side alone is consistent and neither directional Compare sees the clash:
+            // only the union's closure derives ¬Q(a) against B's Q(a).
+            var a = new Theory(Set("P(a)", "P(x) => -Q(x)"));
+            var b = new Theory(Set("Q(a)"));
+            Assert.That(a.IsConsistent(), Is.True);
+            Assert.That(b.IsConsistent(), Is.True);
+            Assert.That(a.IsConsistentWith(b, ComparisonMode.Chaining), Is.False);
+        }
+
+        // ── Internal consistency (closure conflicts) ────────────────────────────
+
+        [Test]
+        public void Conflicts_FindsRuleDrivenSelfConflict()
+        {
+            // The is/ought pattern: a fact plus a norm whose consequent contradicts another fact.
+            var merged = new Theory(Set("IsFemale(m)", "Work(m)", "IsFemale(z) => -Work(z)"));
+            var conflicts = merged.Conflicts();
+            Assert.That(conflicts.Count, Is.EqualTo(1));
+            Assert.That(conflicts[0].Claim.ToString(), Is.EqualTo(S("Work(m)").ToString()));
+            Assert.That(merged.IsConsistent(), Is.False);
+        }
+
+        [Test]
+        public void Conflicts_Empty_WhenClosureIsClean()
+        {
+            var theory = new Theory(Set("IsFemale(m)", "IsFemale(z) => CanCook(z)"));
+            Assert.That(theory.Conflicts(), Is.Empty);
+            Assert.That(theory.IsConsistent(), Is.True);
+        }
+
+        // ── Complement safety ───────────────────────────────────────────────────
+
+        [Test]
+        public void Contradicts_DoesNotMutateParentedSentences()
+        {
+            // A sentence extracted from an implication still carries its parent linkage;
+            // Compare must neither throw nor splice a negation into the source tree.
+            var rule = S("A => NOT B");
+            var consequent = rule.Children[1];
+            var before = rule.ToString();
+
+            var cmp = new Theory(new List<ISentence> { consequent })
+                .Compare(new Theory(Set("B")), ComparisonMode.Semantic);
+
+            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
+            Assert.That(rule.ToString(), Is.EqualTo(before));
         }
 
         // ── Explain (kernels) ───────────────────────────────────────────────────

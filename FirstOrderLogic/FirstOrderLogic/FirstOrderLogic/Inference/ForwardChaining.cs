@@ -8,9 +8,9 @@ namespace FirstOrderLogic
     // no ex falso (q and ¬q may coexist in the closure). Non-rule sentences in the KB are ignored.
     public class ForwardChaining
     {
-        public List<ISentence> Saturate(IEnumerable<ISentence> kb)
+        public static List<ISentence> Saturate(IEnumerable<ISentence> kb)
         {
-            var clauses = kb.Select(Rule.From).Where(c => c != null).Select(c => c!).ToList();
+            var clauses = Rule.FromAll(kb);
             var rules = clauses.Where(c => !c.IsFact).ToList();
 
             var known = new HashSet<ISentence>();
@@ -39,13 +39,15 @@ namespace FirstOrderLogic
             return known.ToList();
         }
 
-        // A query with variables is entailed when some inferred literal is an instance of it.
-        public bool Entails(IEnumerable<ISentence> kb, ISentence query)
+        public static bool Entails(IEnumerable<ISentence> kb, ISentence query) =>
+            query.IsLiteral && Holds(Saturate(kb), query);
+
+        // Some fact is an instance of `query` (same polarity); a query with variables is satisfied
+        // by any instance.
+        public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {
-            if (!query.IsLiteral) return false;
             var sig = Bindings.Signature(query);
-            return Saturate(kb).Any(fact =>
-                Bindings.Signature(fact) == sig && Bindings.TryUnify(query, fact, out _));
+            return facts.Any(f => Bindings.Signature(f) == sig && Bindings.TryUnify(query, f, out _));
         }
 
         // Conjunctive join over the fact base: every substitution extending `theta` under which all
