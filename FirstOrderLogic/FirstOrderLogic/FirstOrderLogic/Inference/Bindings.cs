@@ -3,15 +3,11 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Substitution plumbing shared by the chaining procedures: dereferencing terms through a binding
-    // map, applying that map to a literal, unioning two maps, and unifying two literals into a map.
-    // Kept internal — it is implementation detail of ForwardChaining / BackwardChaining, not part of
-    // the public FOL vocabulary (which already exposes Unificator for one-shot unification).
+    // Substitution plumbing shared by the chaining procedures. Internal — not part of the public
+    // FOL vocabulary (which exposes Unificator for one-shot unification).
     internal static class Bindings
     {
-        // Dereference a term through the binding chain: follow variable→term links to the end, then
-        // rebuild any function over its dereferenced arguments. The unifier's occurs-check rules out
-        // cyclic bindings, so the recursion terminates.
+        // The unifier's occurs-check rules out cyclic bindings, so the recursion terminates.
         public static Term Walk(Term term, IReadOnlyDictionary<Variable, Term> theta)
         {
             switch (term)
@@ -23,12 +19,11 @@ namespace FirstOrderLogic
                     for (var i = 0; i < args.Length; i++) args[i] = Walk(f.Terms[i], theta);
                     return new Function(f.TermSymbol, args);
                 default:
-                    return term; // constant (arity-0 function) or unbound variable handled above
+                    return term;
             }
         }
 
-        // A fresh clone of `literal` with every variable replaced by its fully-dereferenced binding.
-        // Never mutates the input.
+        // Returns a fresh clone; never mutates the input.
         public static ISentence Apply(ISentence literal, IReadOnlyDictionary<Variable, Term> theta)
         {
             var clone = literal.Clone();
@@ -41,8 +36,7 @@ namespace FirstOrderLogic
             return clone;
         }
 
-        // theta ∪ more, as a new map. Callers only extend with bindings for variables absent from theta
-        // (the goal literal is pre-applied; fresh-clause variables are renamed unique), so the union is
+        // Callers only extend with bindings for variables absent from theta, so the union is
         // conflict-free by construction.
         public static Dictionary<Variable, Term> Extend(
             IReadOnlyDictionary<Variable, Term> theta, IReadOnlyDictionary<Variable, Term> more)
@@ -53,8 +47,6 @@ namespace FirstOrderLogic
             return result;
         }
 
-        // The distinct variables occurring in a literal (positive or negated atom). Propositions and
-        // ground atoms yield none.
         public static IEnumerable<Variable> VariablesOf(ISentence literal)
         {
             var atom = literal.IsNegation ? literal.Children[0] : literal;
@@ -62,7 +54,6 @@ namespace FirstOrderLogic
             return predicate.GetVariables().Distinct();
         }
 
-        // Most-general unifier of two literals as a binding map, or false if they do not unify.
         public static bool TryUnify(ISentence a, ISentence b, out Dictionary<Variable, Term> mgu)
         {
             var unificator = new Unificator(a, b);
@@ -75,13 +66,15 @@ namespace FirstOrderLogic
             return true;
         }
 
-        // "Symbol/arity" tag for cheap pre-filtering before attempting a unify.
+        // Polarity is part of the tag: Unificator unifies the underlying atoms regardless of
+        // negation, so this pre-filter is what keeps a positive literal from matching a negative one.
         public static string Signature(ISentence literal)
         {
             var atom = literal.IsNegation ? literal.Children[0] : literal;
-            return atom is IPredicate predicate
+            var tag = atom is IPredicate predicate
                 ? predicate.Symbol + "/" + predicate.Arity
                 : ((IAtomicSentence)atom).Symbol + "/0";
+            return literal.IsNegation ? "¬" + tag : tag;
         }
     }
 }

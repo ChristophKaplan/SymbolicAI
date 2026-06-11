@@ -40,7 +40,6 @@ namespace FirstOrderLogic {
             // variables on clones; clause1 and the original clause2 stay untouched.
             var literals2 = StandardizeApart(clause1.Literals, clause2.Literals);
 
-            // i indexes clause1's literals, j indexes clause2's — independent lists, so j starts at 0.
             for (var i = 0; i < clause1.Literals.Count; i++)
             {
                 for (var j = 0; j < literals2.Count; j++)
@@ -48,7 +47,6 @@ namespace FirstOrderLogic {
                     var lit1 = clause1.Literals[i];
                     var lit2 = literals2[j];
 
-                    // Resolution needs one positive and one negative literal.
                     if (lit1.IsNegation == lit2.IsNegation) continue;
 
                     var unify = new Unificator(lit1, lit2);
@@ -85,9 +83,7 @@ namespace FirstOrderLogic {
             return resolvents;
         }
 
-        // Returns `right` unchanged when no variable name collides with `left`; otherwise returns
-        // clones of `right` with every colliding variable renamed to a fresh "y$n". Never mutates
-        // either input.
+        // Clones of `right` with colliding variables renamed fresh; never mutates either input.
         private List<ISentence> StandardizeApart(List<ISentence> left, List<ISentence> right)
         {
             var leftNames = new HashSet<string>();
@@ -152,8 +148,6 @@ namespace FirstOrderLogic {
                     literal.SubstituteTerm(pair.Value, canonical[pair.Key]);
         }
 
-        // The literal's string form with every variable replaced by the same placeholder —
-        // identical for alpha-variant literals, distinct for structurally different ones.
         private static string StructuralKey(ISentence literal)
         {
             var clone = literal.Clone();
@@ -283,8 +277,6 @@ namespace FirstOrderLogic {
             }
         }
 
-        // True iff the clause contains some literal alongside its complement (e.g. P and ¬P),
-        // making the whole disjunction valid. Such clauses are redundant for resolution.
         private static bool IsTautology(Clause clause)
         {
             var literals = clause.Literals;
@@ -294,10 +286,7 @@ namespace FirstOrderLogic {
             return false;
         }
 
-        // Syntactic (subset) subsumption restricted to unit subsumers: a unit clause {L} subsumes any
-        // clause that contains L (since {L} ⊨ that clause), making the larger clause redundant.
-        // This is the substitution-free special case (θ = identity) — conservative but always sound.
-        // True iff some existing unit clause {L} subsumes `candidate`, i.e. candidate contains L.
+        // Substitution-free (θ = identity) unit subsumption — conservative but always sound.
         private static bool IsUnitSubsumed(Clause candidate, HashSet<ISentence> unitLiterals)
         {
             if (unitLiterals.Count == 0) return false;
@@ -308,8 +297,7 @@ namespace FirstOrderLogic {
 
         private static readonly IEqualityComparer<Clause> ClauseByContent = new ClauseContentComparer();
 
-        // A clause is a set of literals: two clauses are equal iff they carry the same literals,
-        // order aside. Built on ISentence value-equality.
+        // Set equality over literals, order aside, on ISentence value-equality.
         private sealed class ClauseContentComparer : IEqualityComparer<Clause>
         {
             public bool Equals(Clause a, Clause b)

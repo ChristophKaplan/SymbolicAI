@@ -3,19 +3,10 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Kernel Sets for explainability of entailment (Hansson 1994).
-    //
-    //   B ⊥⊥ α  =  { X ⊆ B : X ⊨ α, and no proper subset of X entails α }
-    //
-    // Given a belief base B and a target sentence α, a kernel is a minimal
-    // subset of B sufficient to prove α — i.e. the load-bearing premises of
-    // one proof of α. Multiple kernels expose independent proof paths.
-    //
-    // Entailment checks delegate to Resolution.
+    // Kernel sets (Hansson 1994): B ⊥⊥ α = the minimal subsets of B that entail α — the
+    // load-bearing premises of each independent proof path. Entailment delegates to Resolution.
     public class KernelSets
     {
-        // ── Public API ────────────────────────────────────────────────────────────
-
         // One minimal X ⊆ B with X ⊨ α, or null if B ⊭ α.
         public List<ISentence>? FindKernel(IList<ISentence> B, ISentence α)
         {
@@ -23,12 +14,9 @@ namespace FirstOrderLogic
             return Shrink(new List<ISentence>(B), α);
         }
 
-        // All minimal X ⊆ B with X ⊨ α.
-        //
-        // Correctness: every kernel K' ≠ K must omit at least one element of the
-        // first found kernel K (otherwise K ⊆ K', contradicting minimality of K').
-        // So every other kernel lives in B\{e} for some e ∈ K — recursing there
-        // finds them all.
+        // All minimal X ⊆ B with X ⊨ α. Complete because any other kernel must omit some element
+        // of the first found kernel K (else it would be a superset of K), so it lives in B\{e}
+        // for some e ∈ K — recursing there finds them all.
         public List<List<ISentence>> FindAllKernels(IList<ISentence> B, ISentence α)
         {
             var results = new List<List<ISentence>>();
@@ -37,13 +25,9 @@ namespace FirstOrderLogic
             return results;
         }
 
-        // True iff the conjunction of `sentences` entails `target`.
         private static bool Entails(IList<ISentence> sentences, ISentence target) =>
             new Theory(sentences as List<ISentence> ?? new List<ISentence>(sentences)).Entails(target);
 
-        // ── Internals ─────────────────────────────────────────────────────────────
-
-        // Drop each sentence not load-bearing for entailing α.
         // Precondition: Entails(sentences, α) == true.
         private List<ISentence> Shrink(List<ISentence> sentences, ISentence α)
         {
@@ -65,9 +49,8 @@ namespace FirstOrderLogic
             return sentences;
         }
 
-        // `explored` dedups the subsets we recurse into; `emitted` dedups the kernels we report.
-        // They must be separate: a kernel can equal the subset it was found in (every premise is
-        // load-bearing), and conflating the two would silently drop it.
+        // `explored` and `emitted` must be separate: a kernel can equal the subset it was found in,
+        // and conflating the two would silently drop it.
         private void FindAllKernelsRec(List<ISentence> sentences, ISentence α,
             List<List<ISentence>> results, HashSet<SentenceSet> explored, HashSet<SentenceSet> emitted)
         {
@@ -84,9 +67,7 @@ namespace FirstOrderLogic
             }
         }
 
-        // Order-independent set identity for deduplication, built on ISentence value-equality rather
-        // than ToString(): the hash is an order-independent combination and Equals does an exact
-        // multiset comparison, so distinct subsets can never collide into one another.
+        // Order-independent multiset identity over ISentence value-equality.
         private sealed class SentenceSet
         {
             private readonly List<ISentence> _items;

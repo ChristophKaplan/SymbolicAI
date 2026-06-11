@@ -70,8 +70,39 @@ namespace FolTests {
         }
 
         [Test]
-        public void NegatedQuery_NeverEntailed() {
+        public void NegatedQuery_NotDerivable_NotEntailed() {
+            // ¬B is a legal goal now, but nothing derives it here.
             Assert.That(Entails("A", "A => B", "NOT B"), Is.False);
+        }
+
+        // ── Literal clauses: negation as explicit falsehood ──────────────────────
+
+        [Test]
+        public void NegativeGoal_ProvenViaNegativeHead() {
+            Assert.That(Entails("IsFemale(mySelf)", "IsFemale(z) => NOT Work(z)", "NOT Work(mySelf)"), Is.True);
+        }
+
+        [Test]
+        public void NegativePremise_ProvenFromNegativeFact() {
+            Assert.That(
+                Entails("NOT Employed(a)", "Subject(a)",
+                        "(Subject(x) AND NOT Employed(x)) => NeedsJob(x)", "NeedsJob(a)"),
+                Is.True);
+        }
+
+        // Explicit negation, not negation-as-failure: an absent positive fact proves nothing.
+        [Test]
+        public void NegativePremise_AbsenceIsNotNegation() {
+            Assert.That(
+                Entails("Subject(a)",
+                        "(Subject(x) AND NOT Employed(x)) => NeedsJob(x)", "NeedsJob(a)"),
+                Is.False);
+        }
+
+        // Polarity is part of the goal-head match: Work(x) never resolves a ¬Work goal or vice versa.
+        [Test]
+        public void PolarityMismatch_NotProven() {
+            Assert.That(Entails("NOT Work(a)", "Work(x) => Tired(x)", "Tired(a)"), Is.False);
         }
     }
 }

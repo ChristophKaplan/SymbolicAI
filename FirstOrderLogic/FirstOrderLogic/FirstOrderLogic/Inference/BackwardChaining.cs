@@ -3,13 +3,11 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Backward chaining (goal-driven) over definite clauses: to prove a goal, unify it with the head of
-    // each clause and recursively prove that clause's premises, left-to-right and depth-first with
-    // backtracking — the proof strategy behind Prolog. Sound; complete for function-free clause sets
-    // within the depth bound. Like Prolog it can recurse without end on left-recursive/cyclic rules, so
-    // a depth limit guards against runaway recursion (exceeding it prunes that branch rather than
-    // reporting "not entailed"). Only the definite-clause subset of the KB participates. Cf. AIMA
-    // FOL-BC-ASK.
+    // Goal-driven proof search, depth-first with backtracking — the Prolog strategy (cf. AIMA
+    // FOL-BC-ASK, generalized to literal heads and premises). Sound; complete only for the
+    // function-free all-positive subset within the depth bound. The depth limit guards against
+    // left-recursive/cyclic rules (exceeding it prunes the branch rather than reporting
+    // "not entailed"). Non-rule sentences in the KB are ignored.
     public class BackwardChaining
     {
         private readonly int _maxDepth;
@@ -19,19 +17,17 @@ namespace FirstOrderLogic
             _maxDepth = maxDepth;
         }
 
-        // True iff the definite-clause subset of `kb` entails `query` (a positive literal).
         public bool Entails(IEnumerable<ISentence> kb, ISentence query)
         {
-            if (!query.IsLiteral || query.IsNegation) return false;
-            var clauses = kb.Select(DefiniteClause.From).Where(c => c != null).Select(c => c!).ToList();
+            if (!query.IsLiteral) return false;
+            var clauses = kb.Select(Rule.From).Where(c => c != null).Select(c => c!).ToList();
             var goals = new List<ISentence> { query };
             return Prove(clauses, goals, new Dictionary<Variable, Term>(), 0, new Counter()).Any();
         }
 
-        // Every answer substitution for `goals` (a conjunction proved left-to-right) under the bindings
-        // accumulated in `theta`. The head of each clause is standardized apart on use via `counter`.
+        // Every answer substitution for `goals` (a conjunction proved left-to-right).
         private IEnumerable<Dictionary<Variable, Term>> Prove(
-            List<DefiniteClause> clauses, IReadOnlyList<ISentence> goals,
+            List<Rule> clauses, IReadOnlyList<ISentence> goals,
             Dictionary<Variable, Term> theta, int depth, Counter counter)
         {
             if (goals.Count == 0)
@@ -60,8 +56,7 @@ namespace FirstOrderLogic
             }
         }
 
-        // Monotonic source of standardize-apart suffixes. A holder (not a ref int) because iterator
-        // methods cannot take by-reference parameters.
+        // A holder rather than a ref int because iterator methods cannot take by-reference parameters.
         private sealed class Counter
         {
             public int Next;
