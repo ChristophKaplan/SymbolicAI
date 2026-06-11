@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>9</LangVersion>
+        <AssemblyName>AIPlanning</AssemblyName>
+        <RootNamespace>AIPlanning</RootNamespace>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>AnyCPU</Platforms>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <DebugType>portable</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\FirstOrderLogic\FirstOrderLogic\FirstOrderLogic.csproj" />
+      <ProjectReference Include="..\..\..\LRParser\LRParser\LRParser.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="AIPlanningTests\**\*.cs" />
+      <None Remove="AIPlanningTests\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="AIPlanningTests\AiPlanningTests.cs">
+        <Link>TestProject1\UnitTest1.cs</Link>
+      </Compile>
+    </ItemGroup>
+
+</Project>
