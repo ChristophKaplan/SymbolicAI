@@ -17,8 +17,7 @@ namespace FirstOrderLogic {
                 var clause = GetRandomUnsatisfiedClause(clauses, model);
          
                 if (_random.NextDouble() < p) {
-                    // Random walk: flip a random symbol *from the chosen unsatisfied clause* —
-                    // any of its symbols must be reachable or some assignments become unfixable.
+                    // Random walk: the flipped symbol must come from the unsatisfied clause itself.
                     var literal = clause.Literals[_random.Next(0, clause.Literals.Count)];
                     model.Switch(literal.GetProposition());
                 } else {

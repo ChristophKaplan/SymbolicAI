@@ -10,9 +10,8 @@ namespace FirstOrderLogicExample {
             var prenexForm = logic.ToPrenexForm(sentence, out var steps);
             var skolemForm = logic.SkolemForm(prenexForm);
             var consequence = (ISentence)logic.TryParse("Mortal(Sokrates)");
-            var resolution = new Resolution();
 
-            var result = resolution.Resolve(skolemForm, consequence);
+            var result = Resolution.Resolve(skolemForm, consequence);
 
             Console.WriteLine(result);
         }

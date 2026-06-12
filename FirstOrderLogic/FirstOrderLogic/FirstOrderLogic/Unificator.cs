@@ -102,7 +102,6 @@ namespace FirstOrderLogic
                 return atom1.Symbol == atom2.Symbol && atom1.Time == atom2.Time;
             }
 
-            // Mismatched kinds (predicate vs proposition) never unify.
             return false;
         }
 
@@ -135,7 +134,6 @@ namespace FirstOrderLogic
                 return UnifyFunction(func1, func2);
             }
 
-            //throw new Exception($"Unification failed for {term1} and {term2}");
             return false;
         }
 
@@ -171,7 +169,6 @@ namespace FirstOrderLogic
 
             if (term.Occurs(var))
             {
-                //throw new Exception($"Occurs check failed for {var} and {term}");
                 return false;
             }
 

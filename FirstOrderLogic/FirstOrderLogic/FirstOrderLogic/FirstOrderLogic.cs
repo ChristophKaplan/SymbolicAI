@@ -170,13 +170,7 @@ namespace FirstOrderLogic {
         }
 
         ILanguageObject GetConnective(Symbol[] rhs) => new Connective(((LexValue)rhs[0].Attribute).ToLogicalConstant());
-    
-        public override ILanguageObject TryParse(string input)
-        {
-            var langObj = base.TryParse(input);
-            return langObj;
-        }
-    
+
         public List<ILanguageObject> TryParse(List<string> inputList)
         {
             var langObjList = new List<ILanguageObject>();

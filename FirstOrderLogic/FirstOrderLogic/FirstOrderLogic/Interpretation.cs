@@ -145,7 +145,7 @@ namespace FirstOrderLogic {
     
         private IElementOfDiscourse Evaluate(Term term) {
             return term switch {
-                Constant constant => _functions.TryGetValue(constant.TermSymbol, out var nullAryFunc) ? nullAryFunc(Array.Empty<Term>()) : throw new Exception("Error: constant not found in interpretation."),
+                // Constants are arity-0 functions: function.Terms is empty for them.
                 Function function =>  _functions.TryGetValue(function.TermSymbol, out var func) ? func(function.Terms) : throw new Exception("Error: function not found in interpretation."),
                 Variable variable => _variableAssigment.TryGetValue(variable.TermSymbol, out var domain) ? domain : throw new Exception("Error: variable not found in interpretation."),
                 _ => throw new Exception($"Error: {term} not found in interpretation.")

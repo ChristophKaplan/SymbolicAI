@@ -20,18 +20,7 @@ namespace FirstOrderLogic {
             }
         }
     
-        public void SubstituteTerm(Term term, Term replacement) {
-            var terms = Terms;
-            var length = terms.Length;
-            for (var i = 0; i < length; i++) {
-                var curTerm = terms[i];
-                if (curTerm.Equals(term)) {
-                    terms[i] = replacement;
-                } else if (curTerm is Function function) {
-                    function.SubstituteTerm(term, replacement);
-                }
-            }
-        }
+        public void SubstituteTerm(Term term, Term replacement) => SubstituteAll(Terms, term, replacement);
 
         public bool Equals(Function? other)
         {
@@ -42,11 +31,7 @@ namespace FirstOrderLogic {
             if(!EqualSignature(other)) {
                 return false;
             }
-        
-            if (Terms.Length != other.Terms.Length) {
-                return false;
-            }
-        
+
             for (var i = 0; i < Terms.Length; i++) {
                 if (!Terms[i].Equals(other.Terms[i])) {
                     return false;

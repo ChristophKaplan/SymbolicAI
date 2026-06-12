@@ -8,9 +8,9 @@ namespace FolTests {
     public class ResolutionRegressionTests : TestBase {
         // Assert the same boolean in both modes: subsumption must never change the result, only speed.
         private void AssertResolves(string kb, string goal, bool expected) {
-            Assert.That(new Resolution(useSubsumption: false).Resolve(S(kb), S(goal)),
+            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: false),
                 Is.EqualTo(expected), $"[no subsumption] {kb}  =>  {goal}");
-            Assert.That(new Resolution(useSubsumption: true).Resolve(S(kb), S(goal)),
+            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: true),
                 Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
         }
 

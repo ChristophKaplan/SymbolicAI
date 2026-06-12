@@ -4,24 +4,14 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // A first-order signature (vocabulary / "similarity type"): the non-logical symbols a language is
-    // built from — predicate symbols with their arity, plus constant/function symbols. Pure syntax: it
-    // declares what *can* be said, not what is true (that is an Interpretation) nor what follows from
-    // it (that is a Theory). Constants are arity-0 functions.
+    // A first-order signature: the non-logical symbols a language is built from — predicate
+    // symbols with their arity, plus constant/function symbols (constants are arity-0 functions).
+    // Pure syntax: declares what *can* be said, not what is true.
     public sealed class Signature
     {
-        // A non-logical symbol as it appears in a signature: a name together with its arity, declared
-        // once before being applied to any terms. Covers both kinds the signature distinguishes — a
-        // predicate symbol or a function symbol (a constant is an arity-0 function symbol); which one it
-        // is, is fixed by where it is declared (Builder.Predicate vs. Function/Constant), exactly as the
-        // signature keeps predicates and functions in separate namespaces. Contrast Predicate (an
-        // IPredicate), which is an *applied* atom carrying actual Terms — there arity is Terms.Length.
-        // Arity is an intrinsic property of the symbol, so it travels with the name.
-        //
-        // It converts implicitly to its name, so a declared symbol drops unchanged into anywhere a string
-        // symbol is expected (dictionary keys, comparisons, parser text). Of(args) renders the applied
-        // concrete syntax "Name(a, b)" — identical to Predicate.ToString — with an arity check; an
-        // arity-0 symbol (a constant) renders as the bare name.
+        // A declared name + arity. Converts implicitly to its name so it drops in wherever a
+        // string symbol is expected; Of(args) renders the applied syntax "Name(a, b)" with an
+        // arity check.
         public sealed class Symbol
         {
             public string Name { get; }
@@ -36,8 +26,6 @@ namespace FirstOrderLogic
             public static implicit operator string(Symbol symbol) => symbol.Name;
             public override string ToString() => Name;
 
-            // The concrete-syntax application of this symbol to `args`, e.g. Owns.Of("z", "y") => "Owns(z, y)".
-            // Throws if the argument count does not match the declared arity.
             public string Of(params string[] args)
             {
                 if (args.Length != Arity)
@@ -76,9 +64,8 @@ namespace FirstOrderLogic
         public bool HasConstant(string symbol) =>
             _functions.TryGetValue(symbol, out var a) && a == 0;
 
-        // The predicate symbols (rendered "Symbol/Arity") that occur in `sentence` but are not declared
-        // in this signature with a matching arity. Empty ⇒ the sentence is well-formed over this
-        // signature. Propositional atoms (no predicate) are ignored.
+        // The predicate symbols ("Symbol/Arity") in `sentence` not declared with a matching arity.
+        // Empty ⇒ well-formed over this signature.
         public List<string> UndeclaredPredicates(ISentence sentence)
         {
             var missing = new List<string>();
@@ -118,7 +105,6 @@ namespace FirstOrderLogic
                 return this;
             }
 
-            // Declare a predicate from a Symbol — name and arity travel together.
             public Builder Predicate(Symbol symbol) => Predicate(symbol.Name, symbol.Arity);
 
             public Builder Constant(string symbol)
@@ -127,7 +113,6 @@ namespace FirstOrderLogic
                 return this;
             }
 
-            // Declare a constant from a Symbol (arity-0 function symbol).
             public Builder Constant(Symbol symbol) => Constant(symbol.Name);
 
             public Builder Function(string symbol, int arity)
@@ -136,7 +121,6 @@ namespace FirstOrderLogic
                 return this;
             }
 
-            // Declare a function from a Symbol — name and arity travel together.
             public Builder Function(Symbol symbol) => Function(symbol.Name, symbol.Arity);
 
             public Signature Build() => new Signature(_predicates, _functions);

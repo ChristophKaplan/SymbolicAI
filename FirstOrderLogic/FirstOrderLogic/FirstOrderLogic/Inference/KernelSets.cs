@@ -14,9 +14,8 @@ namespace FirstOrderLogic
             return Shrink(new List<ISentence>(B), α);
         }
 
-        // All minimal X ⊆ B with X ⊨ α. Complete because any other kernel must omit some element
-        // of the first found kernel K (else it would be a superset of K), so it lives in B\{e}
-        // for some e ∈ K — recursing there finds them all.
+        // All minimal X ⊆ B with X ⊨ α. Complete: any other kernel omits some element of a found
+        // kernel, so recursing on B\{e} finds them all.
         public List<List<ISentence>> FindAllKernels(IList<ISentence> B, ISentence α)
         {
             var results = new List<List<ISentence>>();

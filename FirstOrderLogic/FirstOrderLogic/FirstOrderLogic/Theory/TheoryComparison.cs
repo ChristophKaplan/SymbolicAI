@@ -2,8 +2,7 @@ using System.Collections.Generic;
 
 namespace FirstOrderLogic
 {
-    // The result of comparing one theory against another. Carries the breakdown and the metrics
-    // derived from it. `Mode` records how contradictions/agreements were detected.
+    // The result of comparing one theory against another; `Mode` records how verdicts were detected.
     public readonly struct TheoryComparison
     {
         public readonly List<ISentence> Agreements;

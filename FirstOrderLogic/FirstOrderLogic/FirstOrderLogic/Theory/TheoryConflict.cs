@@ -2,8 +2,7 @@ using System.Collections.Generic;
 
 namespace FirstOrderLogic
 {
-    // A claim and its complement, each held or derived somewhere. Detection only — use KernelSets
-    // to explain why either side holds.
+    // A claim and its complement. Detection only — use KernelSets to explain why either side holds.
     public readonly struct TheoryConflict
     {
         public readonly ISentence Claim;

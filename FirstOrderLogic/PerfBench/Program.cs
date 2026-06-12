@@ -43,7 +43,7 @@ namespace PerfBench {
             var kb = (ISentence)logic.TryParse(kbText);
             var goal = (ISentence)logic.TryParse(goalText);
 
-            result = new Resolution().Resolve(kb, goal); // warmup
+            result = Resolution.Resolve(kb, goal); // warmup
 
             minMs = double.MaxValue;
             var totalMs = 0.0;
@@ -51,7 +51,7 @@ namespace PerfBench {
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
                 var sw = Stopwatch.StartNew();
-                result = new Resolution().Resolve(kb, goal);
+                result = Resolution.Resolve(kb, goal);
                 sw.Stop();
                 var ms = sw.Elapsed.TotalMilliseconds;
                 totalMs += ms;

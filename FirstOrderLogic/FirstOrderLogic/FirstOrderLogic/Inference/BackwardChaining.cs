@@ -3,11 +3,9 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Goal-driven proof search, depth-first with backtracking — the Prolog strategy (cf. AIMA
-    // FOL-BC-ASK, generalized to literal heads and premises). Sound; complete only for the
-    // function-free all-positive subset within the depth bound. The depth limit guards against
-    // left-recursive/cyclic rules (exceeding it prunes the branch rather than reporting
-    // "not entailed"). Non-rule sentences in the KB are ignored.
+    // Goal-driven depth-first proof search with backtracking (cf. AIMA FOL-BC-ASK). Sound;
+    // complete only for the function-free all-positive subset within the depth bound, which
+    // guards against cyclic rules. Non-rule sentences in the KB are ignored.
     public class BackwardChaining
     {
         private static readonly HashSet<string> NoAbducibles = new();
@@ -28,9 +26,8 @@ namespace FirstOrderLogic
                 .Any();
         }
 
-        // Every proof of `goals` (a conjunction, proved left-to-right), yielded as the literals it
-        // assumed along the way. A ground goal over an abducible predicate may be assumed instead
-        // of proven — with no abducibles this is plain backward chaining and yields empty lists.
+        // Every proof of `goals`, yielded as the literals it assumed along the way. A ground goal
+        // over an abducible predicate may be assumed instead of proven.
         internal static IEnumerable<List<ISentence>> Prove(
             List<Rule> clauses, IReadOnlyList<ISentence> goals,
             Dictionary<Variable, Term> theta, List<ISentence> assumed,

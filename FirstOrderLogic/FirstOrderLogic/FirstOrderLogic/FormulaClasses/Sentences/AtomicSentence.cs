@@ -32,7 +32,7 @@ namespace FirstOrderLogic {
 
         protected AtomicSentence(IAtomicSentence other)
         {
-            Parent = null; //other.Parent;
+            Parent = null;
             Symbol = other.Symbol;
             Time = other.Time;
         }

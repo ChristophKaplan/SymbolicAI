@@ -3,9 +3,8 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Data-driven rule firing to fixpoint (cf. AIMA FOL-FC-ASK, generalized to literal heads and
-    // premises). Sound; complete only for the function-free all-positive subset — no case analysis,
-    // no ex falso (q and ¬q may coexist in the closure). Non-rule sentences in the KB are ignored.
+    // Data-driven rule firing to fixpoint (cf. AIMA FOL-FC-ASK). Sound; complete only for the
+    // function-free all-positive subset. Non-rule sentences in the KB are ignored.
     public class ForwardChaining
     {
         public static List<ISentence> Saturate(IEnumerable<ISentence> kb)
@@ -21,8 +20,7 @@ namespace FirstOrderLogic
             do
             {
                 added = false;
-                // New facts enter `known` immediately but are matched against only from the next
-                // round; this snapshot keeps each round well-defined and reaches the same fixpoint.
+                // New facts are matched against only from the next round; same fixpoint.
                 var facts = known.ToList();
                 foreach (var rule in rules)
                 {
@@ -42,16 +40,14 @@ namespace FirstOrderLogic
         public static bool Entails(IEnumerable<ISentence> kb, ISentence query) =>
             query.IsLiteral && Holds(Saturate(kb), query);
 
-        // Some fact is an instance of `query` (same polarity); a query with variables is satisfied
-        // by any instance.
+        // Some fact is an instance of `query` (same polarity).
         public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {
             var sig = Bindings.Signature(query);
             return facts.Any(f => Bindings.Signature(f) == sig && Bindings.TryUnify(query, f, out _));
         }
 
-        // Conjunctive join over the fact base: every substitution extending `theta` under which all
-        // premises from `index` onward hold.
+        // Every substitution extending `theta` under which all premises from `index` onward hold.
         private static IEnumerable<Dictionary<Variable, Term>> Match(
             IReadOnlyList<ISentence> premises, int index,
             Dictionary<Variable, Term> theta, List<ISentence> facts)

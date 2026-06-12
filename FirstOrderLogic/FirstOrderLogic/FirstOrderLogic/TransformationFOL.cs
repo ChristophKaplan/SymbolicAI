@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Threading;
 using FirstOrderLogic;
 
 public static class TransformationFOL {
@@ -13,7 +15,6 @@ public static class TransformationFOL {
         PullQuantifier,
         RemoveDuplicateQuantifier,
         RemoveQuantifier,
-        StandardizeVariables,
         DistributionOfDisjunction,
         DistributionOfConjunction
     }
@@ -70,9 +71,6 @@ public static class TransformationFOL {
             case EquivType.RemoveQuantifier:
                 BottomUpTransformation(ref sentence, RemoveQuantifier);
                 break;
-            case EquivType.StandardizeVariables:
-                BottomUpTransformation(ref sentence, StandardizeVariables);
-                break;
             case EquivType.DistributionOfDisjunction:
                 BottomUpTransformation(ref sentence, DistributionOfDisjunction);
                 break;
@@ -82,17 +80,9 @@ public static class TransformationFOL {
         }
     }
 
-    private static void StandardizeVariables(ref ISentence sentence) {
-        //check for quantifiers using same variable names and rename
-        throw new NotImplementedException();
-    }
-
-
     private static void PullQuantifier(ref ISentence sentence) {
-        // Trigger on the binary connective rather than the quantified child: replacing a node
-        // requires writing through `ref sentence`, which only works when we are positioned on the
-        // node being replaced. (Triggering on the child failed whenever its parent was the root,
-        // since there is no grandparent to splice into.)
+        // Trigger on the binary connective, not the quantified child: replacing a node requires
+        // writing through `ref sentence`.
         if (sentence is not IComplexSentence { IsBinary: true } connective) {
             return;
         }
@@ -102,12 +92,58 @@ public static class TransformationFOL {
                 continue;
             }
 
+            var quantifier = (Quantifier)quantified.Connective;
             var sibling = connective.GetSiblingOf(quantified);
+
+            // Capture avoidance: pulling widens the quantifier's scope over the sibling, so a free
+            // occurrence of the bound name there must be renamed away first (an existential would
+            // skolemize it into a single witness). Only free occurrences trigger the rename, which
+            // keeps same-named universals mergeable; the process-wide counter plus unparseable '$'
+            // makes fresh names globally unique.
+            if (HasFreeOccurrence(sibling, quantifier.Variable)) {
+                var fresh = new Variable($"q${Interlocked.Increment(ref _captureRenameCounter)}");
+                SubstituteFree(quantified.Children[0], quantifier.Variable, fresh);
+                quantifier = new Quantifier(quantifier.Symbol, fresh);
+            }
+
             var body = new ComplexSentence(quantified.Children[0], connective.Connective.Symbol, sibling);
-            var result = new ComplexSentence(quantified.Connective.Clone(), body);
+            var result = new ComplexSentence(quantifier.Clone(), body);
             result.SetParentToParentOf(sentence);
             sentence = result;
             return;
+        }
+    }
+
+    private static int _captureRenameCounter;
+
+    // True iff `variable` occurs in `sentence` outside the scope of any same-named quantifier.
+    private static bool HasFreeOccurrence(ISentence sentence, Variable variable) {
+        if (sentence is IComplexSentence { IsQuantifier: true } quantified &&
+            ((Quantifier)quantified.Connective).Variable.Equals(variable)) {
+            return false;
+        }
+
+        if (sentence is IPredicate predicate) {
+            return predicate.GetVariables().Contains(variable);
+        }
+
+        return sentence.Children.Any(child => HasFreeOccurrence(child, variable));
+    }
+
+    // Renames only the free occurrences of `variable`, stopping at same-named binders.
+    private static void SubstituteFree(ISentence sentence, Variable variable, Variable replacement) {
+        if (sentence is IComplexSentence { IsQuantifier: true } quantified &&
+            ((Quantifier)quantified.Connective).Variable.Equals(variable)) {
+            return;
+        }
+
+        if (sentence is IAtomicSentence) {
+            sentence.SubstituteTerm(variable, replacement);
+            return;
+        }
+
+        foreach (var child in sentence.Children) {
+            SubstituteFree(child, variable, replacement);
         }
     }
 
@@ -129,8 +165,6 @@ public static class TransformationFOL {
     }
 
     private static void SimplifyConstants(ref ISentence sentence) {
-        //add these to the other transformations
-        //We take out Tautology and Contradiction
         if (sentence is not IComplexSentence complexSentence) {
             return;
         }
@@ -310,52 +344,35 @@ public static class TransformationFOL {
 
     private static void DistributionOfDisjunction(ref ISentence sentence) {
         //A OR (B AND C) = (A OR B) AND (A OR C)
-        if (!sentence.IsBinary) return;
-        var complex = (IComplexSentence)sentence;
-        var lhs = sentence.Children[0];
-        var rhs = sentence.Children[1];
-
-        if (complex.IsDisjunction) {
-            if (rhs is IComplexSentence { IsConjunction: true }) {
-                var newLHS = new ComplexSentence(lhs, Connective.LogicSymbol.DISJUNCTION, rhs.Children[0]);
-                var newRHS = new ComplexSentence(lhs, Connective.LogicSymbol.DISJUNCTION, rhs.Children[1]);
-                var and = new ComplexSentence(newLHS, Connective.LogicSymbol.CONJUNCTION, newRHS);
-                and.SetParentToParentOf(complex);
-                sentence = and;
-            }
-            else if (lhs is IComplexSentence { IsConjunction: true }) {
-                var newLHS = new ComplexSentence(lhs.Children[0], Connective.LogicSymbol.DISJUNCTION, rhs);
-                var newRHS = new ComplexSentence(lhs.Children[1], Connective.LogicSymbol.DISJUNCTION, rhs);
-                var and = new ComplexSentence(newLHS, Connective.LogicSymbol.CONJUNCTION, newRHS);
-                and.SetParentToParentOf(complex);
-                sentence = and;
-            }
-        }
+        Distribute(ref sentence, Connective.LogicSymbol.DISJUNCTION, Connective.LogicSymbol.CONJUNCTION);
     }
-    
+
     private static void DistributionOfConjunction(ref ISentence sentence) {
         //A AND (B OR C) = (A AND B) OR (A AND C)
+        Distribute(ref sentence, Connective.LogicSymbol.CONJUNCTION, Connective.LogicSymbol.DISJUNCTION);
+    }
 
+    private static void Distribute(ref ISentence sentence, Connective.LogicSymbol outer, Connective.LogicSymbol inner) {
         if (!sentence.IsBinary) return;
         var complex = (IComplexSentence)sentence;
+        if (complex.Connective.Symbol != outer) return;
+
         var lhs = sentence.Children[0];
         var rhs = sentence.Children[1];
 
-        if (complex.IsConjunction) {
-            if (rhs is IComplexSentence { IsDisjunction: true } rhsComplex) {
-                var newLHS = new ComplexSentence(lhs, Connective.LogicSymbol.CONJUNCTION, rhsComplex.Children[0]);
-                var newRHS = new ComplexSentence(lhs, Connective.LogicSymbol.CONJUNCTION, rhsComplex.Children[1]);
-                var or = new ComplexSentence(newLHS, Connective.LogicSymbol.DISJUNCTION, newRHS);
-                or.SetParentToParentOf(rhsComplex);
-                sentence = or;
-            }
-            else if (lhs is IComplexSentence { IsDisjunction: true }) {
-                var newLHS = new ComplexSentence(lhs.Children[0], Connective.LogicSymbol.CONJUNCTION, rhs);
-                var newRHS = new ComplexSentence(lhs.Children[1], Connective.LogicSymbol.CONJUNCTION, rhs);
-                var or = new ComplexSentence(newLHS, Connective.LogicSymbol.DISJUNCTION, newRHS);
-                or.SetParentToParentOf(lhs);
-                sentence = or;
-            }
+        if (rhs is IComplexSentence rhsComplex && rhsComplex.Connective.Symbol == inner) {
+            var newLhs = new ComplexSentence(lhs, outer, rhs.Children[0]);
+            var newRhs = new ComplexSentence(lhs, outer, rhs.Children[1]);
+            var result = new ComplexSentence(newLhs, inner, newRhs);
+            result.SetParentToParentOf(sentence);
+            sentence = result;
+        }
+        else if (lhs is IComplexSentence lhsComplex && lhsComplex.Connective.Symbol == inner) {
+            var newLhs = new ComplexSentence(lhs.Children[0], outer, rhs);
+            var newRhs = new ComplexSentence(lhs.Children[1], outer, rhs);
+            var result = new ComplexSentence(newLhs, inner, newRhs);
+            result.SetParentToParentOf(sentence);
+            sentence = result;
         }
     }
 }

@@ -3,8 +3,7 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Substitution plumbing shared by the inference procedures. Internal — not part of the public
-    // FOL vocabulary (which exposes Unificator for one-shot unification).
+    // Substitution plumbing shared by the inference procedures.
     internal static class Bindings
     {
         // The unifier's occurs-check rules out cyclic bindings, so the recursion terminates.
@@ -49,8 +48,7 @@ namespace FirstOrderLogic
 
         public static IEnumerable<Variable> VariablesOf(ISentence literal)
         {
-            var atom = literal.IsNegation ? literal.Children[0] : literal;
-            if (atom is not IPredicate predicate) return Enumerable.Empty<Variable>();
+            if (AtomOf(literal) is not IPredicate predicate) return Enumerable.Empty<Variable>();
             return predicate.GetVariables().Distinct();
         }
 
@@ -66,11 +64,11 @@ namespace FirstOrderLogic
             return true;
         }
 
-        // Polarity is part of the tag: Unificator unifies the underlying atoms regardless of
-        // negation, so this pre-filter is what keeps a positive literal from matching a negative one.
+        // Polarity is part of the tag: this pre-filter is what keeps a positive literal from
+        // matching a negative one.
         public static string Signature(ISentence literal)
         {
-            var atom = literal.IsNegation ? literal.Children[0] : literal;
+            var atom = AtomOf(literal);
             var tag = atom is IPredicate predicate
                 ? predicate.Symbol + "/" + predicate.Arity
                 : ((IAtomicSentence)atom).Symbol + "/0";
@@ -79,8 +77,11 @@ namespace FirstOrderLogic
 
         public static string SymbolOf(ISentence literal)
         {
-            var atom = literal.IsNegation ? literal.Children[0] : literal;
+            var atom = AtomOf(literal);
             return atom is IPredicate predicate ? predicate.Symbol : ((IAtomicSentence)atom).Symbol;
         }
+
+        private static ISentence AtomOf(ISentence literal) =>
+            literal.IsNegation ? literal.Children[0] : literal;
     }
 }

@@ -9,8 +9,8 @@ namespace FirstOrderLogic {
     
         public Clause(params ISentence[] literals)
         {
-            // An empty literal list must always mean "empty clause" (= contradiction) — silently
-            // dropping bad input here would let a malformed sentence masquerade as a refutation.
+            // An empty literal list must mean "empty clause": silently dropping bad input here
+            // would let a malformed sentence masquerade as a refutation.
             var nonLiteral = literals.FirstOrDefault(t => !t.IsLiteral);
             if (nonLiteral != null)
             {

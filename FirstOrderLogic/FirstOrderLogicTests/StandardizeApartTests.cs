@@ -8,9 +8,9 @@ namespace FolTests {
     // terminated) before GetResolvents renamed colliding variables — keep them green.
     public class StandardizeApartTests : TestBase {
         private void AssertResolves(string kb, string goal, bool expected) {
-            Assert.That(new Resolution(useSubsumption: false).Resolve(S(kb), S(goal)),
+            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: false),
                 Is.EqualTo(expected), $"[no subsumption] {kb}  =>  {goal}");
-            Assert.That(new Resolution(useSubsumption: true).Resolve(S(kb), S(goal)),
+            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: true),
                 Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
         }
 
@@ -52,16 +52,14 @@ namespace FolTests {
         // ∀x P(x)→P(f(x)) generates P(f(a)), P(f(f(a))), … forever; the budget must cut it off.
         [Test]
         public void MaxRounds_Throws_WhenSaturationBudgetExceeded() {
-            var resolution = new Resolution(useSubsumption: false, maxRounds: 2);
             Assert.Throws<InvalidOperationException>(() =>
-                resolution.Resolve(S("P(a) AND ((P(x)) => P(f(x)))"), S("Q(b)")));
+                Resolution.Resolve(S("P(a) AND ((P(x)) => P(f(x)))"), S("Q(b)"), maxRounds: 2));
         }
 
         [Test]
         public void MaxRounds_DoesNotAffectQueriesWithinBudget() {
-            var resolution = new Resolution(useSubsumption: false, maxRounds: 10);
-            Assert.That(resolution.Resolve(S("A AND (A => B)"), S("B")), Is.True);
-            Assert.That(resolution.Resolve(S("A"), S("B")), Is.False);
+            Assert.That(Resolution.Resolve(S("A AND (A => B)"), S("B"), maxRounds: 10), Is.True);
+            Assert.That(Resolution.Resolve(S("A"), S("B"), maxRounds: 10), Is.False);
         }
     }
 }

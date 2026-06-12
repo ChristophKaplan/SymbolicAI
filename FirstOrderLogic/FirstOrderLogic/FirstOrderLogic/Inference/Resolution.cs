@@ -3,41 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace FirstOrderLogic {
-    public class Resolution
+    // Stateless: per-run state lives in locals, so concurrent callers never interfere.
+    public static class Resolution
     {
         private static readonly FirstOrderLogic Logic = new();
 
-        // Subsumption (unit-clause based) is sound but its bookkeeping only pays off on larger,
-        // redundancy-heavy problems; on small/medium inputs it can cost more than it saves. It is
-        // therefore opt-in and off by default. Tautology elimination and factoring are always on.
-        private readonly bool _useSubsumption;
-
-        // FOL entailment is only semi-decidable: a non-entailed KB with function symbols can grow
-        // the clause set forever. maxRounds (0 = unlimited) caps the saturation loop and throws
-        // when exceeded, so callers can bound the search instead of hanging.
-        private readonly int _maxRounds;
-
-        // Fresh names for standardizing clauses apart. '$' cannot appear in parsed identifiers,
-        // so these never collide with user variables; the counter keeps them distinct from each
-        // other. Canonical resolvent names (CanonicalizeVariables) use the "x$" prefix, fresh
-        // standardize-apart names the "y$" prefix — the two schemes never overlap.
-        private int _freshVarCounter;
-
-        public Resolution(bool useSubsumption = false, int maxRounds = 0)
-        {
-            _useSubsumption = useSubsumption;
-            _maxRounds = maxRounds;
-        }
-
-        private List<Resolvent> GetResolvents(Clause clause1, Clause clause2)
+        private static List<Resolvent> GetResolvents(Clause clause1, Clause clause2)
         {
             var resolvents = new List<Resolvent>();
 
-            // Standardize apart: each clause's variables are universally quantified locally, so a
-            // name shared between the two clauses is a coincidence, not a constraint. Unifying
-            // without renaming wrongly ties such occurrences together (e.g. {P(x,A)} and {¬P(B,x)}
-            // would fail to resolve even though P(B,A) refutes them). Rename clause2's colliding
-            // variables on clones; clause1 and the original clause2 stay untouched.
+            // Standardize apart: clause variables are local, so a name shared across the two
+            // clauses must be renamed before unifying or it acts as a spurious constraint.
             var literals2 = StandardizeApart(clause1.Literals, clause2.Literals);
 
             for (var i = 0; i < clause1.Literals.Count; i++)
@@ -52,8 +28,7 @@ namespace FirstOrderLogic {
                     var unify = new Unificator(lit1, lit2);
                     if (!unify.IsUnifiable) continue;
 
-                    // Clone only the kept literals (the resolved-on pair is dropped anyway) and
-                    // substitute on those clones, so the source clauses are never mutated in place.
+                    // Substitute on clones so the source clauses are never mutated.
                     var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
                         if (k != i) kept.Add(clause1.Literals[k].Clone());
@@ -64,16 +39,13 @@ namespace FirstOrderLogic {
                         foreach (var literal in kept)
                             literal.SubstituteTerm(pair.Key, pair.Value);
 
-                    // Factoring: collapse literals that became identical after substitution, matching
-                    // the set semantics the resolver relies on for dedup/termination.
+                    // Factoring: collapse literals that became identical after substitution.
                     var res = new List<ISentence>(kept.Count);
                     foreach (var literal in kept)
                         if (!res.Contains(literal)) res.Add(literal);
 
-                    // Canonicalize variable names so alpha-variant resolvents (same clause up to
-                    // renaming — inevitable once clauses are standardized apart) compare equal in
-                    // the seen-set. Without this, saturation would never be detected and
-                    // non-entailed queries could loop forever.
+                    // Canonicalize names so alpha-variant resolvents dedup in the seen-set;
+                    // otherwise saturation is never detected and non-entailed queries loop forever.
                     CanonicalizeVariables(res);
 
                     resolvents.Add(new Resolvent(clause1, clause2, res.ToArray()));
@@ -84,7 +56,9 @@ namespace FirstOrderLogic {
         }
 
         // Clones of `right` with colliding variables renamed fresh; never mutates either input.
-        private List<ISentence> StandardizeApart(List<ISentence> left, List<ISentence> right)
+        // "y$" names cannot pre-exist ('$' is unparseable, resolvents are canonicalized to "x$"),
+        // so a per-call counter suffices.
+        private static List<ISentence> StandardizeApart(List<ISentence> left, List<ISentence> right)
         {
             var leftNames = new HashSet<string>();
             foreach (var literal in left)
@@ -93,11 +67,12 @@ namespace FirstOrderLogic {
 
             if (leftNames.Count == 0) return right;
 
+            var freshVarCounter = 0;
             var renames = new Dictionary<string, Variable>();
             foreach (var literal in right)
                 foreach (var variable in Bindings.VariablesOf(literal))
                     if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
-                        renames.Add(variable.TermSymbol, new Variable($"y${++_freshVarCounter}"));
+                        renames.Add(variable.TermSymbol, new Variable($"y${++freshVarCounter}"));
 
             if (renames.Count == 0) return right;
 
@@ -113,13 +88,10 @@ namespace FirstOrderLogic {
             return renamed;
         }
 
-        // Renames the clause's variables in place to x$1, x$2, … by first occurrence over a
-        // name-insensitive literal order, so any two alpha-variant clauses end up syntactically
-        // equal (and thus dedup in the seen-set). Only ever called on freshly cloned literals.
+        // Renames variables in place to x$1, x$2, … by first occurrence over a name-insensitive
+        // literal order, so alpha-variant clauses end up syntactically equal.
         private static void CanonicalizeVariables(List<ISentence> literals)
         {
-            // Order literals by their structure with variable names blanked out, so alpha-variants
-            // enumerate their variables in the same order regardless of how they were derived.
             var ordered = literals
                 .Select(literal => (literal, key: StructuralKey(literal)))
                 .OrderBy(pair => pair.key, StringComparer.Ordinal);
@@ -133,8 +105,7 @@ namespace FirstOrderLogic {
             if (canonical.Count == 0) return;
             if (canonical.All(pair => pair.Key == pair.Value.TermSymbol)) return;
 
-            // Two-phase rename via unique temporaries: source and target names may overlap
-            // (e.g. x$2→x$1 while x$1→x$2), and a direct rename would merge distinct variables.
+            // Two-phase rename via temporaries: source and target names may overlap.
             var temps = new Dictionary<string, Variable>();
             foreach (var name in canonical.Keys)
                 temps.Add(name, new Variable($"t${temps.Count + 1}"));
@@ -159,17 +130,27 @@ namespace FirstOrderLogic {
         private static readonly Variable Placeholder = new("$");
 
         // Refutation: KB ⊨ consequence iff KB ∧ ¬consequence is unsatisfiable.
-        public bool Resolve(ISentence knowledgeBase, ISentence consequence) =>
+        // useSubsumption is opt-in: it only pays off on larger, redundancy-heavy problems.
+        // maxRounds (0 = unlimited) bounds the saturation loop (FOL entailment is only
+        // semi-decidable) and throws when exceeded.
+        public static bool Resolve(ISentence knowledgeBase, ISentence consequence,
+            bool useSubsumption = false, int maxRounds = 0) =>
             IsUnsatisfiable(new ComplexSentence(
-                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negate()));
+                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negate()),
+                useSubsumption, maxRounds);
 
-        // True iff the clause set derives the empty clause, i.e. `sentence` has no model. Also the
-        // direct entry point for consistency checks (a KB is inconsistent iff its conjunction is
-        // unsatisfiable).
-        public bool IsUnsatisfiable(ISentence sentence)
+        // True iff the clause set derives the empty clause, i.e. `sentence` has no model.
+        public static bool IsUnsatisfiable(ISentence sentence,
+            bool useSubsumption = false, int maxRounds = 0)
         {
-            // The input may be a complex (non-CNF) sentence — e.g. Resolve's negated consequence —
-            // so normalize the whole set to CNF before clausifying it.
+            // Clausification needs a quantifier-free sentence: prenex, then skolemize. Runs after
+            // Resolve's negation, so goal quantifiers are already flipped — the order that keeps
+            // refutation sound.
+            if (sentence.HasQuantifier())
+            {
+                sentence = Logic.SkolemForm(Logic.ToPrenexForm(sentence));
+            }
+
             if (!sentence.IsCNF())
             {
                 sentence = Logic.ToConjunctiveNormalForm(sentence);
@@ -177,44 +158,36 @@ namespace FirstOrderLogic {
 
             var clauses = sentence.GetClauseSet();
 
-            // A clause holding both a literal and its negation is a tautology (always true): it can
-            // never contribute to deriving the empty clause, so it is pure overhead. Dropping it is
-            // sound and complete and shrinks every subsequent round.
+            // Tautologies can never contribute to the empty clause; dropping them is sound.
             clauses.RemoveAll(IsTautology);
 
             var seen = new HashSet<Clause>(clauses, ClauseByContent);
 
-            // Unit-clause index for cheap forward subsumption: a unit {L} subsumes every clause that
-            // contains L, so a single hash lookup per literal replaces an O(n) scan over all clauses.
-            // Units are the strongest and most common subsumers; restricting the per-resolvent check
-            // to them keeps it cheap while backward subsumption (below) still uses the general rule.
+            // Unit-clause index for cheap forward subsumption: a unit {L} subsumes every clause
+            // containing L, so a hash lookup replaces an O(n) scan.
             var unitLiterals = new HashSet<ISentence>();
-            if (_useSubsumption)
+            if (useSubsumption)
                 foreach (var clause in clauses)
                     if (clause.Literals.Count == 1) unitLiterals.Add(clause.Literals[0]);
 
-            // resolvedUpTo marks the prefix of `clauses` whose mutual pairs have already been
-            // resolved in a previous round. Re-resolving those pairs every round is pure waste
-            // (their resolvents are already in `seen`), so each round only considers pairs where
-            // at least one clause is new since the last round.
+            // resolvedUpTo marks the prefix of `clauses` whose mutual pairs were already resolved;
+            // each round only considers pairs where at least one clause is new.
             var resolvedUpTo = 0;
             var rounds = 0;
 
             while (true)
             {
-                if (_maxRounds > 0 && ++rounds > _maxRounds)
+                if (maxRounds > 0 && ++rounds > maxRounds)
                     throw new InvalidOperationException(
-                        $"Resolution did not saturate within {_maxRounds} rounds; the query is undecided.");
+                        $"Resolution did not saturate within {maxRounds} rounds; the query is undecided.");
 
                 var count = clauses.Count;
                 var unitsBefore = unitLiterals.Count;
                 var fresh = new List<Clause>();
                 for (var i = 0; i < count; i++)
                 {
-                    // For an "old" clause (i < resolvedUpTo) only pair it with clauses added since
-                    // the last round (j >= resolvedUpTo); old-old pairs were handled already.
-                    // For a "new" clause start at j = i + 1: each unordered pair once, never with
-                    // itself (self-resolution on complementary literals is unsound).
+                    // Each unordered pair once, skipping old-old pairs and self-pairing
+                    // (self-resolution is unsound).
                     var j = i < resolvedUpTo ? resolvedUpTo : i + 1;
                     for (; j < count; j++)
                     {
@@ -228,28 +201,23 @@ namespace FirstOrderLogic {
                         {
                             if (IsTautology(resolvent)) continue;
 
-                            // Forward subsumption (cheap, unit-only): discard a resolvent that some
-                            // existing unit clause already implies. We only drop the *new* clause and
-                            // never remove kept ones, so the resolvedUpTo watermark stays valid.
-                            if (_useSubsumption && IsUnitSubsumed(resolvent, unitLiterals)) continue;
+                            // Forward subsumption drops only the new clause, never kept ones, so
+                            // the resolvedUpTo watermark stays valid.
+                            if (useSubsumption && IsUnitSubsumed(resolvent, unitLiterals)) continue;
 
                             if (!seen.Add(resolvent)) continue;
                             fresh.Add(resolvent);
-                            if (_useSubsumption && resolvent.Literals.Count == 1)
+                            if (useSubsumption && resolvent.Literals.Count == 1)
                                 unitLiterals.Add(resolvent.Literals[0]);
                         }
                     }
                 }
 
-                // No new clauses this round → the set is saturated, so the consequence is not entailed.
-                // Dedup is by literal content, not Clause identity: each round mints fresh Resolvent
-                // objects, so identity comparison would never saturate and the loop would never end.
+                // No new clauses → saturated → not entailed.
                 if (fresh.Count == 0) return false;
 
-                // Backward subsumption (unit-only): drop any non-unit clause that a unit clause now
-                // subsumes (i.e. it contains that unit's literal). Only a *newly* discovered unit can
-                // make a previously kept clause redundant, so when no unit appeared this round we skip
-                // the whole scan and just append — keeping subsumption near-free on unit-less rounds.
+                // Backward subsumption: only a newly discovered unit can make a kept clause
+                // redundant, so unit-less rounds skip the scan.
                 if (unitLiterals.Count == unitsBefore)
                 {
                     resolvedUpTo = count;
@@ -257,9 +225,8 @@ namespace FirstOrderLogic {
                 }
                 else
                 {
-                    // Surviving kept clauses preserve their order and are still pairwise resolved
-                    // (removal never creates a new unresolved pair), so resolvedUpTo is just their new
-                    // count; the surviving fresh clauses follow as the next round's "new" work.
+                    // Survivors keep their order and stay pairwise-resolved, so resolvedUpTo is
+                    // just their count.
                     var survivors = new List<Clause>(clauses.Count + fresh.Count);
                     foreach (var kept in clauses)
                         if (kept.Literals.Count == 1 || !IsUnitSubsumed(kept, unitLiterals))

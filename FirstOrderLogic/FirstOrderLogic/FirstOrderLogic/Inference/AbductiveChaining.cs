@@ -3,10 +3,8 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Abduction over rules: the explanations of an observation are the minimal sets of assumed
-    // ground literals (over the declared abducible predicates) that make the observation derivable.
-    // An explanation is discarded when adding it to the KB introduces a complementary literal pair
-    // the KB's own closure does not already contain.
+    // Abduction over rules: the minimal sets of assumed ground literals (over the abducible
+    // predicates) that make the observation derivable without introducing new conflicts.
     public class AbductiveChaining
     {
         private readonly int _maxDepth;

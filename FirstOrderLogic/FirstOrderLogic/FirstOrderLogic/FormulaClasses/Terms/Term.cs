@@ -54,7 +54,19 @@ namespace FirstOrderLogic {
             }
         }
     
-        public bool Occurs(Variable variable) {
+        // Shared by Predicate and Function: replace matching terms in place, recursing into functions.
+    internal static void SubstituteAll(Term[] terms, Term term, Term replacement) {
+        for (var i = 0; i < terms.Length; i++) {
+            var curTerm = terms[i];
+            if (curTerm.Equals(term)) {
+                terms[i] = replacement;
+            } else if (curTerm is Function function) {
+                function.SubstituteTerm(term, replacement);
+            }
+        }
+    }
+
+    public bool Occurs(Variable variable) {
             switch (this) {
                 case Variable v:
                     return v.Equals(variable);

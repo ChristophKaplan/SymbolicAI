@@ -22,6 +22,7 @@ namespace FirstOrderLogic {
         ISentence Clone();
         ISentence Negate();
         bool HasScopeConflict(List<Variable>? boundVariables = null);
+        bool HasQuantifier();
         bool IsCNF();
         bool IsPropositional();
         bool IsGround();
@@ -108,6 +109,11 @@ namespace FirstOrderLogic {
             }
 
             return Children.Any(child => child.HasScopeConflict());
+        }
+
+        public bool HasQuantifier() {
+            if (this is IComplexSentence { IsQuantifier: true }) return true;
+            return Children.Any(child => child.HasQuantifier());
         }
 
         public bool IsCNF() {
@@ -205,9 +211,7 @@ namespace FirstOrderLogic {
             return isPropositional;
         }
 
-        // A sentence is ground when it contains no variables anywhere — every predicate's terms are
-        // constants/functions of constants. (Distinct from IsPropositional, which is about zero-arity
-        // atoms.) Quantified sentences are never ground.
+        // No variables anywhere (distinct from IsPropositional, which is about zero-arity atoms).
         public bool IsGround() {
             if (this is IPredicate predicate) return predicate.GetVariables().Length == 0;
             return Children.All(child => child.IsGround());

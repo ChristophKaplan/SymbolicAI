@@ -72,9 +72,7 @@ namespace FirstOrderLogic {
             return ToPrenexFormCore(sentence, steps);
         }
 
-        // Trace-free overload: skips cloning each intermediate step into a `steps` list. The provers
-        // (Resolution, Theory.Entails) don't need the trace, and that per-step deep clone dominates
-        // normalisation cost, so this is markedly cheaper on the hot path.
+        // Trace-free overload: skips the per-step clones that dominate normalisation cost.
         public static ISentence ToPrenexForm(this FirstOrderLogic logic, ISentence sentence) =>
             ToPrenexFormCore(sentence, null);
 
@@ -93,6 +91,12 @@ namespace FirstOrderLogic {
                 (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.RemoveDuplicateQuantifier, ref s),
             };
 
+            ApplyUntilStable(ref clone, transformations, steps);
+            return clone;
+        }
+
+        private static void ApplyUntilStable(
+            ref ISentence clone, List<TransformationDelegate> transformations, List<ISentence>? steps) {
             while (true) {
                 var start = clone.Clone();
                 foreach (var transform in transformations) {
@@ -103,8 +107,6 @@ namespace FirstOrderLogic {
                     break;
                 }
             }
-
-            return clone;
         }
 
         public static ISentence ToConjunctiveNormalForm(this FirstOrderLogic logic, ISentence sentence, out List<ISentence> steps) {
@@ -123,16 +125,7 @@ namespace FirstOrderLogic {
                 (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.DistributionOfDisjunction, ref s)
             };
 
-            while (true) {
-                var start = clone.Clone();
-                foreach (var transform in transformations) {
-                    transform(ref clone);
-                    steps?.Add(clone.Clone());
-                }
-                if (start.Equals(clone)) {
-                    break;
-                }
-            }
+            ApplyUntilStable(ref clone, transformations, steps);
 
             if(!clone.IsCNF()) { throw new Exception("Sentence is not in CNF"); }
             return clone;
@@ -141,11 +134,8 @@ namespace FirstOrderLogic {
         public static ISentence SkolemForm(this FirstOrderLogic logic, ISentence sentence) {
             var clone = sentence.Clone();
 
-            // Expects PNF, where the quantifiers form a linear prefix. Walk the prefix in order,
-            // tracking the universals currently in scope. Each existential is replaced by a Skolem
-            // term over exactly the universals that enclose it, using a fresh unique symbol:
-            //   - no enclosing universals  → Skolem constant   (e.g. sk1)
-            //   - enclosing universals u…  → Skolem function    (e.g. sk1(u, …))
+            // Expects PNF. Each existential becomes a Skolem term over the universals enclosing
+            // it: sk1 if none, sk1(u, …) otherwise.
             var substitution = new Dictionary<Variable, Function>();
             var universalsInScope = new List<Variable>();
             var skolemCounter = 0;
@@ -170,7 +160,6 @@ namespace FirstOrderLogic {
                 clone.SubstituteTerm(variable, substitution[variable]);
             }
 
-            //remove quantifiers
             TransformationFOL.Transform(TransformationFOL.EquivType.RemoveQuantifier, ref clone);
 
             return clone;

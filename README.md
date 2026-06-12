@@ -83,11 +83,11 @@ var kb = (ISentence)logic.TryParse("(Human(Sokrates) AND (FORALL x (Human(x) => 
 var skolem = logic.SkolemForm(logic.ToPrenexForm(kb, out _));
 var goal = (ISentence)logic.TryParse("Mortal(Sokrates)");
 
-bool entailed = new Resolution().Resolve(skolem, goal); // True
+bool entailed = Resolution.Resolve(skolem, goal); // True
 ```
 
-`new Resolution(useSubsumption: true)` enables clause subsumption (helps on large,
-redundant problems; off by default). `new Resolution(maxRounds: n)` bounds the
+`Resolution.Resolve(kb, goal, useSubsumption: true)` enables clause subsumption (helps on
+large, redundant problems; off by default). `Resolution.Resolve(kb, goal, maxRounds: n)` bounds the
 saturation loop — FOL entailment is only semi-decidable, so a non-entailed KB with
 function symbols can otherwise grow clauses forever; exceeding the budget throws
 `InvalidOperationException`. A runnable version lives in
