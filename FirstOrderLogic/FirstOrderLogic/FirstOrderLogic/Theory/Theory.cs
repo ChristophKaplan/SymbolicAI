@@ -18,11 +18,13 @@ namespace FirstOrderLogic
         }
 
         // Resolution-backed (sound + refutation-complete, but exponential) — on-demand only.
+        // Resolve does its own prenex -> skolemize -> CNF clausification, so the KB is handed over
+        // as-is: pre-converting a quantified KB to CNF here would leave a quantifier prefix that
+        // isn't CNF and throw.
         public bool Entails(ISentence target)
         {
             if (State.Count == 0) return false;
-            var cnf = _logic.ToConjunctiveNormalForm(Conjoin(State));
-            return Resolution.Resolve(cnf, target.Clone());
+            return Resolution.Resolve(Conjoin(State), target.Clone());
         }
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);

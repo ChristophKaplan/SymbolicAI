@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace FirstOrderLogic {
-    // Stateless: per-run state lives in locals, so concurrent callers never interfere.
+    
     public static class Resolution
     {
         private static readonly FirstOrderLogic Logic = new();
