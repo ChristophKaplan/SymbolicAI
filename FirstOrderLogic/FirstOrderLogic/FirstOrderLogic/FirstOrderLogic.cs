@@ -52,7 +52,10 @@ namespace FirstOrderLogic {
                 new TokenDefinition<Terminal>(Terminal.Boolean, "TRUE|FALSE|\u22a4|\u22a5"),
                 new TokenDefinition<Terminal>(Terminal.Quantifier, "FORALL|EXISTS|\u2200|\u2203"),
                 new TokenDefinition<Terminal>(Terminal.TimeAttribute, "\\^[0-9]"),
-                new TokenDefinition<Terminal>(Terminal.Identifier, "[a-zA-Z0-9]+"),
+                // Unicode letters/digits, not just ASCII, so non-English symbol names (Wählt, Citté,
+                // 本) are valid identifiers. Keyword tokens above are matched first, and logical
+                // operator glyphs (∧ ¬ ∀ …) are Symbol-category, so neither collides with this.
+                new TokenDefinition<Terminal>(Terminal.Identifier, @"[\p{L}\p{N}]+"),
             };
         }
 
