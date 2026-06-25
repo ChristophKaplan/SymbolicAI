@@ -25,9 +25,9 @@ namespace FirstOrderLogic
                 foreach (var rule in rules)
                 {
                     var fresh = rule.Renamed(rename++);
-                    foreach (var theta in Match(fresh.Premises, 0, new Dictionary<Variable, Term>(), facts))
+                    foreach (var theta in Match(fresh.Premises, 0, Substitution.Empty, facts))
                     {
-                        var head = Bindings.Apply(fresh.Head, theta);
+                        var head = theta.Apply(fresh.Head);
                         if (known.Add(head)) added = true;
                     }
                 }
@@ -43,14 +43,14 @@ namespace FirstOrderLogic
         // Some fact is an instance of `query` (same polarity).
         public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {
-            var sig = Bindings.Signature(query);
-            return facts.Any(f => Bindings.Signature(f) == sig && Bindings.TryUnify(query, f, out _));
+            var sig = Literals.Signature(query);
+            return facts.Any(f => Literals.Signature(f) == sig && Unificator.TryUnify(query, f, out _));
         }
 
         // Every substitution extending `theta` under which all premises from `index` onward hold.
-        private static IEnumerable<Dictionary<Variable, Term>> Match(
+        private static IEnumerable<Substitution> Match(
             IReadOnlyList<ISentence> premises, int index,
-            Dictionary<Variable, Term> theta, List<ISentence> facts)
+            Substitution theta, List<ISentence> facts)
         {
             if (index == premises.Count)
             {
@@ -58,13 +58,13 @@ namespace FirstOrderLogic
                 yield break;
             }
 
-            var goal = Bindings.Apply(premises[index], theta);
-            var sig = Bindings.Signature(goal);
+            var goal = theta.Apply(premises[index]);
+            var sig = Literals.Signature(goal);
             foreach (var fact in facts)
             {
-                if (Bindings.Signature(fact) != sig) continue;
-                if (!Bindings.TryUnify(goal, fact, out var mgu)) continue;
-                var extended = Bindings.Extend(theta, mgu);
+                if (Literals.Signature(fact) != sig) continue;
+                if (!Unificator.TryUnify(goal, fact, out var mgu)) continue;
+                var extended = theta.Extend(mgu);
                 foreach (var solution in Match(premises, index + 1, extended, facts))
                     yield return solution;
             }

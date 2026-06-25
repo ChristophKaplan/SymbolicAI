@@ -49,15 +49,16 @@ namespace FirstOrderLogic
         {
             var rename = new Dictionary<Variable, Term>();
             foreach (var v in Variables()) rename[v] = new Variable(v.TermSymbol + "#" + id);
-            var head = Bindings.Apply(Head, rename);
-            var premises = Premises.Select(p => Bindings.Apply(p, rename)).ToList();
+            var substitution = new Substitution(rename);
+            var head = substitution.Apply(Head);
+            var premises = Premises.Select(substitution.Apply).ToList();
             return new Rule(head, premises);
         }
 
         private IEnumerable<Variable> Variables()
         {
-            var all = Bindings.VariablesOf(Head).ToList();
-            foreach (var p in Premises) all.AddRange(Bindings.VariablesOf(p));
+            var all = Literals.VariablesOf(Head).ToList();
+            foreach (var p in Premises) all.AddRange(Literals.VariablesOf(p));
             return all.Distinct();
         }
 

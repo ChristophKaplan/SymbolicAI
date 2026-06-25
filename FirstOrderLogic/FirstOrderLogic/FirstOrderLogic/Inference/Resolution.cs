@@ -29,11 +29,12 @@ namespace FirstOrderLogic {
                     if (!unify.IsUnifiable) continue;
 
                     // Apply the mgu purely; each result is fresh, so the source clauses are never mutated.
+                    var mgu = new Substitution(unify.Substitutions);
                     var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
-                        if (k != i) kept.Add(Bindings.Apply(clause1.Literals[k], unify.Substitutions));
+                        if (k != i) kept.Add(mgu.Apply(clause1.Literals[k]));
                     for (var k = 0; k < literals2.Count; k++)
-                        if (k != j) kept.Add(Bindings.Apply(literals2[k], unify.Substitutions));
+                        if (k != j) kept.Add(mgu.Apply(literals2[k]));
 
                     // Factoring: collapse literals that became identical after substitution.
                     var res = new List<ISentence>(kept.Count);
@@ -58,7 +59,7 @@ namespace FirstOrderLogic {
         {
             var leftNames = new HashSet<string>();
             foreach (var literal in left)
-                foreach (var variable in Bindings.VariablesOf(literal))
+                foreach (var variable in Literals.VariablesOf(literal))
                     leftNames.Add(variable.TermSymbol);
 
             if (leftNames.Count == 0) return right;
@@ -66,7 +67,7 @@ namespace FirstOrderLogic {
             var freshVarCounter = 0;
             var renames = new Dictionary<string, Variable>();
             foreach (var literal in right)
-                foreach (var variable in Bindings.VariablesOf(literal))
+                foreach (var variable in Literals.VariablesOf(literal))
                     if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
                         renames.Add(variable.TermSymbol, new Variable($"y${++freshVarCounter}"));
 
@@ -76,9 +77,10 @@ namespace FirstOrderLogic {
             foreach (var pair in renames)
                 theta.Add(new Variable(pair.Key), pair.Value);
 
+            var substitution = new Substitution(theta);
             var renamed = new List<ISentence>(right.Count);
             foreach (var literal in right)
-                renamed.Add(Bindings.Apply(literal, theta));
+                renamed.Add(substitution.Apply(literal));
 
             return renamed;
         }
@@ -93,7 +95,7 @@ namespace FirstOrderLogic {
 
             var canonical = new Dictionary<string, Variable>();
             foreach (var (literal, _) in ordered)
-                foreach (var variable in Bindings.VariablesOf(literal))
+                foreach (var variable in Literals.VariablesOf(literal))
                     if (!canonical.ContainsKey(variable.TermSymbol))
                         canonical.Add(variable.TermSymbol, new Variable($"x${canonical.Count + 1}"));
 
@@ -118,7 +120,7 @@ namespace FirstOrderLogic {
 
         private static string StructuralKey(ISentence literal)
         {
-            foreach (var variable in Bindings.VariablesOf(literal).ToList())
+            foreach (var variable in Literals.VariablesOf(literal).ToList())
                 literal = literal.Substitute(variable, Placeholder);
             return literal.ToString();
         }

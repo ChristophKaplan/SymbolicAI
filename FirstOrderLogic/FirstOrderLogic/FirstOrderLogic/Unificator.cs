@@ -67,6 +67,20 @@ namespace FirstOrderLogic
             IsUnifiable = UnifyLiteral(s1, s2);
             _hashcode = CalcHashCode();
         }
+
+        // Try-pattern over the constructor: the most general unifier of two literals, or false.
+        public static bool TryUnify(ISentence a, ISentence b, out Dictionary<Variable, Term> mgu)
+        {
+            var unificator = new Unificator(a, b);
+            if (!unificator.IsUnifiable)
+            {
+                mgu = new Dictionary<Variable, Term>();
+                return false;
+            }
+
+            mgu = new Dictionary<Variable, Term>(unificator.Substitutions);
+            return true;
+        }
         
         private bool UnifyLiteral(ISentence lit1, ISentence lit2)
         {
