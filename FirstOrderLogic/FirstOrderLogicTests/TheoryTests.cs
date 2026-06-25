@@ -222,6 +222,31 @@ namespace FolTests
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Syntactic), Is.False);
         }
 
+        // The union's witnesses, not just the bool: a alone and b alone are clean, but together
+        // the closure derives ¬Q(a) against Q(a).
+        [Test]
+        public void Inconsistencies_WithOther_ReturnsUnionWitnesses()
+        {
+            var a = new Theory(Set("P(a)", "P(x) => -Q(x)"));
+            var b = new Theory(Set("Q(a)"));
+            Assert.That(a.Inconsistencies(), Is.Empty);
+            Assert.That(b.Inconsistencies(), Is.Empty);
+
+            var joint = a.Inconsistencies(b);
+            Assert.That(joint.Count, Is.EqualTo(1));
+            Assert.That(joint[0].ToString(), Is.EqualTo(S("Q(a)").ToString()));
+        }
+
+        // Semantic witnesses are not implemented yet (would need an unsat core).
+        [Test]
+        public void Inconsistencies_Semantic_NotImplemented()
+        {
+            var a = new Theory(Set("P(a)"));
+            Assert.That(
+                () => a.Inconsistencies(null, ComparisonMode.Semantic),
+                Throws.TypeOf<System.NotImplementedException>());
+        }
+
         // ── Internal consistency (closure conflicts) ────────────────────────────
 
         [Test]

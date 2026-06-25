@@ -22,24 +22,40 @@ namespace FirstOrderLogic
         public void Add(ISentence sentence) { if (sentence != null) _state.Add(sentence); }
         public int RemoveAll(Predicate<ISentence> match) => _state.RemoveAll(match);
 
-        public List<ISentence> Inconsistencies() => ForwardChaining.Saturate(State).Conflicts();
+        public List<ISentence> Inconsistencies() => Inconsistencies(null);
+
+        // Conflicting literals in the closure of our state merged with the other's.
+        public List<ISentence> Inconsistencies(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
+            mode switch
+            {
+                ComparisonMode.Syntactic => ForwardChaining.Saturate(Union(other)).Conflicts(),
+                // Semantic refutation yields only a verdict; a witness set needs unsat-core extraction.
+                ComparisonMode.Semantic  => throw new NotImplementedException(
+                    "Semantic inconsistency witnesses require unsat-core extraction."),
+                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode"),
+            };
 
         public bool IsConsistent() => Inconsistencies().Count == 0;
 
         public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
-            var union = new List<ISentence>(State);
-            if (other?.State != null) union.AddRange(other.State);
-
             switch (mode)
             {
                 case ComparisonMode.Syntactic:
-                    return ForwardChaining.Saturate(union).Conflicts().Count == 0;
+                    return Inconsistencies(other).Count == 0;
                 case ComparisonMode.Semantic:
+                    var union = Union(other);
                     return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode");
             }
+        }
+
+        private List<ISentence> Union(ITheory? other)
+        {
+            var union = new List<ISentence>(State);
+            if (other?.State != null) union.AddRange(other.State);
+            return union;
         }
         
         

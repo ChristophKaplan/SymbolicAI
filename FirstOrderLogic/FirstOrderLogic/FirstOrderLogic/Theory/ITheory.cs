@@ -20,6 +20,8 @@ namespace FirstOrderLogic
 
         List<ISentence> Inconsistencies();
 
+        List<ISentence> Inconsistencies(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic);
+
         bool IsConsistent();
     }
 }
