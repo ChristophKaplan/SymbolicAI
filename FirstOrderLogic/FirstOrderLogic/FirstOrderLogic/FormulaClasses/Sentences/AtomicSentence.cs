@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace FirstOrderLogic {
     public interface IAtomicSentence : ISentence
     {
-        string Symbol { get; set; }
-        public int? Time { get; set; }
+        string Symbol { get; }
+        public int? Time { get; }
         bool IsNullaryConstant { get; }
         bool Tautology { get; }
         bool Contradiction { get; }
@@ -13,8 +13,8 @@ namespace FirstOrderLogic {
 
     public abstract class AtomicSentence : Sentence, IAtomicSentence
     {
-        public string Symbol { get; set; }
-        public int? Time { get; set; }
+        public string Symbol { get; }
+        public int? Time { get; }
         public bool IsNullaryConstant => Tautology || Contradiction;
         public bool Tautology => Symbol.Equals(Connective.SymbolToString(Connective.LogicSymbol.TRUE));
         public bool Contradiction => Symbol.Equals(Connective.SymbolToString(Connective.LogicSymbol.FALSE));
@@ -39,21 +39,16 @@ namespace FirstOrderLogic {
 
         public override ISentence Negated()
         {
-            if (Tautology)
-            {
-                var clone = (IAtomicSentence)Clone();
-                clone.Symbol = Connective.SymbolToString(Connective.LogicSymbol.FALSE);
-                return clone;
-            }
-
-            if (Contradiction)
-            {
-                var clone = (IAtomicSentence)Clone();
-                clone.Symbol = Connective.SymbolToString(Connective.LogicSymbol.TRUE);
-                return clone;
-            }
-
+            if (Tautology) return Constant(Connective.LogicSymbol.FALSE);
+            if (Contradiction) return Constant(Connective.LogicSymbol.TRUE);
             return new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
+        }
+
+        // Nullary constants (TRUE/FALSE) are always propositions.
+        private ISentence Constant(Connective.LogicSymbol symbol)
+        {
+            var name = Connective.SymbolToString(symbol);
+            return Time.HasValue ? new Proposition(name, Time.Value) : new Proposition(name);
         }
 
         public override ISentence WithChildren(IReadOnlyList<ISentence> children) => this;

@@ -31,12 +31,6 @@ namespace FirstOrderLogic {
             }
         }
 
-        public override void SubstituteTerm(Term term, Term replacement) {
-            for (var i = 0; i < Terms.Length; i++) {
-                Terms[i] = Terms[i].Substitute(term, replacement);
-            }
-        }
-
         public override ISentence Substitute(Term target, Term replacement) {
             var terms = new Term[Terms.Length];
             for (var i = 0; i < Terms.Length; i++) {

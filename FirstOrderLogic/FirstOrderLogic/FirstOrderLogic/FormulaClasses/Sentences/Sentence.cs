@@ -14,7 +14,6 @@ namespace FirstOrderLogic {
         bool IsNegation { get; }
         bool IsImplication { get; }
         bool IsNegationOf(ISentence other, bool onlyPredSignature = false);
-        void SubstituteTerm(Term term, Term replacement);
         ISentence Substitute(Term target, Term replacement);
         ISentence WithChildren(IReadOnlyList<ISentence> children);
         ISentence WithTimeShift(int offset);
@@ -44,7 +43,6 @@ namespace FirstOrderLogic {
                                  (this is IComplexSentence { IsNegation: true } complex && complex.Children[0] is IAtomicSentence);
         public bool IsNegation => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.NEGATION;
         public bool IsImplication => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.IMPLICATION;
-        public abstract void SubstituteTerm(Term term, Term replacement);
         public abstract ISentence Substitute(Term target, Term replacement);
         public abstract ISentence WithChildren(IReadOnlyList<ISentence> children);
         public abstract ISentence WithTimeShift(int offset);

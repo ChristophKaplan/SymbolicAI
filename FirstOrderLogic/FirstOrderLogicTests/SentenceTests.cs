@@ -63,14 +63,13 @@ namespace FolTests {
             Assert.That(doubleNegated, Is.EqualTo(p));
         }
 
-        // Cloning must be deep: substituting on a clone never touches the original.
+        // Clone yields an equal but distinct instance.
         [Test]
-        public void Clone_IsDeepAndIndependent() {
+        public void Clone_IsEqualButDistinct() {
             var original = S("P(x)");
             var clone = original.Clone();
-            clone.SubstituteTerm(new Variable("x"), new Constant("a"));
-            Assert.That(original, Is.EqualTo(S("P(x)")));
-            Assert.That(clone, Is.EqualTo(S("P(a)")));
+            Assert.That(clone, Is.EqualTo(original));
+            Assert.That(clone, Is.Not.SameAs(original));
         }
 
         [Test]
@@ -82,10 +81,9 @@ namespace FolTests {
         }
 
         [Test]
-        public void SubstituteTerm_ReplacesInsideFunctions() {
-            var s = S("P(f(x))");
-            s.SubstituteTerm(new Variable("x"), new Constant("a"));
-            Assert.That(s, Is.EqualTo(S("P(f(a))")));
+        public void Substitute_ReplacesInsideFunctions() {
+            var result = S("P(f(x))").Substitute(new Variable("x"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(S("P(f(a))")));
         }
 
         // Pure variant: returns a new tree and leaves the original untouched.

@@ -105,21 +105,22 @@ namespace FirstOrderLogic {
             foreach (var name in canonical.Keys)
                 temps.Add(name, new Variable($"t${temps.Count + 1}"));
 
-            foreach (var literal in literals)
+            for (var k = 0; k < literals.Count; k++)
+            {
+                var literal = literals[k];
                 foreach (var pair in temps)
-                    literal.SubstituteTerm(new Variable(pair.Key), pair.Value);
-
-            foreach (var literal in literals)
+                    literal = literal.Substitute(new Variable(pair.Key), pair.Value);
                 foreach (var pair in temps)
-                    literal.SubstituteTerm(pair.Value, canonical[pair.Key]);
+                    literal = literal.Substitute(pair.Value, canonical[pair.Key]);
+                literals[k] = literal;
+            }
         }
 
         private static string StructuralKey(ISentence literal)
         {
-            var clone = literal.Clone();
-            foreach (var variable in Bindings.VariablesOf(clone).ToList())
-                clone.SubstituteTerm(variable, Placeholder);
-            return clone.ToString();
+            foreach (var variable in Bindings.VariablesOf(literal).ToList())
+                literal = literal.Substitute(variable, Placeholder);
+            return literal.ToString();
         }
 
         private static readonly Variable Placeholder = new("$");

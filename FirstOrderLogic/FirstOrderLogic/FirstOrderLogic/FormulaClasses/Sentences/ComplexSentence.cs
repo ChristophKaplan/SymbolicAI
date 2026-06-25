@@ -74,12 +74,6 @@ namespace FirstOrderLogic {
             return quantifiers.ToArray();
         }
 
-        public override void SubstituteTerm(Term term, Term replacement) {
-            foreach (var child in Children) {
-                child.SubstituteTerm(term, replacement);
-            }
-        }
-
         public override ISentence Substitute(Term target, Term replacement) {
             if (IsBinary) {
                 return new ComplexSentence(

@@ -157,7 +157,7 @@ namespace FirstOrderLogic {
             }
 
             foreach (var variable in substitution.Keys) {
-                clone.SubstituteTerm(variable, substitution[variable]);
+                clone = clone.Substitute(variable, substitution[variable]);
             }
 
             TransformationFOL.Transform(TransformationFOL.EquivType.RemoveQuantifier, ref clone);
