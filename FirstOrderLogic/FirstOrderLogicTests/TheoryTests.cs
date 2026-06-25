@@ -126,35 +126,26 @@ namespace FolTests
             Assert.That(cmp.Contradictions, Is.Empty);
         }
 
-        // ── Compare: consistency (syntactic vs semantic) ────────────────────────
+        // ── Compare: consistency (chaining vs semantic) ─────────────────────────
 
         [Test]
-        public void Syntactic_Consistent_WhenNoLiteralClash()
+        public void Chaining_Consistent_WhenNoLiteralClash()
         {
             var cmp = new Theory(Set("Have(Alice, Money)"))
-                .Compare(new Theory(Set("Owns(Alice, Housea)")), ComparisonMode.Syntactic);
+                .Compare(new Theory(Set("Owns(Alice, Housea)")), ComparisonMode.Chaining);
             Assert.That(cmp.IsConsistent, Is.True);
             Assert.That(cmp.Contradictions, Is.Empty);
         }
 
         [Test]
-        public void Syntactic_FindsDirectNegation()
+        public void Chaining_FindsDirectNegation()
         {
             var claim = S("Have(Alice, Money)");
             var cmp = new Theory(new List<ISentence> { claim })
-                .Compare(new Theory(new List<ISentence> { claim.Negate() }), ComparisonMode.Syntactic);
+                .Compare(new Theory(new List<ISentence> { claim.Negate() }), ComparisonMode.Chaining);
             Assert.That(cmp.IsConsistent, Is.False);
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
             Assert.That(cmp.Contradictions[0].Claim, Is.EqualTo(claim));
-        }
-
-        [Test]
-        public void Syntactic_MissesEntailedContradiction()
-        {
-            // B never literally states ¬Rich; only the semantic mode should catch this.
-            var cmp = new Theory(Set("Rich(Alice)"))
-                .Compare(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Syntactic);
-            Assert.That(cmp.IsConsistent, Is.True);
         }
 
         [Test]
@@ -242,7 +233,7 @@ namespace FolTests
         [Test]
         public void Chaining_NonLiterals_ContradictByIdentity()
         {
-            // The complement of a stated rule counts as a contradiction, same as Syntactic would.
+            // The complement of a stated rule counts as a contradiction (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
             var cmp = new Theory(new List<ISentence> { rule })
                 .Compare(new Theory(new List<ISentence> { rule.Clone().Negate() }), ComparisonMode.Chaining);

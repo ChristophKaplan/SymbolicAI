@@ -16,11 +16,26 @@ namespace FirstOrderLogic
         {
             State = state ?? new List<ISentence>();
         }
+        
+        public static List<(ISentence Claim, ISentence Counter)> FindAllConflicts(IReadOnlyList<ISentence> literals)
+        {
+            var pairs = new List<(ISentence Claim, ISentence Counter)>();
+            for (var i = 0; i < literals.Count; i++)
+            {
+                for (var j = i + 1; j < literals.Count; j++)
+                {
+                    if (!literals[i].IsNegationOf(literals[j])) continue;
 
-        // Resolution-backed (sound + refutation-complete, but exponential) — on-demand only.
-        // Resolve does its own prenex -> skolemize -> CNF clausification, so the KB is handed over
-        // as-is: pre-converting a quantified KB to CNF here would leave a quantifier prefix that
-        // isn't CNF and throw.
+                    (ISentence Claim, ISentence Counter) tuple = literals[i].IsNegation
+                        ? new (literals[j], literals[i])
+                        : new (literals[i], literals[j]);
+                    pairs.Add(tuple);
+                }
+            }
+
+            return pairs;
+        }
+        
         public bool Entails(ISentence target)
         {
             if (State.Count == 0) return false;
@@ -28,13 +43,11 @@ namespace FirstOrderLogic
         }
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);
-
-        // Directional: classify each of this theory's sentences against `other` as agreement,
-        // contradiction (its complement holds), or silence.
-        public TheoryComparison Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
+        
+        public TheoryComparison Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
         {
             var agreements     = new List<ISentence>();
-            var contradictions = new List<TheoryConflict>();
+            var contradictions = new List<(ISentence Claim, ISentence Counter)>();
             var silences       = new List<ISentence>();
 
             var closure = mode == ComparisonMode.Chaining && other?.State != null
@@ -48,18 +61,15 @@ namespace FirstOrderLogic
                 if (HoldsIn(other, closure, s, mode))
                     agreements.Add(s);
                 else if (HoldsIn(other, closure, counter, mode))
-                    contradictions.Add(new TheoryConflict(s, counter));
+                    contradictions.Add(new (s, counter));
                 else
                     silences.Add(s);
             }
 
             return new TheoryComparison(agreements, contradictions, silences, mode);
         }
-
-        // Symmetric joint consistency of the union: Chaining checks the union's closure for
-        // complementary literals, Semantic checks satisfiability, Syntactic (no inference)
-        // checks both Compare directions for literal clashes.
-        public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
+        
+        public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
         {
             var union = new List<ISentence>(State);
             if (other?.State != null) union.AddRange(other.State);
@@ -67,24 +77,18 @@ namespace FirstOrderLogic
             switch (mode)
             {
                 case ComparisonMode.Chaining:
-                    return TheoryConflict.FindAll(ForwardChaining.Saturate(union)).Count == 0;
+                    return FindAllConflicts(ForwardChaining.Saturate(union)).Count == 0;
                 case ComparisonMode.Semantic:
-                    return union.Count == 0
-                        || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
+                    return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
                 default:
-                    return !Compare(other, mode).HasContradiction
-                        && (other == null || !other.Compare(this, mode).HasContradiction);
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode");
             }
         }
-
-        // The complementary literal pairs in this theory's own deductive closure.
-        public List<TheoryConflict> Conflicts() =>
-            TheoryConflict.FindAll(ForwardChaining.Saturate(State));
+        
+        public List<(ISentence Claim, ISentence Counter)> Conflicts() => FindAllConflicts(ForwardChaining.Saturate(State));
 
         public bool IsConsistent() => Conflicts().Count == 0;
 
-        // Semantic asks Resolution, Chaining looks literals up in the precomputed closure,
-        // everything else falls back to sentence identity.
         private static bool HoldsIn(ITheory? other, List<ISentence>? closure, ISentence s, ComparisonMode mode)
         {
             if (other?.State == null) return false;
