@@ -2,7 +2,7 @@ namespace FirstOrderLogic
 {
     public enum ComparisonMode
     {
-        Chaining,
+        Syntactic,
         Semantic,
     }
 }

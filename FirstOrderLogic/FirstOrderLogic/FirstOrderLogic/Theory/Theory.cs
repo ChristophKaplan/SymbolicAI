@@ -10,14 +10,21 @@ namespace FirstOrderLogic
         private static readonly FirstOrderLogic _logic = new();
         private static readonly KernelSets _kernels = new();
 
-        public IReadOnlyList<ISentence> State { get; }
+        private readonly List<ISentence> _state;
+
+        public IReadOnlyList<ISentence> State => _state;
 
         public Theory(List<ISentence> state) =>
-            State = (state ?? Enumerable.Empty<ISentence>()).Where(s => s != null).ToList();
+            _state = (state ?? Enumerable.Empty<ISentence>()).Where(s => s != null).ToList();
+
+        // Intentional mutation of the belief base; State stays a read-only view.
+        public bool Contains(ISentence sentence) => _state.Contains(sentence);
+        public void Add(ISentence sentence) { if (sentence != null) _state.Add(sentence); }
+        public int RemoveAll(Predicate<ISentence> match) => _state.RemoveAll(match);
 
         public List<ISentence> Inconsistencies() => ForwardChaining.Saturate(State).Conflicts();
 
-        public bool IsConsistent(ComparisonMode mode = ComparisonMode.Chaining) => IsConsistentWith(null, mode);
+        public bool IsConsistent() => Inconsistencies().Count == 0;
 
         public bool Entails(ISentence target)
         {
@@ -28,15 +35,15 @@ namespace FirstOrderLogic
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);
 
         // Our sentences that the other theory also holds.
-        public List<ISentence> Agreements(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining) =>
+        public List<ISentence> Agreements(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
             HeldBy(other, mode, negate: false);
 
         // Our sentences the other theory refutes — it holds their negation.
-        public List<ISentence> Conflicts(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining) =>
+        public List<ISentence> Conflicts(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
             HeldBy(other, mode, negate: true);
 
         // Our sentences the other theory is silent on — it holds neither them nor their negation.
-        public List<ISentence> Silences(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
+        public List<ISentence> Silences(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
             if (other?.State == null) return State.ToList();
             var closure = ChainingClosure(other, mode);
@@ -51,14 +58,14 @@ namespace FirstOrderLogic
             return State.Where(s => HeldByOther(other, negate ? s.Negated() : s, closure)).ToList();
         }
 
-        public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
+        public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
             var union = new List<ISentence>(State);
             if (other?.State != null) union.AddRange(other.State);
 
             switch (mode)
             {
-                case ComparisonMode.Chaining:
+                case ComparisonMode.Syntactic:
                     return ForwardChaining.Saturate(union).Conflicts().Count == 0;
                 case ComparisonMode.Semantic:
                     return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
@@ -69,7 +76,7 @@ namespace FirstOrderLogic
 
         // The other theory's derivable literals under chaining; null means use semantic entailment instead.
         private static IReadOnlyList<ISentence>? ChainingClosure(ITheory other, ComparisonMode mode) =>
-            mode == ComparisonMode.Chaining ? ForwardChaining.Saturate(other.State) : null;
+            mode == ComparisonMode.Syntactic ? ForwardChaining.Saturate(other.State) : null;
 
         // Does the other theory hold s? With a chaining closure, check literal derivation
         // (a non-literal rule can only be matched by identity); without one, use semantic entailment.
