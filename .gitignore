@@ -268,3 +268,6 @@ __pycache__/
 # Cake - Uncomment if you are using it
 # tools/
 
+# Internal planning/scratch docs (kept locally, not published)
+docs/
+
