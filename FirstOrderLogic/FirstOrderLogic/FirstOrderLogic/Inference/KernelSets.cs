@@ -16,7 +16,7 @@ namespace FirstOrderLogic
 
         // All minimal X ⊆ B with X ⊨ α. Complete: any other kernel omits some element of a found
         // kernel, so recursing on B\{e} finds them all.
-        public List<List<ISentence>> FindAllKernels(IList<ISentence> B, ISentence α)
+        public List<List<ISentence>> FindAllKernels(IEnumerable<ISentence> B, ISentence α)
         {
             var results = new List<List<ISentence>>();
             FindAllKernelsRec(new List<ISentence>(B), α, results,

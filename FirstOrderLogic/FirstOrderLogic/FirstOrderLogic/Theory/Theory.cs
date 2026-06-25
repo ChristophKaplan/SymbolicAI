@@ -10,14 +10,14 @@ namespace FirstOrderLogic
         private static readonly FirstOrderLogic _logic = new();
         private static readonly KernelSets _kernels = new();
 
-        public List<ISentence> State { get; private set; }
+        public IReadOnlyList<ISentence> State { get; }
 
-        public Theory(List<ISentence> state)
-        {
-            State = state ?? new List<ISentence>();
-        }
-        
-        public List<(ISentence Claim, ISentence Counter)> Conflicts() => ForwardChaining.Saturate(State).Conflicts();
+        public Theory(List<ISentence> state) =>
+            State = (state ?? Enumerable.Empty<ISentence>()).Where(s => s != null).ToList();
+
+        public List<ISentence> Inconsistencies() => ForwardChaining.Saturate(State).Conflicts();
+
+        public bool IsConsistent(ComparisonMode mode = ComparisonMode.Chaining) => IsConsistentWith(null, mode);
 
         public bool Entails(ISentence target)
         {
@@ -26,28 +26,31 @@ namespace FirstOrderLogic
         }
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);
-        
-        public TheoryComparison Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
+
+        // Our sentences that the other theory also holds.
+        public List<ISentence> Agreements(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining) =>
+            HeldBy(other, mode, negate: false);
+
+        // Our sentences the other theory refutes — it holds their negation.
+        public List<ISentence> Conflicts(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining) =>
+            HeldBy(other, mode, negate: true);
+
+        // Our sentences the other theory is silent on — it holds neither them nor their negation.
+        public List<ISentence> Silences(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
         {
-            var agreements     = new List<ISentence>();
-            var contradictions = new List<(ISentence Claim, ISentence Counter)>();
-            var silences       = new List<ISentence>();
-
-            var heldByOther = HeldByOther(other, mode);
-
-            foreach (var s in State)
-            {
-                if (s == null) continue;
-                var counter = s.Negated();
-
-                if (heldByOther(s)) agreements.Add(s);
-                else if (heldByOther(counter)) contradictions.Add(new(s, counter));
-                else silences.Add(s);
-            }
-
-            return new TheoryComparison(agreements, contradictions, silences, mode);
+            if (other?.State == null) return State.ToList();
+            var closure = ChainingClosure(other, mode);
+            return State.Where(s => !HeldByOther(other, s, closure)
+                                 && !HeldByOther(other, s.Negated(), closure)).ToList();
         }
-        
+
+        private List<ISentence> HeldBy(ITheory? other, ComparisonMode mode, bool negate)
+        {
+            if (other?.State == null) return new List<ISentence>();
+            var closure = ChainingClosure(other, mode);
+            return State.Where(s => HeldByOther(other, negate ? s.Negated() : s, closure)).ToList();
+        }
+
         public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining)
         {
             var union = new List<ISentence>(State);
@@ -63,37 +66,27 @@ namespace FirstOrderLogic
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode");
             }
         }
-        
-        public bool IsConsistent() => Conflicts().Count == 0;
-        
-        private static Func<ISentence, bool> HeldByOther(ITheory? other, ComparisonMode mode)
-        {
-            if (other?.State == null) return _ => false;
 
-            switch (mode)
-            {
-                case ComparisonMode.Semantic:
-                    return other.Entails;
-                case ComparisonMode.Chaining:
-                    var closure = ForwardChaining.Saturate(other.State);
-                    // Chaining derives only literals; a non-literal (rule) can only be matched syntactically.
-                    return s => s.IsLiteral
-                        ? ForwardChaining.Holds(closure, s)
-                        : other.State.Any(x => x != null && x.Equals(s));
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
-            }
+        // The other theory's derivable literals under chaining; null means use semantic entailment instead.
+        private static IReadOnlyList<ISentence>? ChainingClosure(ITheory other, ComparisonMode mode) =>
+            mode == ComparisonMode.Chaining ? ForwardChaining.Saturate(other.State) : null;
+
+        // Does the other theory hold s? With a chaining closure, check literal derivation
+        // (a non-literal rule can only be matched by identity); without one, use semantic entailment.
+        private static bool HeldByOther(ITheory other, ISentence s, IReadOnlyList<ISentence>? closure)
+        {
+            if (closure == null) return other.Entails(s);
+            return s.IsLiteral
+                ? ForwardChaining.Holds(closure, s)
+                : other.State.Any(x => x != null && x.Equals(s));
         }
 
         private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => _logic.ConnectSentences(sentences.ToList());
-        
 
         public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType()) return false;
-
-            var other = (Theory)obj;
-            return State.SequenceEqual(other.State);
+            return State.SequenceEqual(((Theory)obj).State);
         }
 
         public override int GetHashCode()
@@ -101,7 +94,7 @@ namespace FirstOrderLogic
             unchecked
             {
                 var hash = 17;
-                foreach (var sentence in State) hash = hash * 31 + (sentence?.GetHashCode() ?? 0);
+                foreach (var sentence in State) hash = hash * 31 + sentence.GetHashCode();
                 return hash;
             }
         }

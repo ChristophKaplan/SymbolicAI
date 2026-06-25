@@ -4,18 +4,22 @@ namespace FirstOrderLogic
 {
     public interface ITheory
     {
-        List<ISentence> State { get; }
-        
+        IReadOnlyList<ISentence> State { get; }
+
         bool Entails(ISentence target);
         
         List<List<ISentence>> Explain(ISentence target);
 
-        TheoryComparison Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining);
+        List<ISentence> Agreements(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining);
+
+        List<ISentence> Conflicts(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining);
+
+        List<ISentence> Silences(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining);
 
         bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Chaining);
-        
-        List<(ISentence Claim, ISentence Counter)> Conflicts();
 
-        bool IsConsistent();
+        List<ISentence> Inconsistencies();
+
+        bool IsConsistent(ComparisonMode mode = ComparisonMode.Chaining);
     }
 }

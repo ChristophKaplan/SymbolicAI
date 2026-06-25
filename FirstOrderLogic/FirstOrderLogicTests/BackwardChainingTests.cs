@@ -79,7 +79,7 @@ namespace FolTests {
 
         [Test]
         public void NegativeGoal_ProvenViaNegativeHead() {
-            Assert.That(Entails("IsFemale(mySelf)", "IsFemale(z) => NOT Work(z)", "NOT Work(mySelf)"), Is.True);
+            Assert.That(Entails("Penguin(pingu)", "Penguin(z) => NOT Flies(z)", "NOT Flies(pingu)"), Is.True);
         }
 
         [Test]

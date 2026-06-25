@@ -15,10 +15,10 @@ namespace FolTests {
 
         [Test]
         public void SingleFact_Abduced() {
-            var explanations = Explain("CanCook(Maria)", new[] { "Role" },
-                "Role(z,Female) => CanCook(z)");
+            var explanations = Explain("Swims(Pingu)", new[] { "Species" },
+                "Species(z,Penguin) => Swims(z)");
             Assert.That(explanations, Has.Count.EqualTo(1));
-            Assert.That(explanations[0].Single().ToString(), Is.EqualTo(K("Role(Maria,Female)")));
+            Assert.That(explanations[0].Single().ToString(), Is.EqualTo(K("Species(Pingu,Penguin)")));
         }
 
         [Test]

@@ -40,7 +40,7 @@ namespace FirstOrderLogic
 
         private static HashSet<string> ConflictKeys(IEnumerable<ISentence> kb) =>
             ForwardChaining.Saturate(kb).Conflicts()
-                .Select(c => c.Claim.ToString())
+                .Select(c => c.ToString())
                 .ToHashSet();
 
         private static List<List<ISentence>> Minimal(List<List<ISentence>> sets)

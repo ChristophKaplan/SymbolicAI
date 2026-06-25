@@ -52,110 +52,90 @@ namespace FolTests
             Assert.That(a.Equals(b), Is.False);
         }
 
-        // ── Compare: alignment buckets ──────────────────────────────────────────
+        // ── Agreements / Conflicts against another theory ───────────────────────
 
         [Test]
-        public void Compare_Agreement_WhenSentencePresent()
+        public void Agreements_WhenSentencePresent()
         {
-            var cmp = new Theory(Set("Have(Alice, Money)"))
-                .Compare(new Theory(Set("Have(Alice, Money)")));
-            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
-            Assert.That(cmp.Contradictions, Is.Empty);
-            Assert.That(cmp.Alignment, Is.EqualTo(1f));
+            var a = new Theory(Set("Have(Alice, Money)"));
+            var b = new Theory(Set("Have(Alice, Money)"));
+            Assert.That(a.Agreements(b).Count, Is.EqualTo(1));
+            Assert.That(a.Conflicts(b), Is.Empty);
         }
 
         [Test]
-        public void Compare_Contradiction_WhenNegationPresent()
+        public void Conflicts_WhenNegationPresent()
         {
             var claim = S("Have(Alice, Money)");
-            var cmp = new Theory(new List<ISentence> { claim.Negated() })
-                .Compare(new Theory(new List<ISentence> { claim }));
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
-            Assert.That(cmp.HasContradiction, Is.True);
-            Assert.That(cmp.IsConsistent, Is.False);
-            Assert.That(cmp.Alignment, Is.EqualTo(0f));
+            var conflicts = new Theory(new List<ISentence> { claim.Negated() })
+                .Conflicts(new Theory(new List<ISentence> { claim }));
+            Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
         [Test]
-        public void Compare_Silence_WhenIndependent()
+        public void NeitherAgreementNorConflict_WhenIndependent()
         {
-            var cmp = new Theory(Set("Have(Bob, Money)"))
-                .Compare(new Theory(Set("Have(Alice, Money)")));
-            Assert.That(cmp.Silences.Count, Is.EqualTo(1));
-            Assert.That(cmp.Agreements, Is.Empty);
-            Assert.That(cmp.Contradictions, Is.Empty);
-            Assert.That(cmp.Alignment, Is.EqualTo(0.5f));
+            var a = new Theory(Set("Have(Bob, Money)"));
+            var b = new Theory(Set("Have(Alice, Money)"));
+            Assert.That(a.Agreements(b), Is.Empty);
+            Assert.That(a.Conflicts(b), Is.Empty);
         }
 
         [Test]
-        public void Compare_NeutralAlignment_OnEmptyOrNullInputs()
+        public void Empty_OnEmptyOrNullInputs()
         {
             Assert.That(new Theory(new List<ISentence>())
-                .Compare(new Theory(Set("Have(Alice, Money)"))).Alignment, Is.EqualTo(0.5f));
-            Assert.That(new Theory(Set("Have(Alice, Money)"))
-                .Compare(null).Alignment, Is.EqualTo(0.5f));
+                .Agreements(new Theory(Set("Have(Alice, Money)"))), Is.Empty);
+            Assert.That(new Theory(Set("Have(Alice, Money)")).Agreements(null), Is.Empty);
+            Assert.That(new Theory(Set("Have(Alice, Money)")).Conflicts(null), Is.Empty);
         }
 
         [Test]
-        public void Compare_SplitAgreementContradiction_IsHalf()
+        public void SplitAgreementAndConflict()
         {
             var shared = S("Owns(Alice, Housea)");
             var disputed = S("Have(Alice, Money)");
-            var cmp = new Theory(new List<ISentence> { shared, disputed })
-                .Compare(new Theory(new List<ISentence> { shared, disputed.Negated() }));
-            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
-            Assert.That(cmp.Alignment, Is.EqualTo(0.5f));
+            var a = new Theory(new List<ISentence> { shared, disputed });
+            var b = new Theory(new List<ISentence> { shared, disputed.Negated() });
+            Assert.That(a.Agreements(b).Count, Is.EqualTo(1));
+            Assert.That(a.Conflicts(b).Count, Is.EqualTo(1));
         }
 
-        [Test]
-        public void Compare_PrefersAgreementOverContradiction()
-        {
-            var p = S("Have(Alice, Money)");
-            var cmp = new Theory(new List<ISentence> { p })
-                .Compare(new Theory(new List<ISentence> { p.Negated(), p }));
-            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
-            Assert.That(cmp.Contradictions, Is.Empty);
-        }
-
-        // ── Compare: consistency (chaining vs semantic) ─────────────────────────
+        // ── Chaining vs semantic ────────────────────────────────────────────────
 
         [Test]
-        public void Chaining_Consistent_WhenNoLiteralClash()
+        public void Chaining_NoConflict_WhenNoLiteralClash()
         {
-            var cmp = new Theory(Set("Have(Alice, Money)"))
-                .Compare(new Theory(Set("Owns(Alice, Housea)")), ComparisonMode.Chaining);
-            Assert.That(cmp.IsConsistent, Is.True);
-            Assert.That(cmp.Contradictions, Is.Empty);
+            var a = new Theory(Set("Have(Alice, Money)"));
+            var b = new Theory(Set("Owns(Alice, Housea)"));
+            Assert.That(a.Conflicts(b, ComparisonMode.Chaining), Is.Empty);
         }
 
         [Test]
         public void Chaining_FindsDirectNegation()
         {
             var claim = S("Have(Alice, Money)");
-            var cmp = new Theory(new List<ISentence> { claim })
-                .Compare(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Chaining);
-            Assert.That(cmp.IsConsistent, Is.False);
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
-            Assert.That(cmp.Contradictions[0].Claim, Is.EqualTo(claim));
+            var conflicts = new Theory(new List<ISentence> { claim })
+                .Conflicts(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Chaining);
+            Assert.That(conflicts.Count, Is.EqualTo(1));
+            Assert.That(conflicts[0], Is.EqualTo(claim));
         }
 
         [Test]
         public void Semantic_FindsDirectNegation()
         {
             var claim = S("Have(Alice, Money)");
-            var cmp = new Theory(new List<ISentence> { claim })
-                .Compare(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Semantic);
-            Assert.That(cmp.IsConsistent, Is.False);
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
+            var conflicts = new Theory(new List<ISentence> { claim })
+                .Conflicts(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Semantic);
+            Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
         [Test]
         public void Semantic_CatchesChainedContradiction()
         {
-            var cmp = new Theory(Set("Rich(Alice)"))
-                .Compare(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Semantic);
-            Assert.That(cmp.IsConsistent, Is.False);
+            var conflicts = new Theory(Set("Rich(Alice)"))
+                .Conflicts(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Semantic);
+            Assert.That(conflicts, Is.Not.Empty);
         }
 
         [Test]
@@ -165,8 +145,8 @@ namespace FolTests
             // (the clash needs premises from both sides), so only the union check can see it.
             var a = new Theory(Set("P", "P => Q"));
             var b = new Theory(Set("Q => R", "NOT R"));
-            Assert.That(a.Compare(b, ComparisonMode.Semantic).IsConsistent, Is.True);
-            Assert.That(b.Compare(a, ComparisonMode.Semantic).IsConsistent, Is.True);
+            Assert.That(a.Conflicts(b, ComparisonMode.Semantic), Is.Empty);
+            Assert.That(b.Conflicts(a, ComparisonMode.Semantic), Is.Empty);
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
             Assert.That(b.IsConsistentWith(a, ComparisonMode.Semantic), Is.False);
         }
@@ -183,53 +163,51 @@ namespace FolTests
         public void IsConsistentWith_IsSymmetric_ForChainedContradiction()
         {
             // The contradiction only surfaces when scanning A's `Rich(Alice)` against B's rules,
-            // so the directional Compare from B misses it but IsConsistentWith must not.
+            // so the directional Conflicts from B misses it but IsConsistentWith must not.
             var a = new Theory(Set("Rich(Alice)"));
             var b = new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)"));
-            Assert.That(b.Compare(a, ComparisonMode.Semantic).IsConsistent, Is.True);
+            Assert.That(b.Conflicts(a, ComparisonMode.Semantic), Is.Empty);
             Assert.That(b.IsConsistentWith(a, ComparisonMode.Semantic), Is.False);
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
         }
 
-        // ── Compare: chaining mode ──────────────────────────────────────────────
+        // ── Chaining mode derivations ───────────────────────────────────────────
 
         [Test]
         public void Chaining_FindsDerivedAgreement()
         {
             // Syntactically silent (Mortal never literally stated), but the closure derives it.
-            var cmp = new Theory(Set("Mortal(Sokrates)"))
-                .Compare(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Chaining);
-            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
-            Assert.That(cmp.Alignment, Is.EqualTo(1f));
+            var agreements = new Theory(Set("Mortal(Sokrates)"))
+                .Agreements(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Chaining);
+            Assert.That(agreements.Count, Is.EqualTo(1));
         }
 
         [Test]
         public void Chaining_FindsDerivedContradiction()
         {
-            var cmp = new Theory(Set("Rich(Alice)"))
-                .Compare(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Chaining);
-            Assert.That(cmp.IsConsistent, Is.False);
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
-            Assert.That(cmp.Contradictions[0].Counter.ToString(), Is.EqualTo(S("-Rich(Alice)").ToString()));
+            var conflicts = new Theory(Set("Rich(Alice)"))
+                .Conflicts(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Chaining);
+            Assert.That(conflicts.Count, Is.EqualTo(1));
+            Assert.That(conflicts[0].Negated().ToString(), Is.EqualTo(S("-Rich(Alice)").ToString()));
         }
 
         [Test]
-        public void Chaining_NonLiterals_CompareByIdentity()
+        public void Chaining_NonLiterals_AgreeByIdentity()
         {
             // A shared rule counts as agreement; chaining adds nothing for non-literals.
-            var cmp = new Theory(Set("Human(x) => Mortal(x)"))
-                .Compare(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Chaining);
-            Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
+            var agreements = new Theory(Set("Human(x) => Mortal(x)"))
+                .Agreements(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Chaining);
+            Assert.That(agreements.Count, Is.EqualTo(1));
         }
 
         [Test]
-        public void Chaining_NonLiterals_ContradictByIdentity()
+        public void Chaining_NonLiterals_ConflictByIdentity()
         {
-            // The complement of a stated rule counts as a contradiction (non-literals compare by identity).
+            // The complement of a stated rule counts as a conflict (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
-            var cmp = new Theory(new List<ISentence> { rule })
-                .Compare(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Chaining);
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
+            var conflicts = new Theory(new List<ISentence> { rule })
+                .Conflicts(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Chaining);
+            Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -249,37 +227,37 @@ namespace FolTests
         [Test]
         public void Conflicts_FindsRuleDrivenSelfConflict()
         {
-            // The is/ought pattern: a fact plus a norm whose consequent contradicts another fact.
-            var merged = new Theory(Set("IsFemale(m)", "Work(m)", "IsFemale(z) => -Work(z)"));
-            var conflicts = merged.Conflicts();
+            // A fact plus a rule whose consequent contradicts another fact.
+            var merged = new Theory(Set("Penguin(p)", "Flies(p)", "Penguin(z) => -Flies(z)"));
+            var conflicts = merged.Inconsistencies();
             Assert.That(conflicts.Count, Is.EqualTo(1));
-            Assert.That(conflicts[0].Claim.ToString(), Is.EqualTo(S("Work(m)").ToString()));
+            Assert.That(conflicts[0].ToString(), Is.EqualTo(S("Flies(p)").ToString()));
             Assert.That(merged.IsConsistent(), Is.False);
         }
 
         [Test]
         public void Conflicts_Empty_WhenClosureIsClean()
         {
-            var theory = new Theory(Set("IsFemale(m)", "IsFemale(z) => CanCook(z)"));
-            Assert.That(theory.Conflicts(), Is.Empty);
+            var theory = new Theory(Set("Penguin(p)", "Penguin(z) => Swims(z)"));
+            Assert.That(theory.Inconsistencies(), Is.Empty);
             Assert.That(theory.IsConsistent(), Is.True);
         }
 
         // ── Complement safety ───────────────────────────────────────────────────
 
         [Test]
-        public void Contradicts_DoesNotMutateParentedSentences()
+        public void Conflicts_DoesNotMutateParentedSentences()
         {
             // A sentence extracted from an implication still carries its parent linkage;
-            // Compare must neither throw nor splice a negation into the source tree.
+            // Conflicts must neither throw nor splice a negation into the source tree.
             var rule = S("A => NOT B");
             var consequent = rule.Children[1];
             var before = rule.ToString();
 
-            var cmp = new Theory(new List<ISentence> { consequent })
-                .Compare(new Theory(Set("B")), ComparisonMode.Semantic);
+            var conflicts = new Theory(new List<ISentence> { consequent })
+                .Conflicts(new Theory(Set("B")), ComparisonMode.Semantic);
 
-            Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
+            Assert.That(conflicts.Count, Is.EqualTo(1));
             Assert.That(rule.ToString(), Is.EqualTo(before));
         }
 

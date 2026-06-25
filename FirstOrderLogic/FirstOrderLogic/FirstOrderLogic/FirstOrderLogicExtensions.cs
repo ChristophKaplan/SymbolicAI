@@ -202,18 +202,16 @@ namespace FirstOrderLogic {
             return !string.IsNullOrEmpty(secondTerm);
         }
 
-        // Contradictory literal pairs within the list, each normalised to (positive Claim, negated Counter).
-        public static List<(ISentence Claim, ISentence Counter)> Conflicts(this IReadOnlyList<ISentence> literals) {
-            var pairs = new List<(ISentence Claim, ISentence Counter)>();
+        // Positive literals within the list whose negation is also present (its counter is the negation).
+        public static List<ISentence> Conflicts(this IReadOnlyList<ISentence> literals) {
+            var claims = new List<ISentence>();
             for (var i = 0; i < literals.Count; i++) {
                 for (var j = i + 1; j < literals.Count; j++) {
                     if (!literals[i].IsNegationOf(literals[j])) continue;
-                    pairs.Add(literals[i].IsNegation
-                        ? (literals[j], literals[i])
-                        : (literals[i], literals[j]));
+                    claims.Add(literals[i].IsNegation ? literals[j] : literals[i]);
                 }
             }
-            return pairs;
+            return claims;
         }
 
         public static List<ISentence> GetInstancesOverTime(this ISentence sentence, int from, int to) {

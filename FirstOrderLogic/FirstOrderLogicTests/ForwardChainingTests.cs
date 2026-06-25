@@ -74,19 +74,19 @@ namespace FolTests {
 
         // ── Literal clauses: negation as explicit falsehood ──────────────────────
 
-        // A rule with a negated head fires like any other — prohibitions are derivable.
+        // A rule with a negated head fires like any other — negative conclusions are derivable.
         [Test]
         public void NegativeHead_Derived() {
-            Assert.That(Entails("IsFemale(mySelf)", "IsFemale(z) => NOT Work(z)", "NOT Work(mySelf)"), Is.True);
+            Assert.That(Entails("Penguin(pingu)", "Penguin(z) => NOT Flies(z)", "NOT Flies(pingu)"), Is.True);
         }
 
         [Test]
         public void Saturate_NegativeHead_InClosure() {
             var closure = ForwardChaining.Saturate(Set(
-                "IsFemale(mySelf)", "Role(mySelf,Female)",
-                "IsFemale(z) => NOT Work(z)", "Role(z,Female) => CanCook(z)"));
-            Assert.That(closure, Has.Member(S("NOT Work(mySelf)")));
-            Assert.That(closure, Has.Member(S("CanCook(mySelf)")));
+                "Penguin(pingu)", "Species(pingu,Bird)",
+                "Penguin(z) => NOT Flies(z)", "Species(z,Bird) => HasFeathers(z)"));
+            Assert.That(closure, Has.Member(S("NOT Flies(pingu)")));
+            Assert.That(closure, Has.Member(S("HasFeathers(pingu)")));
             Assert.That(closure.Count, Is.EqualTo(4));
         }
 
