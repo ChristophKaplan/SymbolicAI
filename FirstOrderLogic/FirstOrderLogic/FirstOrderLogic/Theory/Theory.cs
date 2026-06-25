@@ -26,6 +26,23 @@ namespace FirstOrderLogic
 
         public bool IsConsistent() => Inconsistencies().Count == 0;
 
+        public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
+        {
+            var union = new List<ISentence>(State);
+            if (other?.State != null) union.AddRange(other.State);
+
+            switch (mode)
+            {
+                case ComparisonMode.Syntactic:
+                    return ForwardChaining.Saturate(union).Conflicts().Count == 0;
+                case ComparisonMode.Semantic:
+                    return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode");
+            }
+        }
+        
+        
         public bool Entails(ISentence target)
         {
             if (State.Count == 0) return false;
@@ -57,22 +74,7 @@ namespace FirstOrderLogic
             var closure = ChainingClosure(other, mode);
             return State.Where(s => HeldByOther(other, negate ? s.Negated() : s, closure)).ToList();
         }
-
-        public bool IsConsistentWith(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
-        {
-            var union = new List<ISentence>(State);
-            if (other?.State != null) union.AddRange(other.State);
-
-            switch (mode)
-            {
-                case ComparisonMode.Syntactic:
-                    return ForwardChaining.Saturate(union).Conflicts().Count == 0;
-                case ComparisonMode.Semantic:
-                    return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode");
-            }
-        }
+        
 
         // The other theory's derivable literals under chaining; null means use semantic entailment instead.
         private static IReadOnlyList<ISentence>? ChainingClosure(ITheory other, ComparisonMode mode) =>
