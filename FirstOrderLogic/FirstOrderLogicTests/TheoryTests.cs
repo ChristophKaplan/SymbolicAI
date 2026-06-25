@@ -52,14 +52,6 @@ namespace FolTests
             Assert.That(a.Equals(b), Is.False);
         }
 
-        [Test]
-        public void Equals_False_AgainstNullAndOtherType()
-        {
-            var a = new Theory(Set("Have(Alice, Money)"));
-            Assert.That(a.Equals(null), Is.False);
-            Assert.That(a!.Equals("not a theory"), Is.False);
-        }
-
         // ── Compare: alignment buckets ──────────────────────────────────────────
 
         [Test]

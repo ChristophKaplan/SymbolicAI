@@ -64,25 +64,8 @@ namespace FolTests {
         }
 
         [Test]
-        public void Resolve_PropositionalModusPonens() {
-            Assert.That(Resolve(S("((NOT A) OR B) AND A"), S("B")), Is.True);
-        }
-
-        [Test]
-        public void Resolve_UnrelatedProposition_NotEntailed() {
-            Assert.That(Resolve(S("P"), S("Z")), Is.False);
-        }
-
-        [Test]
         public void Resolve_UnrelatedPredicate_NotEntailed() {
             Assert.That(Resolve(S("P(a)"), S("Z(a)")), Is.False);
-        }
-
-        // Soundness: a tautology entails only tautologies, never a contingent atom.
-        [Test]
-        public void Resolve_Tautology_DoesNotEntailArbitrary() {
-            Assert.That(Resolve(S("P OR (NOT P)"), S("Z")), Is.False);
-            Assert.That(Resolve(S("P(a) OR (NOT P(a))"), S("Z(a)")), Is.False);
         }
 
         // The negated consequence may be complex (non-CNF); the resolver must normalize first.

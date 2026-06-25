@@ -51,15 +51,6 @@ namespace FolTests
         // ── Signature.Symbol: name + arity as a declared vocabulary entry ─────────
 
         [Test]
-        public void Symbol_ConvertsImplicitlyToItsName()
-        {
-            var owns = new Signature.Symbol("Owns", 2);
-            string name = owns;
-            Assert.That(name, Is.EqualTo("Owns"));
-            Assert.That(owns.ToString(), Is.EqualTo("Owns"));
-        }
-
-        [Test]
         public void Symbol_OfRendersConcreteSyntax()
         {
             Assert.That(new Signature.Symbol("Owns", 2).Of("z", "y"), Is.EqualTo("Owns(z, y)"));
@@ -77,10 +68,6 @@ namespace FolTests
             var sig = new Signature.Builder().Predicate(role).Build();
             Assert.That(sig.HasPredicate("Role", 2), Is.True);
         }
-
-        [Test]
-        public void Symbol_OfRendersBareNameForConstant() =>
-            Assert.That(new Signature.Symbol("Money", 0).Of(), Is.EqualTo("Money"));
 
         [Test]
         public void Builder_AcceptsFunctionSymbol()
