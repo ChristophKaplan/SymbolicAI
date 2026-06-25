@@ -108,7 +108,7 @@ namespace FolTests
         {
             var a = new Theory(Set("Have(Alice, Money)"));
             var b = new Theory(Set("Owns(Alice, Housea)"));
-            Assert.That(a.Conflicts(b, ComparisonMode.Chaining), Is.Empty);
+            Assert.That(a.Conflicts(b, ComparisonMode.Syntactic), Is.Empty);
         }
 
         [Test]
@@ -116,7 +116,7 @@ namespace FolTests
         {
             var claim = S("Have(Alice, Money)");
             var conflicts = new Theory(new List<ISentence> { claim })
-                .Conflicts(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Chaining);
+                .Conflicts(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Syntactic);
             Assert.That(conflicts.Count, Is.EqualTo(1));
             Assert.That(conflicts[0], Is.EqualTo(claim));
         }
@@ -178,7 +178,7 @@ namespace FolTests
         {
             // Syntactically silent (Mortal never literally stated), but the closure derives it.
             var agreements = new Theory(Set("Mortal(Sokrates)"))
-                .Agreements(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Chaining);
+                .Agreements(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Syntactic);
             Assert.That(agreements.Count, Is.EqualTo(1));
         }
 
@@ -186,7 +186,7 @@ namespace FolTests
         public void Chaining_FindsDerivedContradiction()
         {
             var conflicts = new Theory(Set("Rich(Alice)"))
-                .Conflicts(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Chaining);
+                .Conflicts(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Syntactic);
             Assert.That(conflicts.Count, Is.EqualTo(1));
             Assert.That(conflicts[0].Negated().ToString(), Is.EqualTo(S("-Rich(Alice)").ToString()));
         }
@@ -196,7 +196,7 @@ namespace FolTests
         {
             // A shared rule counts as agreement; chaining adds nothing for non-literals.
             var agreements = new Theory(Set("Human(x) => Mortal(x)"))
-                .Agreements(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Chaining);
+                .Agreements(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Syntactic);
             Assert.That(agreements.Count, Is.EqualTo(1));
         }
 
@@ -206,7 +206,7 @@ namespace FolTests
             // The complement of a stated rule counts as a conflict (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
             var conflicts = new Theory(new List<ISentence> { rule })
-                .Conflicts(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Chaining);
+                .Conflicts(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Syntactic);
             Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
@@ -219,7 +219,7 @@ namespace FolTests
             var b = new Theory(Set("Q(a)"));
             Assert.That(a.IsConsistent(), Is.True);
             Assert.That(b.IsConsistent(), Is.True);
-            Assert.That(a.IsConsistentWith(b, ComparisonMode.Chaining), Is.False);
+            Assert.That(a.IsConsistentWith(b, ComparisonMode.Syntactic), Is.False);
         }
 
         // ── Internal consistency (closure conflicts) ────────────────────────────

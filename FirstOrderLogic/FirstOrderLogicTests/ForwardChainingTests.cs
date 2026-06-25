@@ -124,5 +124,15 @@ namespace FolTests {
             Assert.That(closure, Has.Member(S("NOT P(a)")));
             Assert.That(closure.Count, Is.EqualTo(2));
         }
+
+        // An unsafe rule — head variable y is not bound by the body — is rejected loudly rather
+        // than silently looping: each round would otherwise derive a freshly-renamed Q(y#n) and
+        // never reach a fixpoint.
+        [Test]
+        public void UnsafeRule_IsRejected() {
+            Assert.That(
+                () => ForwardChaining.Saturate(Set("P(a)", "P(x) => Q(y)")),
+                Throws.ArgumentException);
+        }
     }
 }

@@ -38,9 +38,16 @@ namespace FirstOrderLogic
             if (!head.IsLiteral) return null;
 
             var premises = new List<ISentence>();
-            return CollectConjuncts(s.Children[0], premises)
-                ? new Rule(head, premises)
-                : null;
+            if (!CollectConjuncts(s.Children[0], premises)) return null;
+
+            var bound = new HashSet<Variable>(premises.SelectMany(p => p.VariablesOf()));
+            var unbound = head.VariablesOf().Where(v => !bound.Contains(v)).Distinct().ToList();
+            if (unbound.Count > 0)
+                throw new ArgumentException(
+                    $"Unsafe rule '{new Rule(head, premises)}': head variable(s) " +
+                    $"{string.Join(", ", unbound.Select(v => v.TermSymbol))} not bound by the body.");
+
+            return new Rule(head, premises);
         }
 
         // Standardize apart: fresh variable names so repeated uses of the same rule cannot capture

@@ -3,8 +3,8 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Data-driven rule firing to fixpoint (cf. AIMA FOL-FC-ASK). Sound; complete only for the
-    // function-free all-positive subset. Non-rule sentences in the KB are ignored.
+    // Data-driven rule firing to a fixpoint (cf. AIMA FOL-FC-ASK). Complete only for the
+    // function-free, range-restricted positive subset; unsafe rules are rejected by Rule.From.
     public class ForwardChaining
     {
         public static List<ISentence> Saturate(IEnumerable<ISentence> kb)
@@ -20,7 +20,6 @@ namespace FirstOrderLogic
             do
             {
                 added = false;
-                // New facts are matched against only from the next round; same fixpoint.
                 var facts = known.ToList();
                 foreach (var rule in rules)
                 {
@@ -40,14 +39,12 @@ namespace FirstOrderLogic
         public static bool Entails(IEnumerable<ISentence> kb, ISentence query) =>
             query.IsLiteral && Holds(Saturate(kb), query);
 
-        // Some fact is an instance of `query` (same polarity).
         public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {
             var sig = query.Signature();
             return facts.Any(f => f.Signature() == sig && Unificator.TryUnify(query, f, out _));
         }
 
-        // Every substitution extending `theta` under which all premises from `index` onward hold.
         private static IEnumerable<Substitution> Match(
             IReadOnlyList<ISentence> premises, int index,
             Substitution theta, List<ISentence> facts)
