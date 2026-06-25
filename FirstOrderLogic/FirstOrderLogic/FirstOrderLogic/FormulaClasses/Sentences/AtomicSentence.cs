@@ -33,33 +33,10 @@ namespace FirstOrderLogic {
 
         protected AtomicSentence(IAtomicSentence other)
         {
-            Parent = null;
             Symbol = other.Symbol;
             Time = other.Time;
         }
 
-        public override ISentence Negate()
-        {
-            if (Tautology)
-            {
-                var clone = (IAtomicSentence)Clone();
-                clone.Symbol = Connective.SymbolToString(Connective.LogicSymbol.FALSE);
-                return clone;
-            }
-        
-            if (Contradiction)
-            {
-                var clone = (IAtomicSentence)Clone();
-                clone.Symbol = Connective.SymbolToString(Connective.LogicSymbol.TRUE);
-                return clone;
-            }
-
-            var negated = new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
-            negated.SetParentToParentOf(this);
-            return negated;
-        }
-
-        // Splice-free negation for the persistent-AST path.
         public override ISentence Negated()
         {
             if (Tautology)

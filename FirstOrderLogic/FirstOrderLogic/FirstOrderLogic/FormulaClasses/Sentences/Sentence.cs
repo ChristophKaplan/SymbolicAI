@@ -6,8 +6,7 @@ using LRParser.Language;
 
 namespace FirstOrderLogic {
     public interface ISentence : ILanguageObject {
-        ISentence? Parent { get; set; }
-        List<ISentence> Children { get; }
+        IReadOnlyList<ISentence> Children { get; }
         bool IsBinary { get; }
         bool IsUnary { get; }
         bool IsNullary { get; }
@@ -15,15 +14,11 @@ namespace FirstOrderLogic {
         bool IsNegation { get; }
         bool IsImplication { get; }
         bool IsNegationOf(ISentence other, bool onlyPredSignature = false);
-        void AddChild(ISentence sentence);
-        void InsertChild(int index, ISentence sentence);
-        void SetParentToParentOf(ISentence? parentOfThis);
         void SubstituteTerm(Term term, Term replacement);
         ISentence Substitute(Term target, Term replacement);
         ISentence WithChildren(IReadOnlyList<ISentence> children);
         ISentence WithTimeShift(int offset);
         ISentence Clone();
-        ISentence Negate();
         ISentence Negated();
         bool HasScopeConflict(List<Variable>? boundVariables = null);
         bool HasQuantifier();
@@ -34,15 +29,13 @@ namespace FirstOrderLogic {
         List<ISentence> GetLiterals();
         IPredicate GetPredicate();
         IProposition GetProposition();
-        void AddTime(int i);
         bool IsImplicationAndEqualPremise(ISentence premise);
         public bool Equals(object? obj);
         public int GetHashCode();
     }
 
     public abstract class Sentence : ISentence {
-        public ISentence? Parent { get; set; }
-        public List<ISentence> Children { get; } = new();
+        public IReadOnlyList<ISentence> Children { get; protected set; } = Array.Empty<ISentence>();
 
         public bool IsBinary => Children.Count == 2;
         public bool IsUnary => Children.Count == 1;
@@ -55,7 +48,6 @@ namespace FirstOrderLogic {
         public abstract ISentence Substitute(Term target, Term replacement);
         public abstract ISentence WithChildren(IReadOnlyList<ISentence> children);
         public abstract ISentence WithTimeShift(int offset);
-        public abstract ISentence Negate();
         public abstract ISentence Negated();
         public abstract ISentence Clone();
     
@@ -67,41 +59,6 @@ namespace FirstOrderLogic {
             bool Compare(ISentence A, ISentence B) {
                 return onlyPredSignature ? A.GetPredicate().EqualSignature(B.GetPredicate()) : A.Equals(B);
             }
-        }
-
-        public void AddChild(ISentence sentence) {
-            Children.Add(sentence);
-            sentence.Parent = this;
-        }
-
-        public void InsertChild(int index, ISentence sentence) {
-            Children.Insert(index, sentence);
-            sentence.Parent = this;
-        }
-
-        public void SetParentToParentOf(ISentence? parentOfThis) {
-            var grandParent = parentOfThis?.Parent;
-            if (grandParent == null) {
-                Parent = null;
-                return;
-            }
-
-            ISentence? found = null;
-            foreach (var childInParent in grandParent.Children) {
-                if (!childInParent.Equals(parentOfThis)) {
-                    continue;
-                }
-
-                found = childInParent;
-            }
-
-            if (found == null) {
-                throw new Exception($"this not found in Parent.Children");
-            }
-
-            var index = grandParent.Children.IndexOf(found);
-            grandParent.Children.RemoveAt(index);
-            grandParent.InsertChild(index, this);
         }
 
         public bool HasScopeConflict(List<Variable>? boundVariables = null) {
@@ -183,17 +140,6 @@ namespace FirstOrderLogic {
                 IComplexSentence => (IProposition)Children[0],
                 _ => throw new Exception("Literal has no proposition")
             };
-        }
-
-        public void AddTime(int t) {
-            if (this is IAtomicSentence atomicSentence) {
-                atomicSentence.Time += t;
-            }
-            else {
-                foreach (var child in Children) {
-                    child.AddTime(t);
-                }
-            }
         }
 
         public bool IsImplicationAndEqualPremise(ISentence premise) {

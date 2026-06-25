@@ -106,12 +106,7 @@ namespace FirstOrderLogic
         private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) =>
             _logic.ConnectSentences(sentences.Select(s => s.Clone()).ToList());
 
-        // Mutation-free complement: ISentence.Negate() splices into the sentence's parent tree,
-        // so it must never be called on sentences the theory does not own.
-        private static ISentence Complement(ISentence s) =>
-            s.IsNegation
-                ? s.Children[0].Clone()
-                : new ComplexSentence(Connective.LogicSymbol.NEGATION, s.Clone());
+        private static ISentence Complement(ISentence s) => s.Negated();
 
         public override bool Equals(object? obj)
         {
