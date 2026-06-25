@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace FirstOrderLogic {
     public interface IAtomicSentence : ISentence
@@ -57,6 +58,28 @@ namespace FirstOrderLogic {
             negated.SetParentToParentOf(this);
             return negated;
         }
+
+        // Splice-free negation for the persistent-AST path.
+        public override ISentence Negated()
+        {
+            if (Tautology)
+            {
+                var clone = (IAtomicSentence)Clone();
+                clone.Symbol = Connective.SymbolToString(Connective.LogicSymbol.FALSE);
+                return clone;
+            }
+
+            if (Contradiction)
+            {
+                var clone = (IAtomicSentence)Clone();
+                clone.Symbol = Connective.SymbolToString(Connective.LogicSymbol.TRUE);
+                return clone;
+            }
+
+            return new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
+        }
+
+        public override ISentence WithChildren(IReadOnlyList<ISentence> children) => this;
 
         public override bool Equals(object? obj) {
             if (obj == null || GetType() != obj.GetType()) {

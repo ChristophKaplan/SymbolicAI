@@ -108,6 +108,14 @@ namespace FirstOrderLogic {
             return negated;
         }
 
+        public override ISentence Negated() =>
+            IsNegation ? Children[0].Clone() : new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
+
+        public override ISentence WithChildren(IReadOnlyList<ISentence> children) =>
+            children.Count == 1
+                ? new ComplexSentence(Connective.Clone(), children[0])
+                : new ComplexSentence(children[0], Connective.Symbol, children[1]);
+
         public override int GetHashCode() {
             return HashCode.Combine(Connective.GetHashCode(), base.GetHashCode());
         }
