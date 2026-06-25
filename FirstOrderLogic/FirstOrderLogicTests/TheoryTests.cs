@@ -76,7 +76,7 @@ namespace FolTests
         public void Compare_Contradiction_WhenNegationPresent()
         {
             var claim = S("Have(Alice, Money)");
-            var cmp = new Theory(new List<ISentence> { claim.Negate() })
+            var cmp = new Theory(new List<ISentence> { claim.Negated() })
                 .Compare(new Theory(new List<ISentence> { claim }));
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
             Assert.That(cmp.HasContradiction, Is.True);
@@ -110,7 +110,7 @@ namespace FolTests
             var shared = S("Owns(Alice, Housea)");
             var disputed = S("Have(Alice, Money)");
             var cmp = new Theory(new List<ISentence> { shared, disputed })
-                .Compare(new Theory(new List<ISentence> { shared, disputed.Negate() }));
+                .Compare(new Theory(new List<ISentence> { shared, disputed.Negated() }));
             Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
             Assert.That(cmp.Alignment, Is.EqualTo(0.5f));
@@ -121,7 +121,7 @@ namespace FolTests
         {
             var p = S("Have(Alice, Money)");
             var cmp = new Theory(new List<ISentence> { p })
-                .Compare(new Theory(new List<ISentence> { p.Negate(), p }));
+                .Compare(new Theory(new List<ISentence> { p.Negated(), p }));
             Assert.That(cmp.Agreements.Count, Is.EqualTo(1));
             Assert.That(cmp.Contradictions, Is.Empty);
         }
@@ -142,7 +142,7 @@ namespace FolTests
         {
             var claim = S("Have(Alice, Money)");
             var cmp = new Theory(new List<ISentence> { claim })
-                .Compare(new Theory(new List<ISentence> { claim.Negate() }), ComparisonMode.Chaining);
+                .Compare(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Chaining);
             Assert.That(cmp.IsConsistent, Is.False);
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
             Assert.That(cmp.Contradictions[0].Claim, Is.EqualTo(claim));
@@ -153,7 +153,7 @@ namespace FolTests
         {
             var claim = S("Have(Alice, Money)");
             var cmp = new Theory(new List<ISentence> { claim })
-                .Compare(new Theory(new List<ISentence> { claim.Negate() }), ComparisonMode.Semantic);
+                .Compare(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Semantic);
             Assert.That(cmp.IsConsistent, Is.False);
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
         }
@@ -236,7 +236,7 @@ namespace FolTests
             // The complement of a stated rule counts as a contradiction (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
             var cmp = new Theory(new List<ISentence> { rule })
-                .Compare(new Theory(new List<ISentence> { rule.Clone().Negate() }), ComparisonMode.Chaining);
+                .Compare(new Theory(new List<ISentence> { rule.Clone().Negated() }), ComparisonMode.Chaining);
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
         }
 
@@ -298,7 +298,7 @@ namespace FolTests
         {
             // The only proof of ¬Rich needs both premises, so the kernel equals the whole theory.
             var theory = new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)"));
-            var kernels = theory.Explain(S("Rich(Alice)").Negate());
+            var kernels = theory.Explain(S("Rich(Alice)").Negated());
             Assert.That(kernels.Count, Is.EqualTo(1));
             Assert.That(kernels[0].Count, Is.EqualTo(2));
         }
@@ -307,7 +307,7 @@ namespace FolTests
         public void Explain_Empty_WhenNotEntailed()
         {
             var theory = new Theory(Set("Poor(Alice)"));
-            Assert.That(theory.Explain(S("Rich(Alice)").Negate()), Is.Empty);
+            Assert.That(theory.Explain(S("Rich(Alice)").Negated()), Is.Empty);
         }
     }
 }

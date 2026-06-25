@@ -116,6 +116,15 @@ namespace FirstOrderLogic {
                 ? new ComplexSentence(Connective.Clone(), children[0])
                 : new ComplexSentence(children[0], Connective.Symbol, children[1]);
 
+        public override ISentence WithTimeShift(int offset) {
+            var children = new List<ISentence>(Children.Count);
+            foreach (var child in Children) {
+                children.Add(child.WithTimeShift(offset));
+            }
+
+            return WithChildren(children);
+        }
+
         public override int GetHashCode() {
             return HashCode.Combine(Connective.GetHashCode(), base.GetHashCode());
         }

@@ -131,7 +131,7 @@ namespace FirstOrderLogic {
         public static bool Resolve(ISentence knowledgeBase, ISentence consequence,
             bool useSubsumption = false, int maxRounds = 0) =>
             IsUnsatisfiable(new ComplexSentence(
-                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negate()),
+                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negated()),
                 useSubsumption, maxRounds);
 
         // True iff the clause set derives the empty clause, i.e. `sentence` has no model.

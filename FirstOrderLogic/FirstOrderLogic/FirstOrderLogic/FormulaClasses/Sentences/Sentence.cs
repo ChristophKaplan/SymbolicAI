@@ -21,6 +21,7 @@ namespace FirstOrderLogic {
         void SubstituteTerm(Term term, Term replacement);
         ISentence Substitute(Term target, Term replacement);
         ISentence WithChildren(IReadOnlyList<ISentence> children);
+        ISentence WithTimeShift(int offset);
         ISentence Clone();
         ISentence Negate();
         ISentence Negated();
@@ -53,6 +54,7 @@ namespace FirstOrderLogic {
         public abstract void SubstituteTerm(Term term, Term replacement);
         public abstract ISentence Substitute(Term target, Term replacement);
         public abstract ISentence WithChildren(IReadOnlyList<ISentence> children);
+        public abstract ISentence WithTimeShift(int offset);
         public abstract ISentence Negate();
         public abstract ISentence Negated();
         public abstract ISentence Clone();

@@ -45,6 +45,11 @@ namespace FirstOrderLogic {
 
             return Time.HasValue ? new Predicate(Symbol, terms, Time.Value) : new Predicate(Symbol, terms);
         }
+
+        public override ISentence WithTimeShift(int offset) =>
+            Time.HasValue
+                ? new Predicate(Symbol, (Term[])Terms.Clone(), Time.Value + offset)
+                : Clone();
     
         public Variable[] GetVariables() {
             var variables = new List<Variable>();

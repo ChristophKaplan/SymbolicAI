@@ -59,7 +59,7 @@ namespace FolTests {
         [Test]
         public void Negate_OfNegationCancels() {
             var p = S("P(a)");
-            var doubleNegated = p.Negate().Negate();
+            var doubleNegated = p.Negated().Negated();
             Assert.That(doubleNegated, Is.EqualTo(p));
         }
 

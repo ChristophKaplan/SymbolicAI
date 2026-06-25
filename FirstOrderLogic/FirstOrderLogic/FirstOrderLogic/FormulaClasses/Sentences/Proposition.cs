@@ -12,5 +12,8 @@ namespace FirstOrderLogic {
         }
 
         public override ISentence Substitute(Term target, Term replacement) => Clone();
+
+        public override ISentence WithTimeShift(int offset) =>
+            Time.HasValue ? new Proposition(Symbol, Time.Value + offset) : Clone();
     }
 }

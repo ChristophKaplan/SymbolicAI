@@ -205,9 +205,7 @@ namespace FirstOrderLogic {
         public static List<ISentence> GetInstancesOverTime(this ISentence sentence, int from, int to) {
             var sentences = new List<ISentence>();
             for (var i = from; i < to; i++) {
-                var clone = sentence.Clone();
-                clone.AddTime(i);
-                sentences.Add(clone);
+                sentences.Add(sentence.WithTimeShift(i));
             }
 
             return sentences;
