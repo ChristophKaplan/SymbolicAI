@@ -6,7 +6,6 @@ namespace FirstOrderLogic {
     public interface IPredicate : IAtomicSentence {
         Term[] Terms { get; }
         Variable[] GetVariables();
-        bool HasBoundVariables();
         bool EqualSignature(IPredicate other);
         int Arity { get; }
     }
@@ -53,19 +52,6 @@ namespace FirstOrderLogic {
                 variables.AddRange(term.GetVariables());
             }
             return variables.ToArray();
-        }
-
-        public bool HasBoundVariables() {
-            ISentence current = this;
-            while (current.Parent != null) {
-                current = current.Parent;
-            
-                if(current is IComplexSentence { IsQuantifier: true }) {
-                    return true;
-                }
-            }
-        
-            return false;
         }
 
         public override bool Equals(object? obj) {
