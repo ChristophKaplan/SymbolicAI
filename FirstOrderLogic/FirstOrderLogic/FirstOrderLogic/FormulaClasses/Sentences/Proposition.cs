@@ -4,12 +4,10 @@ namespace FirstOrderLogic {
     public class Proposition : AtomicSentence, IProposition {
         public Proposition(string propositionSymbol) : base(propositionSymbol) {}
         public Proposition(string propositionSymbol, int time) : base(propositionSymbol, time) {}
-        private Proposition(IProposition other) : base(other) {}
-        public override ISentence Clone() => new Proposition(this);
-    
-        public override ISentence Substitute(Term target, Term replacement) => Clone();
+
+        public override ISentence Substitute(Term target, Term replacement) => this;
 
         public override ISentence WithTimeShift(int offset) =>
-            Time.HasValue ? new Proposition(Symbol, Time.Value + offset) : Clone();
+            Time.HasValue ? new Proposition(Symbol, Time.Value + offset) : this;
     }
 }

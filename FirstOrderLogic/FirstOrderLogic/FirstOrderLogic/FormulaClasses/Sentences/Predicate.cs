@@ -13,7 +13,6 @@ namespace FirstOrderLogic {
     public class Predicate : AtomicSentence, IPredicate {
         public Term[] Terms { get; }
         public int Arity => Terms.Length;
-        public override ISentence Clone() => new Predicate(this);
         public bool EqualSignature(IPredicate other) => Symbol == other.Symbol && Arity == other.Arity;
 
         public Predicate(string predicateSymbol, Term[] terms) : base(predicateSymbol) {
@@ -22,13 +21,6 @@ namespace FirstOrderLogic {
     
         public Predicate(string predicateSymbol, Term[] terms, int time) : base(predicateSymbol, time) {
             Terms = terms;
-        }
-
-        private Predicate(IPredicate other) : base(other) {
-            Terms = new Term[other.Terms.Length];
-            for (int i = 0; i < other.Terms.Length; i++) {
-                Terms[i] = other.Terms[i].Clone();
-            }
         }
 
         public override ISentence Substitute(Term target, Term replacement) {
@@ -43,7 +35,7 @@ namespace FirstOrderLogic {
         public override ISentence WithTimeShift(int offset) =>
             Time.HasValue
                 ? new Predicate(Symbol, (Term[])Terms.Clone(), Time.Value + offset)
-                : Clone();
+                : this;
     
         public Variable[] GetVariables() {
             var variables = new List<Variable>();

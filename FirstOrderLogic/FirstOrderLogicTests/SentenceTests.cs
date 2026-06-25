@@ -63,15 +63,6 @@ namespace FolTests {
             Assert.That(doubleNegated, Is.EqualTo(p));
         }
 
-        // Clone yields an equal but distinct instance.
-        [Test]
-        public void Clone_IsEqualButDistinct() {
-            var original = S("P(x)");
-            var clone = original.Clone();
-            Assert.That(clone, Is.EqualTo(original));
-            Assert.That(clone, Is.Not.SameAs(original));
-        }
-
         [Test]
         public void Equals_StructuralAndHashConsistent() {
             var a = S("(P(x) OR Q(y)) AND R(z)");

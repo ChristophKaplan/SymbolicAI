@@ -27,7 +27,7 @@ namespace FirstOrderLogic
         // leading universal-quantifier prefix is tolerated). Works on a clone.
         public static Rule? From(ISentence sentence)
         {
-            var s = StripUniversals(sentence.Clone());
+            var s = StripUniversals(sentence);
 
             if (s.IsLiteral)
                 return new Rule(s, Array.Empty<ISentence>());

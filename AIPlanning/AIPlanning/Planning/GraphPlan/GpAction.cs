@@ -20,8 +20,8 @@ namespace AIPlanning.Planning.GraphPlan {
         public HashSet<Unificator> Unificators { get; private set; } = new();
 
         private GpAction(GpAction action) : this(action.Signifier,
-            action.Preconditions.Select(p => p.Clone()).ToList(),
-            action.Effects.Select(e => e.Clone()).ToList()) {
+            action.Preconditions.ToList(),
+            action.Effects.ToList()) {
         }
 
         public GpAction(string name, List<ISentence> preconditions, List<ISentence> effects)

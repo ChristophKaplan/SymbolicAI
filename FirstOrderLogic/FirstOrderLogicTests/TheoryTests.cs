@@ -236,7 +236,7 @@ namespace FolTests
             // The complement of a stated rule counts as a contradiction (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
             var cmp = new Theory(new List<ISentence> { rule })
-                .Compare(new Theory(new List<ISentence> { rule.Clone().Negated() }), ComparisonMode.Chaining);
+                .Compare(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Chaining);
             Assert.That(cmp.Contradictions.Count, Is.EqualTo(1));
         }
 

@@ -42,14 +42,6 @@ namespace FolTests {
         }
 
         [Test]
-        public void Clone_ProducesEqualButIndependentTerm() {
-            var f = new Function("f", new Term[] { new Variable("x") });
-            var clone = f.Clone();
-            Assert.That(clone, Is.EqualTo(f));
-            Assert.That(clone, Is.Not.SameAs(f));
-        }
-
-        [Test]
         public void GetVariables_CollectsNestedVariables() {
             var pred = (Predicate)Logic.TryParse("P(f(x),y,a)");
             var vars = pred.GetVariables();

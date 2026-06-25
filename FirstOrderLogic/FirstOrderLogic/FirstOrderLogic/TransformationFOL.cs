@@ -83,10 +83,10 @@ public static class TransformationFOL {
             switch (complex.Connective.Symbol) {
                 case Connective.LogicSymbol.CONJUNCTION when atomic.Tautology:
                 case Connective.LogicSymbol.DISJUNCTION when atomic.Contradiction:
-                    return complex.GetSiblingOf(atomic).Clone();
+                    return complex.GetSiblingOf(atomic);
                 case Connective.LogicSymbol.CONJUNCTION when atomic.Contradiction:
                 case Connective.LogicSymbol.DISJUNCTION when atomic.Tautology:
-                    return atomic.Clone();
+                    return atomic;
             }
         }
 
@@ -100,8 +100,8 @@ public static class TransformationFOL {
 
         var lhs = complex.Children[0];
         var rhs = complex.Children[1];
-        var lhsImplication = new ComplexSentence(lhs.Clone(), Connective.LogicSymbol.IMPLICATION, rhs.Clone());
-        var rhsImplication = new ComplexSentence(rhs.Clone(), Connective.LogicSymbol.IMPLICATION, lhs.Clone());
+        var lhsImplication = new ComplexSentence(lhs, Connective.LogicSymbol.IMPLICATION, rhs);
+        var rhsImplication = new ComplexSentence(rhs, Connective.LogicSymbol.IMPLICATION, lhs);
         return new ComplexSentence(lhsImplication, Connective.LogicSymbol.CONJUNCTION, rhsImplication);
     }
 
@@ -110,8 +110,8 @@ public static class TransformationFOL {
             return sentence;
         }
 
-        var notLhs = new ComplexSentence(Connective.LogicSymbol.NEGATION, complex.Children[0].Clone());
-        return new ComplexSentence(notLhs, Connective.LogicSymbol.DISJUNCTION, complex.Children[1].Clone());
+        var notLhs = new ComplexSentence(Connective.LogicSymbol.NEGATION, complex.Children[0]);
+        return new ComplexSentence(notLhs, Connective.LogicSymbol.DISJUNCTION, complex.Children[1]);
     }
 
     private static ISentence PushNegation(ISentence sentence) {
@@ -137,7 +137,7 @@ public static class TransformationFOL {
     private static ISentence DoubleNegation(ISentence sentence) {
         if (sentence is IComplexSentence { IsNegation: true } negation &&
             negation.Children[0] is IComplexSentence { IsNegation: true } doubleNegation) {
-            return doubleNegation.Children[0].Clone();
+            return doubleNegation.Children[0];
         }
 
         return sentence;
@@ -153,11 +153,11 @@ public static class TransformationFOL {
         var rhs = sentence.Children[1];
 
         if (rhs is IComplexSentence rhsComplex && IsDualOperator(complex.Connective, rhsComplex.Connective) && rhsComplex.Children.Contains(lhs)) {
-            return lhs.Clone();
+            return lhs;
         }
 
         if (lhs is IComplexSentence lhsComplex && IsDualOperator(complex.Connective, lhsComplex.Connective) && lhsComplex.Children.Contains(rhs)) {
-            return rhs.Clone();
+            return rhs;
         }
 
         return sentence;
@@ -183,15 +183,15 @@ public static class TransformationFOL {
         var rhs = sentence.Children[1];
 
         if ((complex.IsConjunction || complex.IsDisjunction) && lhs.Equals(rhs)) {
-            return lhs.Clone();
+            return lhs;
         }
 
         if (rhs is IComplexSentence rhsComplex && IsEquivOperator(complex.Connective, rhsComplex.Connective) && rhsComplex.Children.Contains(lhs)) {
-            return rhs.Clone();
+            return rhs;
         }
 
         if (lhs is IComplexSentence lhsComplex && IsEquivOperator(complex.Connective, lhsComplex.Connective) && lhsComplex.Children.Contains(rhs)) {
-            return lhs.Clone();
+            return lhs;
         }
 
         return sentence;
@@ -211,7 +211,7 @@ public static class TransformationFOL {
         if (sentence is IComplexSentence { IsQuantifier: true } quantified &&
             quantified.Children[0] is IComplexSentence { IsQuantifier: true } childQuantified &&
             Equals(quantified.Connective, childQuantified.Connective)) {
-            return childQuantified.Clone();
+            return childQuantified;
         }
 
         return sentence;
@@ -219,7 +219,7 @@ public static class TransformationFOL {
 
     private static ISentence RemoveQuantifier(ISentence sentence) {
         return sentence is IComplexSentence { IsQuantifier: true } quantified
-            ? quantified.Children[0].Clone()
+            ? quantified.Children[0]
             : sentence;
     }
 
@@ -243,14 +243,14 @@ public static class TransformationFOL {
         var rhs = complex.Children[1];
 
         if (rhs is IComplexSentence rhsComplex && rhsComplex.Connective.Symbol == inner) {
-            var newLhs = new ComplexSentence(lhs.Clone(), outer, rhsComplex.Children[0].Clone());
-            var newRhs = new ComplexSentence(lhs.Clone(), outer, rhsComplex.Children[1].Clone());
+            var newLhs = new ComplexSentence(lhs, outer, rhsComplex.Children[0]);
+            var newRhs = new ComplexSentence(lhs, outer, rhsComplex.Children[1]);
             return new ComplexSentence(newLhs, inner, newRhs);
         }
 
         if (lhs is IComplexSentence lhsComplex && lhsComplex.Connective.Symbol == inner) {
-            var newLhs = new ComplexSentence(lhsComplex.Children[0].Clone(), outer, rhs.Clone());
-            var newRhs = new ComplexSentence(lhsComplex.Children[1].Clone(), outer, rhs.Clone());
+            var newLhs = new ComplexSentence(lhsComplex.Children[0], outer, rhs);
+            var newRhs = new ComplexSentence(lhsComplex.Children[1], outer, rhs);
             return new ComplexSentence(newLhs, inner, newRhs);
         }
 
@@ -281,7 +281,7 @@ public static class TransformationFOL {
                 quantifier = new Quantifier(quantifier.Symbol, fresh);
             }
 
-            var newBody = new ComplexSentence(body.Clone(), connective.Connective.Symbol, sibling.Clone());
+            var newBody = new ComplexSentence(body, connective.Connective.Symbol, sibling);
             return new ComplexSentence(quantifier.Clone(), newBody);
         }
 

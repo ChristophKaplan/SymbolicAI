@@ -39,7 +39,7 @@ namespace FirstOrderLogic
         public bool Entails(ISentence target)
         {
             if (State.Count == 0) return false;
-            return Resolution.Resolve(Conjoin(State), target.Clone());
+            return Resolution.Resolve(Conjoin(State), target);
         }
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);
@@ -104,7 +104,7 @@ namespace FirstOrderLogic
         }
 
         private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) =>
-            _logic.ConnectSentences(sentences.Select(s => s.Clone()).ToList());
+            _logic.ConnectSentences(sentences.ToList());
 
         private static ISentence Complement(ISentence s) => s.Negated();
 

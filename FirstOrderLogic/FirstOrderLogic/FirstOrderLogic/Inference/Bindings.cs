@@ -31,7 +31,7 @@ namespace FirstOrderLogic
                 var resolved = Walk(v, theta);
                 if (!resolved.Equals(v)) result = result.Substitute(v, resolved);
             }
-            return ReferenceEquals(result, literal) ? literal.Clone() : result;
+            return result;
         }
 
         // Callers only extend with bindings for variables absent from theta, so the union is

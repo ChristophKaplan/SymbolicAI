@@ -31,18 +31,6 @@ namespace FirstOrderLogic {
             Children = new[] { p };
         }
 
-        private ComplexSentence(IComplexSentence other) {
-            Connective = other.Connective.Clone();
-            var children = new ISentence[other.Children.Count];
-            for (var i = 0; i < children.Length; i++) {
-                children[i] = other.Children[i].Clone();
-            }
-
-            Children = children;
-        }
-
-        public override ISentence Clone() => new ComplexSentence(this);
-
         public ISentence GetSiblingOf(ISentence sentence) {
             if (Children.Count != 2) {
                 throw new Exception("Error: ComplexSentence must have two children.");
@@ -86,7 +74,7 @@ namespace FirstOrderLogic {
         }
     
         public override ISentence Negated() =>
-            IsNegation ? Children[0].Clone() : new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
+            IsNegation ? Children[0] : new ComplexSentence(Connective.LogicSymbol.NEGATION, this);
 
         public override ISentence WithChildren(IReadOnlyList<ISentence> children) =>
             children.Count == 1

@@ -31,17 +31,11 @@ namespace FirstOrderLogic {
             Time = time;
         }
 
-        protected AtomicSentence(IAtomicSentence other)
-        {
-            Symbol = other.Symbol;
-            Time = other.Time;
-        }
-
         public override ISentence Negated()
         {
             if (Tautology) return Constant(Connective.LogicSymbol.FALSE);
             if (Contradiction) return Constant(Connective.LogicSymbol.TRUE);
-            return new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
+            return new ComplexSentence(Connective.LogicSymbol.NEGATION, this);
         }
 
         // Nullary constants (TRUE/FALSE) are always propositions.

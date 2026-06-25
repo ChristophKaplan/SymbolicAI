@@ -17,7 +17,6 @@ namespace FirstOrderLogic {
         ISentence Substitute(Term target, Term replacement);
         ISentence WithChildren(IReadOnlyList<ISentence> children);
         ISentence WithTimeShift(int offset);
-        ISentence Clone();
         ISentence Negated();
         bool HasScopeConflict(List<Variable>? boundVariables = null);
         bool HasQuantifier();
@@ -47,7 +46,6 @@ namespace FirstOrderLogic {
         public abstract ISentence WithChildren(IReadOnlyList<ISentence> children);
         public abstract ISentence WithTimeShift(int offset);
         public abstract ISentence Negated();
-        public abstract ISentence Clone();
     
         public bool IsNegationOf(ISentence other, bool onlyPredSignature = false) {
             if (IsNegation && !other.IsNegation && Compare(Children[0],other)) return true;
