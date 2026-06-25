@@ -95,10 +95,8 @@ with structural sharing and deleted the `Clone()` methods + copy constructors.
   profitable targets are the canonicalization keys and skipping canonicalization for variable-free
   clauses — not node interning.
 
-## Not done (deliberately left)
-
-- **`Connective` immutability** — `Connective.Symbol` is still a public field. Nothing mutates
-  it (FlipOperator is gone), so it's effectively immutable; making it readonly is cosmetic.
+`Connective.Symbol` is now a `readonly` field, so connectives are immutable too. The whole
+formula model — terms, atoms, connectives, sentences — is now immutable end to end.
 
 ## Effort & risk
 

@@ -15,7 +15,7 @@ namespace FirstOrderLogic {
             BICONDITIONAL
         }
 
-        public LogicSymbol Symbol;
+        public readonly LogicSymbol Symbol;
 
         public Connective(LogicSymbol symbol) {
             Symbol = symbol;
