@@ -4,6 +4,10 @@ Refactor the FOL `ISentence`/`Term` model from a mutable, parent-linked tree int
 immutable, top-down tree. Goal: remove the "mutation splices into the parent tree" hazard,
 delete the pervasive `Clone()`, and make substitution a value-returning operation.
 
+**Status: complete.** All phases landed on branch `immutable-ast`; FOL + AIPlanning suites
+green throughout. The AST is now immutable (no parent pointers, no mutators, no setters,
+structural sharing). Commits: d96c0b3, 2815b47, d6826b3, 0af9487, c2c5c03, ffe30cf, ab104e9.
+
 ## Scope
 
 - **In:** `FirstOrderLogic` core (`FormulaClasses`, `TransformationFOL`, `Resolution`,
@@ -42,33 +46,47 @@ safety net.
 
 ## Phases (each independently shippable, ordered by dependency)
 
-**Phase 0 — Safety net.** Add characterization tests for deep-nested transforms (PNF/CNF on
-multi-level formulas) before trusting the suite.
+**Phase 0 — Safety net. [done, d96c0b3]** Characterization tests for deep-nested transforms
+(PNF/CNF on multi-level formulas). They passed against the old code, confirming
+`SetParentToParentOf` reassembly worked and pinning that behavior as the contract.
 
-**Phase 1 — Immutable Term layer.** `Function.Terms` truly readonly; add pure
-`Term Substitute(Variable, Term)`; `Term.SubstituteAll` becomes a pure rebuild. Self-contained;
-valuable even on its own.
+**Phase 1 — Immutable Term layer. [done, d96c0b3]** Pure `Term.Substitute` returning a new term
+(sharing unchanged subterms); `Predicate.SubstituteTerm` rebuilt on top of it; the in-place
+`Term.SubstituteAll` / `Function.SubstituteTerm` removed.
 
-**Phase 2 — Pure node ops, migrate callers.** Add `Substitute` / `Negated` / `WithChildren`
-returning new nodes *alongside* the existing mutators. Point `Bindings`, `Resolution`, `Rule`
-at the pure ops. No deletions yet — both APIs coexist so the build stays green.
+**Phase 2 — Pure node ops, migrate callers. [done, 2815b47]** Pure `ISentence.Substitute`
+alongside the mutator; `Bindings.Apply`, `Resolution`, `Rule` routed through it.
 
-**Phase 3 — Functional `TransformationFOL`.** Driver becomes
-`ISentence Rewrite(ISentence, Func<ISentence,ISentence>)` (rebuild parent from transformed
-children). Each rule: `void(ref ISentence)` -> `ISentence(ISentence)`. Delete the
-`SetParentToParentOf` calls and in-place `Negate()`/`FlipOperator()` on children.
+**Phase 3 — Functional `TransformationFOL`. [done, d6826b3]** Driver rebuilds parents from
+transformed children via `WithChildren`; each rule returns a new sentence; all
+`SetParentToParentOf` and in-place `Negate()`/`FlipOperator()` gone. Added `Negated()`.
 
-**Phase 4 — `Interpretation` environment-passing.** Carry the bound-variable set down the
-evaluation recursion. `HasBoundVariables` disappears; the quantifier-strip becomes a
-structural rebuild.
+**Phase 4 — `Interpretation` environment-passing. [done, 0af9487]** `InstantiateVariable` uses
+pure `Substitute`; the vacuous `HasBoundVariables` Parent-walk removed. Last upward Parent
+navigation gone.
 
-**Phase 5 — Remove the mutable surface.** With no readers left: delete `Parent`, `AddChild`,
-`InsertChild`, `SetParentToParentOf`, in-place `SubstituteTerm`/`Negate`/`FlipOperator`/`AddTime`,
-the `Symbol`/`Time` setters; make `Children` readonly; delete `Clone()`; make `Connective`
-immutable. Large but mechanical (compiler-driven). This is the point of no return.
+**Phase 5a — Migrate consumers off mutators. [done, c2c5c03]** Pure `WithTimeShift`;
+`GetInstancesOverTime`/`Resolution`/tests moved off `Negate()`/`AddTime()`. No external callers
+of the splice/in-place mutators remained.
 
-**Phase 6 — AIPlanning + optional perf.** Update `GpAction`/`OperatorGraph` (2-3 sites) to the
-immutable API. Optional: hash-consing/interning pass; defer unless speed is wanted.
+**Phase 5b — Remove parent pointers + mutators. [done, 56bfef2]** Deleted `Parent`,
+`AddChild`/`InsertChild`/`SetParentToParentOf`, `Negate()`, `AddTime`, `FlipOperator`;
+`Children` is now `IReadOnlyList` set at construction. Plus `Symbol`/`Time` setters made
+get-only (`Negated` builds the flipped constant fresh). The AST became structurally immutable.
+
+**Phase 5c-1 — Remove the `SubstituteTerm` mutator. [done, ffe30cf]** `Unificator` gained a pure
+`Apply`; `GpAction`/`Resolution`/`SkolemForm` rebuild via pure `Substitute`. The AST now has no
+mutators of any kind.
+
+**Phase 5c-2 — Retire `Clone()`. [done, ab104e9]** Replaced every `ISentence`/`Term` `.Clone()`
+with structural sharing and deleted the `Clone()` methods + copy constructors.
+
+## Not done (deliberately deferred)
+
+- **`Connective` immutability** — `Connective.Symbol` is still a public field. Nothing mutates
+  it (FlipOperator is gone), so it's effectively immutable; making it readonly is cosmetic.
+- **Hash-consing / interning** — the immutable AST now permits it; deferred unless profiling
+  shows a need.
 
 ## Effort & risk
 
