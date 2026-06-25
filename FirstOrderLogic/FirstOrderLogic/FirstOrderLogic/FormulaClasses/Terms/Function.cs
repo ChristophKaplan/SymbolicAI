@@ -20,8 +20,6 @@ namespace FirstOrderLogic {
             }
         }
     
-        public void SubstituteTerm(Term term, Term replacement) => SubstituteAll(Terms, term, replacement);
-
         public bool Equals(Function? other)
         {
             if (other is null) {

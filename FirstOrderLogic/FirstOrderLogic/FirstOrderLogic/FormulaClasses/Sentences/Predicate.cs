@@ -32,8 +32,11 @@ namespace FirstOrderLogic {
             }
         }
 
-        public override void SubstituteTerm(Term term, Term replacement) =>
-            Term.SubstituteAll(Terms, term, replacement);
+        public override void SubstituteTerm(Term term, Term replacement) {
+            for (var i = 0; i < Terms.Length; i++) {
+                Terms[i] = Terms[i].Substitute(term, replacement);
+            }
+        }
     
         public Variable[] GetVariables() {
             var variables = new List<Variable>();

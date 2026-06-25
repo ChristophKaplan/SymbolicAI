@@ -54,16 +54,29 @@ namespace FirstOrderLogic {
             }
         }
     
-        // Shared by Predicate and Function: replace matching terms in place, recursing into functions.
-    internal static void SubstituteAll(Term[] terms, Term term, Term replacement) {
-        for (var i = 0; i < terms.Length; i++) {
-            var curTerm = terms[i];
-            if (curTerm.Equals(term)) {
-                terms[i] = replacement;
-            } else if (curTerm is Function function) {
-                function.SubstituteTerm(term, replacement);
+        // Returns a new term with every occurrence of `target` replaced; returns the same
+    // instance (by reference) when nothing matched, so unchanged subterms are shared.
+    public Term Substitute(Term target, Term replacement) {
+        if (Equals(target)) {
+            return replacement;
+        }
+
+        if (this is Function { Arity: > 0 } function) {
+            var rebuilt = new Term[function.Terms.Length];
+            var changed = false;
+            for (var i = 0; i < function.Terms.Length; i++) {
+                rebuilt[i] = function.Terms[i].Substitute(target, replacement);
+                if (!ReferenceEquals(rebuilt[i], function.Terms[i])) {
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                return new Function(function.TermSymbol, rebuilt);
             }
         }
+
+        return this;
     }
 
     public bool Occurs(Variable variable) {
