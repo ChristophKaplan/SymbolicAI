@@ -7,7 +7,6 @@ namespace FirstOrderLogic {
         bool IsQuantifier { get; }
         bool IsConjunction { get; }
         bool IsDisjunction { get; }
-        void FlipOperator();
         ISentence GetSiblingOf(ISentence sentence);
         Quantifier[] GetQuantifiers(Connective.LogicSymbol quantifier);
     }
@@ -19,39 +18,17 @@ namespace FirstOrderLogic {
         public bool IsDisjunction => Connective == Connective.LogicSymbol.DISJUNCTION;
         public ComplexSentence(ISentence p, Connective.LogicSymbol logicSymbol, ISentence q) {
             Connective = new Connective(logicSymbol);
-            AddChild(p);
-            AddChild(q);
+            Children = new[] { p, q };
         }
 
         public ComplexSentence(Connective.LogicSymbol logicSymbol, ISentence p) {
             Connective = new Connective(logicSymbol);
-            AddChild(p);
+            Children = new[] { p };
         }
-    
+
         public ComplexSentence(Connective connective, ISentence p) {
             Connective = connective;
-            AddChild(p);
-        }
-
-        private ComplexSentence(IComplexSentence other) {
-            Connective = other.Connective.Clone();
-            Parent = null; //other.Parent; //TODO: def not only assign the parent, maybe clone it and all the other siblings ?
-        
-            foreach (var child in other.Children) {
-                AddChild(child.Clone());
-            }
-        }
-
-        public override ISentence Clone() => new ComplexSentence(this);
-
-        public void FlipOperator() {
-            Connective.Symbol = Connective.Symbol switch {
-                Connective.LogicSymbol.CONJUNCTION => Connective.LogicSymbol.DISJUNCTION,
-                Connective.LogicSymbol.DISJUNCTION => Connective.LogicSymbol.CONJUNCTION,
-                Connective.LogicSymbol.EXISTENTIAL => Connective.LogicSymbol.UNIVERSAL,
-                Connective.LogicSymbol.UNIVERSAL => Connective.LogicSymbol.EXISTENTIAL,
-                _ => throw new Exception($"Error: {this.Connective.Symbol} not found.")
-            };
+            Children = new[] { p };
         }
 
         public ISentence GetSiblingOf(ISentence sentence) {
@@ -85,16 +62,32 @@ namespace FirstOrderLogic {
             return quantifiers.ToArray();
         }
 
-        public override void SubstituteTerm(Term term, Term replacement) {
-            foreach (var child in Children) {
-                child.SubstituteTerm(term, replacement);
+        public override ISentence Substitute(Term target, Term replacement) {
+            if (IsBinary) {
+                return new ComplexSentence(
+                    Children[0].Substitute(target, replacement),
+                    Connective.Symbol,
+                    Children[1].Substitute(target, replacement));
             }
+
+            return new ComplexSentence(Connective.Clone(), Children[0].Substitute(target, replacement));
         }
     
-        public override ISentence Negate() {
-            var negated = IsNegation ? Children[0] : new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());
-            negated.SetParentToParentOf(this);
-            return negated;
+        public override ISentence Negated() =>
+            IsNegation ? Children[0] : new ComplexSentence(Connective.LogicSymbol.NEGATION, this);
+
+        public override ISentence WithChildren(IReadOnlyList<ISentence> children) =>
+            children.Count == 1
+                ? new ComplexSentence(Connective.Clone(), children[0])
+                : new ComplexSentence(children[0], Connective.Symbol, children[1]);
+
+        public override ISentence WithTimeShift(int offset) {
+            var children = new List<ISentence>(Children.Count);
+            foreach (var child in Children) {
+                children.Add(child.WithTimeShift(offset));
+            }
+
+            return WithChildren(children);
         }
 
         public override int GetHashCode() {

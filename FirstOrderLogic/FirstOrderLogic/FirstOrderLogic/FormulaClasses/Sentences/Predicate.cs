@@ -6,7 +6,6 @@ namespace FirstOrderLogic {
     public interface IPredicate : IAtomicSentence {
         Term[] Terms { get; }
         Variable[] GetVariables();
-        bool HasBoundVariables();
         bool EqualSignature(IPredicate other);
         int Arity { get; }
     }
@@ -14,7 +13,6 @@ namespace FirstOrderLogic {
     public class Predicate : AtomicSentence, IPredicate {
         public Term[] Terms { get; }
         public int Arity => Terms.Length;
-        public override ISentence Clone() => new Predicate(this);
         public bool EqualSignature(IPredicate other) => Symbol == other.Symbol && Arity == other.Arity;
 
         public Predicate(string predicateSymbol, Term[] terms) : base(predicateSymbol) {
@@ -25,15 +23,19 @@ namespace FirstOrderLogic {
             Terms = terms;
         }
 
-        private Predicate(IPredicate other) : base(other) {
-            Terms = new Term[other.Terms.Length];
-            for (int i = 0; i < other.Terms.Length; i++) {
-                Terms[i] = other.Terms[i].Clone();
+        public override ISentence Substitute(Term target, Term replacement) {
+            var terms = new Term[Terms.Length];
+            for (var i = 0; i < Terms.Length; i++) {
+                terms[i] = Terms[i].Substitute(target, replacement);
             }
+
+            return Time.HasValue ? new Predicate(Symbol, terms, Time.Value) : new Predicate(Symbol, terms);
         }
 
-        public override void SubstituteTerm(Term term, Term replacement) =>
-            Term.SubstituteAll(Terms, term, replacement);
+        public override ISentence WithTimeShift(int offset) =>
+            Time.HasValue
+                ? new Predicate(Symbol, (Term[])Terms.Clone(), Time.Value + offset)
+                : this;
     
         public Variable[] GetVariables() {
             var variables = new List<Variable>();
@@ -41,19 +43,6 @@ namespace FirstOrderLogic {
                 variables.AddRange(term.GetVariables());
             }
             return variables.ToArray();
-        }
-
-        public bool HasBoundVariables() {
-            ISentence current = this;
-            while (current.Parent != null) {
-                current = current.Parent;
-            
-                if(current is IComplexSentence { IsQuantifier: true }) {
-                    return true;
-                }
-            }
-        
-            return false;
         }
 
         public override bool Equals(object? obj) {

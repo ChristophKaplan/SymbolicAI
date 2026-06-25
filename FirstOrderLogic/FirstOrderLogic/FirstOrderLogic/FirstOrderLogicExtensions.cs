@@ -77,7 +77,7 @@ namespace FirstOrderLogic {
             ToPrenexFormCore(sentence, null);
 
         private static ISentence ToPrenexFormCore(ISentence sentence, List<ISentence>? steps) {
-            var clone = sentence.Clone();
+            var clone = sentence;
 
             var transformations = new List<TransformationDelegate> {
                 (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.SimplifyConstants, ref s),
@@ -98,10 +98,10 @@ namespace FirstOrderLogic {
         private static void ApplyUntilStable(
             ref ISentence clone, List<TransformationDelegate> transformations, List<ISentence>? steps) {
             while (true) {
-                var start = clone.Clone();
+                var start = clone;
                 foreach (var transform in transformations) {
                     transform(ref clone);
-                    steps?.Add(clone.Clone());
+                    steps?.Add(clone);
                 }
                 if (start.Equals(clone)) {
                     break;
@@ -119,7 +119,7 @@ namespace FirstOrderLogic {
             ToConjunctiveNormalFormCore(sentence, null);
 
         private static ISentence ToConjunctiveNormalFormCore(ISentence sentence, List<ISentence>? steps) {
-            var clone = ToPrenexFormCore(sentence, steps).Clone();
+            var clone = ToPrenexFormCore(sentence, steps);
 
             var transformations = new List<TransformationDelegate> {
                 (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.DistributionOfDisjunction, ref s)
@@ -132,7 +132,7 @@ namespace FirstOrderLogic {
         }
 
         public static ISentence SkolemForm(this FirstOrderLogic logic, ISentence sentence) {
-            var clone = sentence.Clone();
+            var clone = sentence;
 
             // Expects PNF. Each existential becomes a Skolem term over the universals enclosing
             // it: sk1 if none, sk1(u, …) otherwise.
@@ -157,7 +157,7 @@ namespace FirstOrderLogic {
             }
 
             foreach (var variable in substitution.Keys) {
-                clone.SubstituteTerm(variable, substitution[variable]);
+                clone = clone.Substitute(variable, substitution[variable]);
             }
 
             TransformationFOL.Transform(TransformationFOL.EquivType.RemoveQuantifier, ref clone);
@@ -173,7 +173,7 @@ namespace FirstOrderLogic {
             if(sentence.IsDisjunctionOfLiterals())
             {
                 // Only the clause leaves need a defensive copy; interior conjunction nodes don't.
-                var clauseList = sentence.Clone().GetLiterals();
+                var clauseList = sentence.GetLiterals();
                 clauseSet.Add(new Clause(clauseList.ToArray()));
                 return clauseSet;
             }
@@ -205,9 +205,7 @@ namespace FirstOrderLogic {
         public static List<ISentence> GetInstancesOverTime(this ISentence sentence, int from, int to) {
             var sentences = new List<ISentence>();
             for (var i = from; i < to; i++) {
-                var clone = sentence.Clone();
-                clone.AddTime(i);
-                sentences.Add(clone);
+                sentences.Add(sentence.WithTimeShift(i));
             }
 
             return sentences;

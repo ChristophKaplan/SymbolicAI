@@ -28,16 +28,13 @@ namespace FirstOrderLogic {
                     var unify = new Unificator(lit1, lit2);
                     if (!unify.IsUnifiable) continue;
 
-                    // Substitute on clones so the source clauses are never mutated.
+                    // Apply the mgu purely; each result is fresh, so the source clauses are never mutated.
+                    var mgu = new Substitution(unify.Substitutions);
                     var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
-                        if (k != i) kept.Add(clause1.Literals[k].Clone());
+                        if (k != i) kept.Add(mgu.Apply(clause1.Literals[k]));
                     for (var k = 0; k < literals2.Count; k++)
-                        if (k != j) kept.Add(literals2[k].Clone());
-
-                    foreach (var pair in unify.Substitutions)
-                        foreach (var literal in kept)
-                            literal.SubstituteTerm(pair.Key, pair.Value);
+                        if (k != j) kept.Add(mgu.Apply(literals2[k]));
 
                     // Factoring: collapse literals that became identical after substitution.
                     var res = new List<ISentence>(kept.Count);
@@ -62,7 +59,7 @@ namespace FirstOrderLogic {
         {
             var leftNames = new HashSet<string>();
             foreach (var literal in left)
-                foreach (var variable in Bindings.VariablesOf(literal))
+                foreach (var variable in Literals.VariablesOf(literal))
                     leftNames.Add(variable.TermSymbol);
 
             if (leftNames.Count == 0) return right;
@@ -70,20 +67,20 @@ namespace FirstOrderLogic {
             var freshVarCounter = 0;
             var renames = new Dictionary<string, Variable>();
             foreach (var literal in right)
-                foreach (var variable in Bindings.VariablesOf(literal))
+                foreach (var variable in Literals.VariablesOf(literal))
                     if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
                         renames.Add(variable.TermSymbol, new Variable($"y${++freshVarCounter}"));
 
             if (renames.Count == 0) return right;
 
+            var theta = new Dictionary<Variable, Term>(renames.Count);
+            foreach (var pair in renames)
+                theta.Add(new Variable(pair.Key), pair.Value);
+
+            var substitution = new Substitution(theta);
             var renamed = new List<ISentence>(right.Count);
             foreach (var literal in right)
-            {
-                var clone = literal.Clone();
-                foreach (var pair in renames)
-                    clone.SubstituteTerm(new Variable(pair.Key), pair.Value);
-                renamed.Add(clone);
-            }
+                renamed.Add(substitution.Apply(literal));
 
             return renamed;
         }
@@ -98,7 +95,7 @@ namespace FirstOrderLogic {
 
             var canonical = new Dictionary<string, Variable>();
             foreach (var (literal, _) in ordered)
-                foreach (var variable in Bindings.VariablesOf(literal))
+                foreach (var variable in Literals.VariablesOf(literal))
                     if (!canonical.ContainsKey(variable.TermSymbol))
                         canonical.Add(variable.TermSymbol, new Variable($"x${canonical.Count + 1}"));
 
@@ -110,21 +107,22 @@ namespace FirstOrderLogic {
             foreach (var name in canonical.Keys)
                 temps.Add(name, new Variable($"t${temps.Count + 1}"));
 
-            foreach (var literal in literals)
+            for (var k = 0; k < literals.Count; k++)
+            {
+                var literal = literals[k];
                 foreach (var pair in temps)
-                    literal.SubstituteTerm(new Variable(pair.Key), pair.Value);
-
-            foreach (var literal in literals)
+                    literal = literal.Substitute(new Variable(pair.Key), pair.Value);
                 foreach (var pair in temps)
-                    literal.SubstituteTerm(pair.Value, canonical[pair.Key]);
+                    literal = literal.Substitute(pair.Value, canonical[pair.Key]);
+                literals[k] = literal;
+            }
         }
 
         private static string StructuralKey(ISentence literal)
         {
-            var clone = literal.Clone();
-            foreach (var variable in Bindings.VariablesOf(clone).ToList())
-                clone.SubstituteTerm(variable, Placeholder);
-            return clone.ToString();
+            foreach (var variable in Literals.VariablesOf(literal).ToList())
+                literal = literal.Substitute(variable, Placeholder);
+            return literal.ToString();
         }
 
         private static readonly Variable Placeholder = new("$");
@@ -136,7 +134,7 @@ namespace FirstOrderLogic {
         public static bool Resolve(ISentence knowledgeBase, ISentence consequence,
             bool useSubsumption = false, int maxRounds = 0) =>
             IsUnsatisfiable(new ComplexSentence(
-                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negate()),
+                knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negated()),
                 useSubsumption, maxRounds);
 
         // True iff the clause set derives the empty clause, i.e. `sentence` has no model.

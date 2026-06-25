@@ -13,15 +13,6 @@ namespace FirstOrderLogic {
             Terms = Array.Empty<Term>();
         }
     
-        public Function(Function other) : base(other.TermSymbol) {
-            Terms = new Term[other.Terms.Length];
-            for (var i = 0; i < other.Terms.Length; i++) {
-                Terms[i] = other.Terms[i].Clone();
-            }
-        }
-    
-        public void SubstituteTerm(Term term, Term replacement) => SubstituteAll(Terms, term, replacement);
-
         public bool Equals(Function? other)
         {
             if (other is null) {

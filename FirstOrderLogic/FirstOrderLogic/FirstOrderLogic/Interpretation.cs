@@ -135,11 +135,7 @@ namespace FirstOrderLogic {
             if(!_relations.TryGetValue(predicate.Symbol, out var relation)) {
                 throw new Exception($"Error: {predicate} not found in interpretation.");
             }
-        
-            if (predicate.HasBoundVariables()) {
-                throw new Exception($"Error: {predicate} has bound variables.");
-            }
-        
+
             return relation(Array.ConvertAll(predicate.Terms, Evaluate));
         }
     
@@ -152,17 +148,12 @@ namespace FirstOrderLogic {
             };
         }
 
-        private ISentence InstantiateVariable(Variable variable, ISentence sentence, IElementOfDiscourse element) {
-            //TODO: pass the constants as additional param, or as variable assigment? how is it done usually?
-        
+        // Substitution semantics: replace the bound variable with a fresh constant mapped to
+        // `element`. The substituted body is the quantifier-stripped sentence to evaluate.
+        private ISentence InstantiateVariable(Variable variable, ISentence body, IElementOfDiscourse element) {
             var constantToElement = new Constant($"{variable}_element_{element.Id}");
-
             _functions[constantToElement.TermSymbol] = _ => element;
-        
-            var clone = sentence.Clone(); 
-            clone.SubstituteTerm(variable, constantToElement);
-            clone.SetParentToParentOf(sentence.Parent); //remove quantifier
-            return clone;
+            return body.Substitute(variable, constantToElement);
         }
     }
 }

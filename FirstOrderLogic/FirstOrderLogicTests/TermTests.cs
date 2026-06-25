@@ -42,14 +42,6 @@ namespace FolTests {
         }
 
         [Test]
-        public void Clone_ProducesEqualButIndependentTerm() {
-            var f = new Function("f", new Term[] { new Variable("x") });
-            var clone = f.Clone();
-            Assert.That(clone, Is.EqualTo(f));
-            Assert.That(clone, Is.Not.SameAs(f));
-        }
-
-        [Test]
         public void GetVariables_CollectsNestedVariables() {
             var pred = (Predicate)Logic.TryParse("P(f(x),y,a)");
             var vars = pred.GetVariables();
@@ -62,6 +54,35 @@ namespace FolTests {
             var fx = new Function("f", new Term[] { x });
             Assert.That(fx.Occurs(x), Is.True);
             Assert.That(fx.Occurs(new Variable("y")), Is.False);
+        }
+
+        [Test]
+        public void Substitute_ReplacesMatchingVariable() {
+            Assert.That(new Variable("x").Substitute(new Variable("x"), new Constant("a")),
+                Is.EqualTo(new Constant("a")));
+        }
+
+        [Test]
+        public void Substitute_RecursesIntoFunction_WithoutMutatingOriginal() {
+            var fx = new Function("f", new Term[] { new Variable("x") });
+            var result = fx.Substitute(new Variable("x"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(new Function("f", new Term[] { new Constant("a") })));
+            Assert.That(fx, Is.EqualTo(new Function("f", new Term[] { new Variable("x") })));
+        }
+
+        [Test]
+        public void Substitute_ReplacesWholeMatchingFunction() {
+            var fx = new Function("f", new Term[] { new Variable("x") });
+            var gfx = new Function("g", new Term[] { fx });
+            Assert.That(gfx.Substitute(fx, new Variable("y")),
+                Is.EqualTo(new Function("g", new Term[] { new Variable("y") })));
+        }
+
+        // Nothing matched ⇒ the same instance is returned (subterms are shared, not copied).
+        [Test]
+        public void Substitute_ReturnsSameInstance_WhenNothingMatches() {
+            var fy = new Function("f", new Term[] { new Variable("y") });
+            Assert.That(fy.Substitute(new Variable("x"), new Constant("a")), Is.SameAs(fy));
         }
     }
 }

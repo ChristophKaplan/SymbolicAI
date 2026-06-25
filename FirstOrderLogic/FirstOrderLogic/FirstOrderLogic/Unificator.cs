@@ -67,6 +67,20 @@ namespace FirstOrderLogic
             IsUnifiable = UnifyLiteral(s1, s2);
             _hashcode = CalcHashCode();
         }
+
+        // Try-pattern over the constructor: the most general unifier of two literals, or false.
+        public static bool TryUnify(ISentence a, ISentence b, out Dictionary<Variable, Term> mgu)
+        {
+            var unificator = new Unificator(a, b);
+            if (!unificator.IsUnifiable)
+            {
+                mgu = new Dictionary<Variable, Term>();
+                return false;
+            }
+
+            mgu = new Dictionary<Variable, Term>(unificator.Substitutions);
+            return true;
+        }
         
         private bool UnifyLiteral(ISentence lit1, ISentence lit2)
         {
@@ -199,20 +213,27 @@ namespace FirstOrderLogic
 
         public void Substitute(Clause clause)
         {
-            clause.Literals.ForEach(Substitute);
+            for (var i = 0; i < clause.Literals.Count; i++)
+            {
+                clause.Literals[i] = Apply(clause.Literals[i]);
+            }
         }
 
-        public void Substitute(ISentence sentence)
+        // Applies the unifier, returning a new sentence; the input is never mutated.
+        public ISentence Apply(ISentence sentence)
         {
             if (!IsUnifiable)
             {
                 throw new Exception("Unificator is not usable!");
             }
 
+            var result = sentence;
             foreach (var pair in Substitutions)
             {
-                sentence.SubstituteTerm(pair.Key, pair.Value);
+                result = result.Substitute(pair.Key, pair.Value);
             }
+
+            return result;
         }
     }
 }

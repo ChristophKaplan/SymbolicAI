@@ -20,8 +20,8 @@ namespace AIPlanning.Planning.GraphPlan {
         public HashSet<Unificator> Unificators { get; private set; } = new();
 
         private GpAction(GpAction action) : this(action.Signifier,
-            action.Preconditions.Select(p => p.Clone()).ToList(),
-            action.Effects.Select(e => e.Clone()).ToList()) {
+            action.Preconditions.ToList(),
+            action.Effects.ToList()) {
         }
 
         public GpAction(string name, List<ISentence> preconditions, List<ISentence> effects)
@@ -84,8 +84,8 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public void SpecifyAction(Unificator unificator) {
-            foreach (var preCon in Preconditions) unificator.Substitute(preCon);
-            foreach (var effect in Effects) unificator.Substitute(effect);
+            for (var i = 0; i < Preconditions.Count; i++) Preconditions[i] = unificator.Apply(Preconditions[i]);
+            for (var i = 0; i < Effects.Count; i++) Effects[i] = unificator.Apply(Effects[i]);
             UpdateHashCode();
         }
 

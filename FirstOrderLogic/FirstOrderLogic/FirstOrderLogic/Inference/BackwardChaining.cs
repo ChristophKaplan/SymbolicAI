@@ -21,7 +21,7 @@ namespace FirstOrderLogic
         {
             if (!query.IsLiteral) return false;
             return Prove(Rule.FromAll(kb), new List<ISentence> { query },
-                    new Dictionary<Variable, Term>(), new List<ISentence>(),
+                    Substitution.Empty, new List<ISentence>(),
                     0, new Counter(), NoAbducibles, _maxDepth)
                 .Any();
         }
@@ -30,7 +30,7 @@ namespace FirstOrderLogic
         // over an abducible predicate may be assumed instead of proven.
         internal static IEnumerable<List<ISentence>> Prove(
             List<Rule> clauses, IReadOnlyList<ISentence> goals,
-            Dictionary<Variable, Term> theta, List<ISentence> assumed,
+            Substitution theta, List<ISentence> assumed,
             int depth, Counter counter, HashSet<string> abducibles, int maxDepth)
         {
             if (goals.Count == 0)
@@ -40,25 +40,25 @@ namespace FirstOrderLogic
             }
             if (depth > maxDepth) yield break;
 
-            var goal = Bindings.Apply(goals[0], theta);
+            var goal = theta.Apply(goals[0]);
             var rest = goals.Skip(1).ToList();
-            var sig = Bindings.Signature(goal);
+            var sig = Literals.Signature(goal);
 
             foreach (var clause in clauses)
             {
                 var fresh = clause.Renamed(counter.Next++);
-                if (Bindings.Signature(fresh.Head) != sig) continue;
-                if (!Bindings.TryUnify(goal, fresh.Head, out var mgu)) continue;
+                if (Literals.Signature(fresh.Head) != sig) continue;
+                if (!Unificator.TryUnify(goal, fresh.Head, out var mgu)) continue;
 
                 var subgoals = new List<ISentence>(fresh.Premises);
                 subgoals.AddRange(rest);
 
-                foreach (var solution in Prove(clauses, subgoals, Bindings.Extend(theta, mgu),
+                foreach (var solution in Prove(clauses, subgoals, theta.Extend(mgu),
                              assumed, depth + 1, counter, abducibles, maxDepth))
                     yield return solution;
             }
 
-            if (!abducibles.Contains(Bindings.SymbolOf(goal)) || !goal.IsGround()) yield break;
+            if (!abducibles.Contains(Literals.SymbolOf(goal)) || !goal.IsGround()) yield break;
             if (assumed.Any(a => a.IsNegationOf(goal))) yield break;
 
             var extended = assumed.Any(a => a.Equals(goal))

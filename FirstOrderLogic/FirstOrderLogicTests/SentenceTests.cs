@@ -59,18 +59,8 @@ namespace FolTests {
         [Test]
         public void Negate_OfNegationCancels() {
             var p = S("P(a)");
-            var doubleNegated = p.Negate().Negate();
+            var doubleNegated = p.Negated().Negated();
             Assert.That(doubleNegated, Is.EqualTo(p));
-        }
-
-        // Cloning must be deep: substituting on a clone never touches the original.
-        [Test]
-        public void Clone_IsDeepAndIndependent() {
-            var original = S("P(x)");
-            var clone = original.Clone();
-            clone.SubstituteTerm(new Variable("x"), new Constant("a"));
-            Assert.That(original, Is.EqualTo(S("P(x)")));
-            Assert.That(clone, Is.EqualTo(S("P(a)")));
         }
 
         [Test]
@@ -82,10 +72,24 @@ namespace FolTests {
         }
 
         [Test]
-        public void SubstituteTerm_ReplacesInsideFunctions() {
-            var s = S("P(f(x))");
-            s.SubstituteTerm(new Variable("x"), new Constant("a"));
-            Assert.That(s, Is.EqualTo(S("P(f(a))")));
+        public void Substitute_ReplacesInsideFunctions() {
+            var result = S("P(f(x))").Substitute(new Variable("x"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(S("P(f(a))")));
+        }
+
+        // Pure variant: returns a new tree and leaves the original untouched.
+        [Test]
+        public void Substitute_IsPure_AndReplacesThroughout() {
+            var original = S("P(x) AND Q(f(x))");
+            var result = original.Substitute(new Variable("x"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(S("P(a) AND Q(f(a))")));
+            Assert.That(original, Is.EqualTo(S("P(x) AND Q(f(x))")));
+        }
+
+        [Test]
+        public void Substitute_PreservesQuantifier() {
+            var result = S("FORALL x P(x,y)").Substitute(new Variable("y"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(S("FORALL x P(x,a)")));
         }
 
         // Time-indexed instances: rolling an action forward over [from, to).
