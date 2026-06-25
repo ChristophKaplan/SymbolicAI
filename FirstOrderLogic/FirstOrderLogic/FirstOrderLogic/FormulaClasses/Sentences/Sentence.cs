@@ -19,6 +19,7 @@ namespace FirstOrderLogic {
         void InsertChild(int index, ISentence sentence);
         void SetParentToParentOf(ISentence? parentOfThis);
         void SubstituteTerm(Term term, Term replacement);
+        ISentence Substitute(Term target, Term replacement);
         ISentence Clone();
         ISentence Negate();
         bool HasScopeConflict(List<Variable>? boundVariables = null);
@@ -48,6 +49,7 @@ namespace FirstOrderLogic {
         public bool IsNegation => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.NEGATION;
         public bool IsImplication => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.IMPLICATION;
         public abstract void SubstituteTerm(Term term, Term replacement);
+        public abstract ISentence Substitute(Term target, Term replacement);
         public abstract ISentence Negate();
         public abstract ISentence Clone();
     

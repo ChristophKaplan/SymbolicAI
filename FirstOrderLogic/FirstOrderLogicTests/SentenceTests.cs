@@ -88,6 +88,21 @@ namespace FolTests {
             Assert.That(s, Is.EqualTo(S("P(f(a))")));
         }
 
+        // Pure variant: returns a new tree and leaves the original untouched.
+        [Test]
+        public void Substitute_IsPure_AndReplacesThroughout() {
+            var original = S("P(x) AND Q(f(x))");
+            var result = original.Substitute(new Variable("x"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(S("P(a) AND Q(f(a))")));
+            Assert.That(original, Is.EqualTo(S("P(x) AND Q(f(x))")));
+        }
+
+        [Test]
+        public void Substitute_PreservesQuantifier() {
+            var result = S("FORALL x P(x,y)").Substitute(new Variable("y"), new Constant("a"));
+            Assert.That(result, Is.EqualTo(S("FORALL x P(x,a)")));
+        }
+
         // Time-indexed instances: rolling an action forward over [from, to).
         [Test]
         public void GetInstancesOverTime_ProducesShiftedCopies() {

@@ -90,6 +90,17 @@ namespace FirstOrderLogic {
                 child.SubstituteTerm(term, replacement);
             }
         }
+
+        public override ISentence Substitute(Term target, Term replacement) {
+            if (IsBinary) {
+                return new ComplexSentence(
+                    Children[0].Substitute(target, replacement),
+                    Connective.Symbol,
+                    Children[1].Substitute(target, replacement));
+            }
+
+            return new ComplexSentence(Connective.Clone(), Children[0].Substitute(target, replacement));
+        }
     
         public override ISentence Negate() {
             var negated = IsNegation ? Children[0] : new ComplexSentence(Connective.LogicSymbol.NEGATION, Clone());

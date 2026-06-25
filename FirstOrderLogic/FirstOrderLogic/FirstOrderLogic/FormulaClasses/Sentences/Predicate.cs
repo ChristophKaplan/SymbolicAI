@@ -37,6 +37,15 @@ namespace FirstOrderLogic {
                 Terms[i] = Terms[i].Substitute(term, replacement);
             }
         }
+
+        public override ISentence Substitute(Term target, Term replacement) {
+            var terms = new Term[Terms.Length];
+            for (var i = 0; i < Terms.Length; i++) {
+                terms[i] = Terms[i].Substitute(target, replacement);
+            }
+
+            return Time.HasValue ? new Predicate(Symbol, terms, Time.Value) : new Predicate(Symbol, terms);
+        }
     
         public Variable[] GetVariables() {
             var variables = new List<Variable>();

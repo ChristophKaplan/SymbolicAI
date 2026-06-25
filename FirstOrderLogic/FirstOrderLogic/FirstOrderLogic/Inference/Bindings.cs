@@ -22,17 +22,16 @@ namespace FirstOrderLogic
             }
         }
 
-        // Returns a fresh clone; never mutates the input.
+        // Returns a fresh sentence; never mutates the input.
         public static ISentence Apply(ISentence literal, IReadOnlyDictionary<Variable, Term> theta)
         {
-            var clone = literal.Clone();
-            if (theta.Count == 0) return clone;
-            foreach (var v in VariablesOf(clone).ToList())
+            var result = literal;
+            foreach (var v in VariablesOf(literal).ToList())
             {
                 var resolved = Walk(v, theta);
-                if (!resolved.Equals(v)) clone.SubstituteTerm(v, resolved);
+                if (!resolved.Equals(v)) result = result.Substitute(v, resolved);
             }
-            return clone;
+            return ReferenceEquals(result, literal) ? literal.Clone() : result;
         }
 
         // Callers only extend with bindings for variables absent from theta, so the union is

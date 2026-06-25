@@ -28,16 +28,12 @@ namespace FirstOrderLogic {
                     var unify = new Unificator(lit1, lit2);
                     if (!unify.IsUnifiable) continue;
 
-                    // Substitute on clones so the source clauses are never mutated.
+                    // Apply the mgu purely; each result is fresh, so the source clauses are never mutated.
                     var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
-                        if (k != i) kept.Add(clause1.Literals[k].Clone());
+                        if (k != i) kept.Add(Bindings.Apply(clause1.Literals[k], unify.Substitutions));
                     for (var k = 0; k < literals2.Count; k++)
-                        if (k != j) kept.Add(literals2[k].Clone());
-
-                    foreach (var pair in unify.Substitutions)
-                        foreach (var literal in kept)
-                            literal.SubstituteTerm(pair.Key, pair.Value);
+                        if (k != j) kept.Add(Bindings.Apply(literals2[k], unify.Substitutions));
 
                     // Factoring: collapse literals that became identical after substitution.
                     var res = new List<ISentence>(kept.Count);
@@ -76,14 +72,13 @@ namespace FirstOrderLogic {
 
             if (renames.Count == 0) return right;
 
+            var theta = new Dictionary<Variable, Term>(renames.Count);
+            foreach (var pair in renames)
+                theta.Add(new Variable(pair.Key), pair.Value);
+
             var renamed = new List<ISentence>(right.Count);
             foreach (var literal in right)
-            {
-                var clone = literal.Clone();
-                foreach (var pair in renames)
-                    clone.SubstituteTerm(new Variable(pair.Key), pair.Value);
-                renamed.Add(clone);
-            }
+                renamed.Add(Bindings.Apply(literal, theta));
 
             return renamed;
         }

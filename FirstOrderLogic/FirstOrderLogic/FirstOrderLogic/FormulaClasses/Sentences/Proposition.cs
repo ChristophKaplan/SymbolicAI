@@ -10,5 +10,7 @@ namespace FirstOrderLogic {
         public override void SubstituteTerm(Term term, Term replacement) {
             //no terms
         }
+
+        public override ISentence Substitute(Term target, Term replacement) => Clone();
     }
 }
