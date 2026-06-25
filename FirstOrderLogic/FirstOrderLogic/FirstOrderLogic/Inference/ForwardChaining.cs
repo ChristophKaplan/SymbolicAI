@@ -43,8 +43,8 @@ namespace FirstOrderLogic
         // Some fact is an instance of `query` (same polarity).
         public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {
-            var sig = Literals.Signature(query);
-            return facts.Any(f => Literals.Signature(f) == sig && Unificator.TryUnify(query, f, out _));
+            var sig = query.Signature();
+            return facts.Any(f => f.Signature() == sig && Unificator.TryUnify(query, f, out _));
         }
 
         // Every substitution extending `theta` under which all premises from `index` onward hold.
@@ -59,10 +59,10 @@ namespace FirstOrderLogic
             }
 
             var goal = theta.Apply(premises[index]);
-            var sig = Literals.Signature(goal);
+            var sig = goal.Signature();
             foreach (var fact in facts)
             {
-                if (Literals.Signature(fact) != sig) continue;
+                if (fact.Signature() != sig) continue;
                 if (!Unificator.TryUnify(goal, fact, out var mgu)) continue;
                 var extended = theta.Extend(mgu);
                 foreach (var solution in Match(premises, index + 1, extended, facts))

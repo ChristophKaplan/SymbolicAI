@@ -57,8 +57,8 @@ namespace FirstOrderLogic
 
         private IEnumerable<Variable> Variables()
         {
-            var all = Literals.VariablesOf(Head).ToList();
-            foreach (var p in Premises) all.AddRange(Literals.VariablesOf(p));
+            var all = Head.VariablesOf().ToList();
+            foreach (var p in Premises) all.AddRange(p.VariablesOf());
             return all.Distinct();
         }
 

@@ -39,7 +39,7 @@ namespace FirstOrderLogic
         }
 
         private static HashSet<string> ConflictKeys(IEnumerable<ISentence> kb) =>
-            Theory.FindAllConflicts(ForwardChaining.Saturate(kb))
+            ForwardChaining.Saturate(kb).Conflicts()
                 .Select(c => c.Claim.ToString())
                 .ToHashSet();
 

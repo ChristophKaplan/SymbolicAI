@@ -17,25 +17,8 @@ namespace FirstOrderLogic
             State = state ?? new List<ISentence>();
         }
         
-        public static List<(ISentence Claim, ISentence Counter)> FindAllConflicts(IReadOnlyList<ISentence> literals)
-        {
-            var pairs = new List<(ISentence Claim, ISentence Counter)>();
-            for (var i = 0; i < literals.Count; i++)
-            {
-                for (var j = i + 1; j < literals.Count; j++)
-                {
-                    if (!literals[i].IsNegationOf(literals[j])) continue;
+        public List<(ISentence Claim, ISentence Counter)> Conflicts() => ForwardChaining.Saturate(State).Conflicts();
 
-                    (ISentence Claim, ISentence Counter) tuple = literals[i].IsNegation
-                        ? new (literals[j], literals[i])
-                        : new (literals[i], literals[j]);
-                    pairs.Add(tuple);
-                }
-            }
-
-            return pairs;
-        }
-        
         public bool Entails(ISentence target)
         {
             if (State.Count == 0) return false;
@@ -50,20 +33,16 @@ namespace FirstOrderLogic
             var contradictions = new List<(ISentence Claim, ISentence Counter)>();
             var silences       = new List<ISentence>();
 
-            var closure = mode == ComparisonMode.Chaining && other?.State != null
-                ? ForwardChaining.Saturate(other.State)
-                : null;
+            var heldByOther = HeldByOther(other, mode);
 
             foreach (var s in State)
             {
                 if (s == null) continue;
-                var counter = Complement(s);
-                if (HoldsIn(other, closure, s, mode))
-                    agreements.Add(s);
-                else if (HoldsIn(other, closure, counter, mode))
-                    contradictions.Add(new (s, counter));
-                else
-                    silences.Add(s);
+                var counter = s.Negated();
+
+                if (heldByOther(s)) agreements.Add(s);
+                else if (heldByOther(counter)) contradictions.Add(new(s, counter));
+                else silences.Add(s);
             }
 
             return new TheoryComparison(agreements, contradictions, silences, mode);
@@ -77,7 +56,7 @@ namespace FirstOrderLogic
             switch (mode)
             {
                 case ComparisonMode.Chaining:
-                    return FindAllConflicts(ForwardChaining.Saturate(union)).Count == 0;
+                    return ForwardChaining.Saturate(union).Conflicts().Count == 0;
                 case ComparisonMode.Semantic:
                     return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
                 default:
@@ -85,28 +64,29 @@ namespace FirstOrderLogic
             }
         }
         
-        public List<(ISentence Claim, ISentence Counter)> Conflicts() => FindAllConflicts(ForwardChaining.Saturate(State));
-
         public bool IsConsistent() => Conflicts().Count == 0;
-
-        private static bool HoldsIn(ITheory? other, List<ISentence>? closure, ISentence s, ComparisonMode mode)
+        
+        private static Func<ISentence, bool> HeldByOther(ITheory? other, ComparisonMode mode)
         {
-            if (other?.State == null) return false;
+            if (other?.State == null) return _ => false;
+
             switch (mode)
             {
                 case ComparisonMode.Semantic:
-                    return other.Entails(s);
-                case ComparisonMode.Chaining when s.IsLiteral:
-                    return ForwardChaining.Holds(closure!, s);
+                    return other.Entails;
+                case ComparisonMode.Chaining:
+                    var closure = ForwardChaining.Saturate(other.State);
+                    // Chaining derives only literals; a non-literal (rule) can only be matched syntactically.
+                    return s => s.IsLiteral
+                        ? ForwardChaining.Holds(closure, s)
+                        : other.State.Any(x => x != null && x.Equals(s));
                 default:
-                    return other.State.Any(x => x != null && x.Equals(s));
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
             }
         }
 
-        private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) =>
-            _logic.ConnectSentences(sentences.ToList());
-
-        private static ISentence Complement(ISentence s) => s.Negated();
+        private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => _logic.ConnectSentences(sentences.ToList());
+        
 
         public override bool Equals(object? obj)
         {

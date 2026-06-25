@@ -42,12 +42,12 @@ namespace FirstOrderLogic
 
             var goal = theta.Apply(goals[0]);
             var rest = goals.Skip(1).ToList();
-            var sig = Literals.Signature(goal);
+            var sig = goal.Signature();
 
             foreach (var clause in clauses)
             {
                 var fresh = clause.Renamed(counter.Next++);
-                if (Literals.Signature(fresh.Head) != sig) continue;
+                if (fresh.Head.Signature() != sig) continue;
                 if (!Unificator.TryUnify(goal, fresh.Head, out var mgu)) continue;
 
                 var subgoals = new List<ISentence>(fresh.Premises);
@@ -58,7 +58,7 @@ namespace FirstOrderLogic
                     yield return solution;
             }
 
-            if (!abducibles.Contains(Literals.SymbolOf(goal)) || !goal.IsGround()) yield break;
+            if (!abducibles.Contains(goal.SymbolOf()) || !goal.IsGround()) yield break;
             if (assumed.Any(a => a.IsNegationOf(goal))) yield break;
 
             var extended = assumed.Any(a => a.Equals(goal))

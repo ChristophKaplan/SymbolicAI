@@ -59,7 +59,7 @@ namespace FirstOrderLogic {
         {
             var leftNames = new HashSet<string>();
             foreach (var literal in left)
-                foreach (var variable in Literals.VariablesOf(literal))
+                foreach (var variable in literal.VariablesOf())
                     leftNames.Add(variable.TermSymbol);
 
             if (leftNames.Count == 0) return right;
@@ -67,7 +67,7 @@ namespace FirstOrderLogic {
             var freshVarCounter = 0;
             var renames = new Dictionary<string, Variable>();
             foreach (var literal in right)
-                foreach (var variable in Literals.VariablesOf(literal))
+                foreach (var variable in literal.VariablesOf())
                     if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
                         renames.Add(variable.TermSymbol, new Variable($"y${++freshVarCounter}"));
 
@@ -95,7 +95,7 @@ namespace FirstOrderLogic {
 
             var canonical = new Dictionary<string, Variable>();
             foreach (var (literal, _) in ordered)
-                foreach (var variable in Literals.VariablesOf(literal))
+                foreach (var variable in literal.VariablesOf())
                     if (!canonical.ContainsKey(variable.TermSymbol))
                         canonical.Add(variable.TermSymbol, new Variable($"x${canonical.Count + 1}"));
 
@@ -120,7 +120,7 @@ namespace FirstOrderLogic {
 
         private static string StructuralKey(ISentence literal)
         {
-            foreach (var variable in Literals.VariablesOf(literal).ToList())
+            foreach (var variable in literal.VariablesOf().ToList())
                 literal = literal.Substitute(variable, Placeholder);
             return literal.ToString();
         }
@@ -138,8 +138,7 @@ namespace FirstOrderLogic {
                 useSubsumption, maxRounds);
 
         // True iff the clause set derives the empty clause, i.e. `sentence` has no model.
-        public static bool IsUnsatisfiable(ISentence sentence,
-            bool useSubsumption = false, int maxRounds = 0)
+        public static bool IsUnsatisfiable(ISentence sentence, bool useSubsumption = false, int maxRounds = 0)
         {
             // Clausification needs a quantifier-free sentence: prenex, then skolemize. Runs after
             // Resolve's negation, so goal quantifiers are already flipped — the order that keeps

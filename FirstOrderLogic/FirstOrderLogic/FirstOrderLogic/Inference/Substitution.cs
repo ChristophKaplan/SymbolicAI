@@ -35,7 +35,7 @@ namespace FirstOrderLogic
         public ISentence Apply(ISentence literal)
         {
             var result = literal;
-            foreach (var v in Literals.VariablesOf(literal))
+            foreach (var v in literal.VariablesOf())
             {
                 var resolved = Walk(v);
                 if (!resolved.Equals(v)) result = result.Substitute(v, resolved);
