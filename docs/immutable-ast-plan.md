@@ -81,12 +81,24 @@ mutators of any kind.
 **Phase 5c-2 — Retire `Clone()`. [done, ab104e9]** Replaced every `ISentence`/`Term` `.Clone()`
 with structural sharing and deleted the `Clone()` methods + copy constructors.
 
-## Not done (deliberately deferred)
+## Phase 6 — AIPlanning + perf
+
+- **AIPlanning migration: done** (folded into 5a/5c). `GpAction.SpecifyAction` rebuilds via the
+  pure `Unificator.Apply`; the copy ctor copies a list of shared immutable sentences. No
+  mutable-sentence API remains in the planner.
+- **Hash-consing / perf pass: evaluated and declined.** Implemented the two immutability-enabled
+  optimizations — a `ReferenceEquals` fast-path in `Equals` and memoized `GetHashCode` — and
+  measured them on `PerfBench`. The deltas were within run-to-run noise: this workload is bound
+  by pair-iteration, normal-form conversion, and the `StructuralKey` `ToString` allocations in
+  canonicalization, not by hashing/equality. Reverted to avoid unjustified complexity (mutable
+  cache fields on otherwise-pure types). If a real bottleneck appears on large FOL problems, the
+  profitable targets are the canonicalization keys and skipping canonicalization for variable-free
+  clauses — not node interning.
+
+## Not done (deliberately left)
 
 - **`Connective` immutability** — `Connective.Symbol` is still a public field. Nothing mutates
   it (FlipOperator is gone), so it's effectively immutable; making it readonly is cosmetic.
-- **Hash-consing / interning** — the immutable AST now permits it; deferred unless profiling
-  shows a need.
 
 ## Effort & risk
 
