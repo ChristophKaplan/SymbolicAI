@@ -174,6 +174,10 @@ namespace FirstOrderLogic {
 
         ILanguageObject GetConnective(Symbol[] rhs) => new Connective(((LexValue)rhs[0].Attribute).ToLogicalConstant());
 
+        // LRParser renamed the throwing entry point to Parse; keep TryParse(string)
+        // here so existing callers (and the List overload below) keep working.
+        public ILanguageObject TryParse(string input) => base.Parse(input);
+
         public List<ILanguageObject> TryParse(List<string> inputList)
         {
             var langObjList = new List<ILanguageObject>();
