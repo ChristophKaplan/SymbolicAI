@@ -57,16 +57,12 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            var possibleConditionalActionSets = curBeliefState.GetPossibleConflictFreeActionSets();
-            if (possibleConditionalActionSets.Count == 0) {
-                noGoods.Add(levelIndex, curBeliefState);
-                return false;
-            }
-
             var nextLevelIndex = levelIndex - 1;
             var anyBranchSucceeded = false;
 
-            foreach (var possibleConditionalActions in possibleConditionalActionSets) {
+            // Empty stream (no conflict-free action set supports this goal state) falls through to
+            // the !anyBranchSucceeded block below, which records the nogood — same as before.
+            foreach (var possibleConditionalActions in curBeliefState.GetPossibleConflictFreeActionSets()) {
                 var preConditionalState = possibleConditionalActions.GetJointPreconditionsIfConflictFree();
 
                 // Skip action sets whose joint preconditions are mutex at the previous

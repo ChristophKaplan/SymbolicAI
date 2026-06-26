@@ -67,23 +67,52 @@ namespace AIPlanning.Planning.GraphPlan {
             return conflictFree.Count == literals.Count;
         }
 
-        public List<GpActionSet> GetPossibleConflictFreeActionSets() {
-            var inEdgesActionLists = _literalNodes.Select(stateNode => stateNode.InEdges).ToList();
-            var possibleCombinationsOfActions = inEdgesActionLists.GetCombinations().Select(c => c.Distinct().ToList()).ToList();
+        // Blum & Furst §3.2: choose one supporting action per goal literal, never picking a
+        // supporter mutex with one already selected, and reusing a selection that also supports
+        // a later goal (minimality). This backtracking DFS prunes mutex partial selections as it
+        // goes, instead of materialising the full cartesian product of every goal's supporters
+        // and filtering afterwards — the eager product blew up exponentially with the number of
+        // supporters per goal (e.g. one Chop grounding per tree).
+        public IEnumerable<GpActionSet> GetPossibleConflictFreeActionSets() {
+            return SelectSupporters(0, new List<GpNode>());
+        }
 
-            var possibleActionSets = new List<GpActionSet>();
+        private IEnumerable<GpActionSet> SelectSupporters(int goalIndex, List<GpNode> chosen) {
+            if (goalIndex == _literalNodes.Count) {
+                if (chosen.Count > 0) {
+                    yield return new GpActionSet(new List<GpNode>(chosen));
+                }
+                yield break;
+            }
 
-            foreach (var possibleActionNodes in possibleCombinationsOfActions) {
-                if (possibleActionNodes.Count == 0) {
+            var goalSupporters = _literalNodes[goalIndex].InEdges;
+
+            // Minimality: if something already selected supports this goal, reuse it rather than
+            // branching on every supporter. This is what stops redundant supersets — a real
+            // action plus the Persist of the same literal — from multiplying out.
+            if (chosen.Any(goalSupporters.Contains)) {
+                foreach (var set in SelectSupporters(goalIndex + 1, chosen)) {
+                    yield return set;
+                }
+                yield break;
+            }
+
+            foreach (var supporter in goalSupporters) {
+                if (chosen.Any(c => AreMutex(c, supporter))) {
                     continue;
                 }
 
-                if (possibleActionNodes.IsConflictFree()) {
-                    possibleActionSets.Add(new GpActionSet(possibleActionNodes));
+                chosen.Add(supporter);
+                foreach (var set in SelectSupporters(goalIndex + 1, chosen)) {
+                    yield return set;
                 }
+                chosen.RemoveAt(chosen.Count - 1);
             }
+        }
 
-            return possibleActionSets;
+        // Mutex is recorded symmetrically (GpNode.TryAddMutexRelations), so checking one side suffices.
+        private static bool AreMutex(GpNode a, GpNode b) {
+            return a.MutexRelation.Any(m => m.ToNode.Equals(b));
         }
 
         public override int GetHashCode() {

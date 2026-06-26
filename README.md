@@ -115,7 +115,7 @@ var all    = ks.FindAllKernels(K, α);    // every independent proof path
 
 # AIPlanning
 
-A C# implementation of the **GraphPlan** algorithm (Blum & Furst, 1995) for classical
+A C# implementation of the **GraphPlan** algorithm (Blum & Furst, 1995/1997) for classical
 AI planning with first-order action schemas.
 
 ## What it does
@@ -166,8 +166,9 @@ A runnable version lives in `AIPlanning/AIPlanningExample/Program.cs`.
 
 ## Features
 
-- **Lifted action schemas** — actions written with logical variables, grounded against
-  the current state at plan time.
+- **Lifted action schemas** — actions written with logical variables, grounded once via the
+  operator graph (the goal-relevant instantiations), with applicability re-checked against
+  each layer's state.
 - **Mutex reasoning** — standard GraphPlan mutual-exclusion analysis on literals and actions.
 - **NoGoods memoisation** — failed subgoal sets cached across levels, with the Blum/Furst
   termination criterion (level-off + stable nogoods => no plan).
@@ -190,13 +191,41 @@ A runnable version lives in `AIPlanning/AIPlanningExample/Program.cs`.
 Effects can be positive (add) or negative (delete). Variables shared between
 preconditions and effects are unified at grounding time against constants in the world state.
 
+## How the pieces fit together
+
+This implementation combines two of the papers below along the line they themselves draw
+between *lifted* (variables kept) and *grounded* (variables instantiated) reasoning:
+
+- **`OperatorGraph`** (Smith & Peot) is **lifted**: it back-chains from the goal through the
+  action schemas, unifying effects with preconditions, to isolate the operators relevant to
+  the goal and the instantiations they require. It is built once per problem and acts as a
+  relevance filter / grounder.
+- **The planning graph** (`GpPlanGraph` / `GpLayer`, Blum & Furst) is **grounded**: every
+  action node is a fully instantiated operator, and mutex reasoning (interference + competing
+  needs) runs over ground literals and actions, level by level.
+
+Using a lifted operator graph as a relevance filter in front of a grounded planning graph is
+exactly the goal-directed scheme described in mea_graphplan §4.1. The grounding cost, and the
+O(groundings²) mutex check per layer, are inherent to grounded GraphPlan — which is why the
+multi-agent / joint-planning encoding scales super-linearly with the number of agents.
+
 ## Further reading
 
 The papers in `AIPlanning/` are the working references:
 
-- `graphplan_paper.pdf` — Blum & Furst, *Fast Planning Through Planning Graph Analysis*
-- `operatorgraph.pdf` — notes on the operator-grounding structure
-- `mea_graphplan.pdf` — means-ends analysis sketches
+- `graphplan_paper.pdf` — A. Blum & M. Furst, *Fast Planning Through Planning Graph Analysis*
+  (IJCAI-95; extended version in *Artificial Intelligence* 90(1–2):281–300, 1997). The core
+  GraphPlan algorithm: planning-graph construction, mutex propagation, level-by-level backward
+  search, and the "level-off" termination test.
+- `operatorgraph.pdf` — D. Smith & M. Peot, *Postponing Threats in Partial-Order Planning*
+  (AAAI-93). Defines the **operator graph** — a goal-back-chained, unification-based (lifted)
+  structure capturing which operators are relevant to a goal. Source of the `OperatorGraph`
+  used here (Start/Finish operators, use counts, threats as effects unifying with the negation
+  of a precondition).
+- `mea_graphplan.pdf` — S. Kambhampati, E. Parker & E. Lambrecht, *Understanding and Extending
+  Graphplan*. Reconstructs GraphPlan as forward state-space refinement over disjunctive plans
+  (with backward search as a dynamic CSP), and in §4.1 proposes using operator graphs to make
+  GraphPlan goal-directed — the way the operator graph and planning graph fit together here.
 
 ## License
 

@@ -34,10 +34,13 @@ namespace AIPlanningTests {
     //      independently; neither deletes the other's fact.
     //   3. Different goals — a single joint problem satisfies heterogeneous OughtStates
     //      (Wage for one agent, Energy for another) without conflict.
-    //   4. Performance — solve time grows super-linearly with agent count.
-    //      The OperatorGraph grounds every action template against every constant; mutex
-    //      checking is O(groundings²) per layer.  Doubling agents roughly quadruples the
-    //      work.  See the [Explicit] benchmarks for measured numbers.
+    //   4. Performance — solve time grows roughly polynomially with agent/entity count.
+    //      An earlier *exponential* blowup was NOT the O(groundings²) mutex check, as once
+    //      assumed, but the eager cartesian-product enumeration of conflict-free action sets
+    //      during extraction. That is now Blum & Furst §3.2 incremental supporter selection
+    //      (GpBeliefState.SelectSupporters), which took the 8-tree case from ~64 s to ~0.5 s.
+    //      Residual cost is exhaustive grounding + the O(groundings²) mutex check per layer.
+    //      See the [Explicit] benchmarks for measured numbers.
     //   5. Architectural conclusion — per-agent planning + a coordination layer above
     //      the planner (task allocator assigning differentiated goals) is the right
     //      design.  Joint planning is interesting but not production-viable for N > 2.
@@ -290,9 +293,10 @@ namespace AIPlanningTests {
 
         [Test, Explicit("Benchmark — run manually to measure multi-agent scaling")]
         public void MultiAgent_ScalingByAgentCount() {
-            // Hypothesis: solve time grows super-linearly (roughly O(n²)) with agent count
-            // because the OperatorGraph grounds every action template against every constant
-            // and mutex-conflict checking is O(groundings²) per layer expansion.
+            // Solve time grows roughly polynomially with agent count: exhaustive grounding
+            // plus the O(groundings²) mutex check per layer. (The former exponential blowup
+            // came from eager action-set enumeration in extraction, now replaced with the
+            // Blum & Furst §3.2 incremental supporter selection.)
             var trees      = new[] { "TreeA" };
             var workplaces = new[] { "YardA" };
 
@@ -330,7 +334,8 @@ namespace AIPlanningTests {
             // Every additional tree T adds:
             //   Tree(T), -At(Alice, T), -At(Bob, T)  → 3 new state facts
             //   1 new Chop grounding per agent → 2n new grounded actions
-            // The OperatorGraph re-grounds all action templates every layer expansion.
+            // The OperatorGraph grounds these once up front; each layer then filters them by
+            // applicability (it does not re-ground per layer).
             TestContext.Progress.WriteLine(
                 $"{"trees",8}  {"state facts",12}  {"ms",10}");
             TestContext.Progress.WriteLine(new string('-', 35));
