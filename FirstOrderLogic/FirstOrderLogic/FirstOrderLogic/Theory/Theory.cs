@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,7 +13,11 @@ namespace FirstOrderLogic
 
         private readonly List<ISentence> _state;
 
-        public IReadOnlyList<ISentence> State => _state;
+        // A theory is its belief base: enumerate, count, and index it directly.
+        public int Count => _state.Count;
+        public ISentence this[int index] => _state[index];
+        public IEnumerator<ISentence> GetEnumerator() => _state.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public Theory(List<ISentence> state) =>
             _state = (state ?? Enumerable.Empty<ISentence>()).Where(s => s != null).ToList();
@@ -53,32 +58,32 @@ namespace FirstOrderLogic
 
         private List<ISentence> Union(ITheory? other)
         {
-            var union = new List<ISentence>(State);
-            if (other?.State != null) union.AddRange(other.State);
+            var union = new List<ISentence>(this);
+            if (other != null) union.AddRange(other);
             return union;
         }
         
         
         public bool Entails(ISentence target)
         {
-            if (State.Count == 0) return false;
-            return Resolution.Resolve(Conjoin(State), target);
+            if (this.Count == 0) return false;
+            return Resolution.Resolve(Conjoin(this), target);
         }
 
-        public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);
+        public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(this, target);
 
         // How our sentences stand against the other theory: each is something it holds (agreement),
         // something whose negation it holds (disagreement), or something it is silent on.
         public Stance Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
-            if (other?.State == null)
-                return new Stance(new List<ISentence>(), new List<ISentence>(), State.ToList());
+            if (other == null)
+                return new Stance(new List<ISentence>(), new List<ISentence>(), this.ToList());
 
             var closure = ChainingClosure(other, mode);
             var agree = new List<ISentence>();
             var disagree = new List<ISentence>();
             var silent = new List<ISentence>();
-            foreach (var s in State)
+            foreach (var s in this)
             {
                 if (HeldByOther(other, s, closure)) agree.Add(s);
                 else if (HeldByOther(other, s.Negated(), closure)) disagree.Add(s);
@@ -89,7 +94,7 @@ namespace FirstOrderLogic
 
         // The other theory's derivable literals under chaining; null means use semantic entailment instead.
         private static IReadOnlyList<ISentence>? ChainingClosure(ITheory other, ComparisonMode mode) =>
-            mode == ComparisonMode.Syntactic ? ForwardChaining.Saturate(other.State) : null;
+            mode == ComparisonMode.Syntactic ? ForwardChaining.Saturate(other) : null;
 
         // Does the other theory hold s? With a chaining closure, check literal derivation
         // (a non-literal rule can only be matched by identity); without one, use semantic entailment.
@@ -98,7 +103,7 @@ namespace FirstOrderLogic
             if (closure == null) return other.Entails(s);
             return s.IsLiteral
                 ? ForwardChaining.Holds(closure, s)
-                : other.State.Any(x => x != null && x.Equals(s));
+                : other.Any(x => x != null && x.Equals(s));
         }
 
         private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => _logic.ConnectSentences(sentences.ToList());
@@ -106,7 +111,7 @@ namespace FirstOrderLogic
         public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType()) return false;
-            return State.SequenceEqual(((Theory)obj).State);
+            return this.SequenceEqual((Theory)obj);
         }
 
         public override int GetHashCode()
@@ -114,11 +119,11 @@ namespace FirstOrderLogic
             unchecked
             {
                 var hash = 17;
-                foreach (var sentence in State) hash = hash * 31 + sentence.GetHashCode();
+                foreach (var sentence in this) hash = hash * 31 + sentence.GetHashCode();
                 return hash;
             }
         }
 
-        public override string ToString() => string.Join("\n", State);
+        public override string ToString() => string.Join("\n", this);
     }
 }

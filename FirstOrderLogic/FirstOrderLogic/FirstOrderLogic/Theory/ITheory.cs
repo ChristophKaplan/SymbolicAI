@@ -2,9 +2,8 @@ using System.Collections.Generic;
 
 namespace FirstOrderLogic
 {
-    public interface ITheory
+    public interface ITheory : IReadOnlyList<ISentence>
     {
-        IReadOnlyList<ISentence> State { get; }
 
         bool Entails(ISentence target);
         
