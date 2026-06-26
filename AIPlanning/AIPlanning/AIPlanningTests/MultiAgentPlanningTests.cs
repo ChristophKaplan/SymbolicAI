@@ -44,6 +44,30 @@ namespace AIPlanningTests {
     //   5. Architectural conclusion — per-agent planning + a coordination layer above
     //      the planner (task allocator assigning differentiated goals) is the right
     //      design.  Joint planning is interesting but not production-viable for N > 2.
+    //   6. Would a *lifted* planner help?  Profiling put mutex pair-checking at ~54% of
+    //      solve time — the only cost lifting (collapsing symmetric ground instances into
+    //      one node) could attack. We measured the ceiling on a feasibility branch by
+    //      instrumenting CheckMutexRelations to count pair-checks vs pair-checks that found
+    //      a REAL mutex (hit rate = the share lifting CANNOT remove), across two axes:
+    //
+    //        SYMMETRIC (independent agents, 1 tree/1 yard)   CONTENTION (one exclusive yard)
+    //        agents  pairChecks  mutexes  hitRate            agents  pairChecks  mutexes  hitRate
+    //          2        3,301      586    17.75%               2         762      244    32.02%
+    //          3        7,142      879    12.31%               3       1,577      476    30.18%
+    //          4       12,447    1,172     9.42%               4       2,685      784    29.20%
+    //          5       19,216    1,465     7.62%               5       4,086    1,168    28.59%
+    //
+    //      Symmetric hit rate FALLS as agents grow (17.75%→7.62%): adding independent agents
+    //      makes an ever-larger share of mutex work wasted on instances that never conflict —
+    //      a high lifting ceiling. Contention hit rate stays FLAT (~30%): those conflicts are
+    //      real and irreducible — a lifted planner must still ground them out to detect them,
+    //      so lifting can't help there. I.e. lifting only speeds up the cases that are already
+    //      cheap (independent agents) and does nothing for the expensive ones (contention).
+    //      Worse, where lifting would help, per-agent decomposition (finding #5) helps MORE for
+    //      almost no effort: N separate solves never enumerate a single cross-agent pair, so
+    //      they erase the entire wasted block without a lifted planner. VERDICT: a lifted
+    //      planner (weeks of work, lifted-mutex-as-CSP correctness risk) is NOT worth building;
+    //      it is dominated by decomposition on one side and powerless on the other.
     [TestFixture]
     public class MultiAgentPlanningTests {
         private static readonly GpActionFactory Factory = new();
@@ -379,6 +403,52 @@ namespace AIPlanningTests {
 
             TestContext.Progress.WriteLine($"2 agents, 10 trees: {sw.ElapsedMilliseconds} ms, facts={problem.InitialState.Count}");
             Assert.That(solution.IsEmpty, Is.False);
+        }
+
+        [Test, Explicit("Profile — split solve time into grounding (OperatorGraph) vs the rest")]
+        public void Profile_GroundingShare() {
+            var workplaces = new[] { "YardA" };
+            var agents     = new[] { "Alice", "Bob" };
+
+            // Warm up the JIT so the first measured row is not penalised.
+            {
+                var warm = BuildJointWorkProblem(agents, new[] { "T0" }, workplaces);
+                _ = new OperatorGraph(warm);
+                _ = warm.Solve();
+            }
+
+            TestContext.Progress.WriteLine(
+                $"{"trees",6}  {"facts",6}  {"ground ms",10}  {"solve ms",10}  {"ground %",9}");
+            TestContext.Progress.WriteLine(new string('-', 52));
+
+            foreach (var treeCount in new[] { 3, 5, 8, 10 }) {
+                var trees = Enumerable.Range(0, treeCount).Select(i => $"Tree{i}").ToArray();
+                var facts = BuildJointWorkProblem(agents, trees, workplaces).InitialState.Count;
+
+                // Grounding only: build the OperatorGraph (best of 3 to cut noise).
+                var groundMs = double.MaxValue;
+                for (var r = 0; r < 3; r++) {
+                    var p = BuildJointWorkProblem(agents, trees, workplaces);
+                    var sw = Stopwatch.StartNew();
+                    _ = new OperatorGraph(p);
+                    sw.Stop();
+                    if (sw.Elapsed.TotalMilliseconds < groundMs) groundMs = sw.Elapsed.TotalMilliseconds;
+                }
+
+                // Full solve (best of 3).
+                var solveMs = double.MaxValue;
+                for (var r = 0; r < 3; r++) {
+                    var p = BuildJointWorkProblem(agents, trees, workplaces);
+                    var sw = Stopwatch.StartNew();
+                    _ = p.Solve();
+                    sw.Stop();
+                    if (sw.Elapsed.TotalMilliseconds < solveMs) solveMs = sw.Elapsed.TotalMilliseconds;
+                }
+
+                var pct = solveMs > 0 ? 100.0 * groundMs / solveMs : 0;
+                TestContext.Progress.WriteLine(
+                    $"{treeCount,6}  {facts,6}  {groundMs,10:F2}  {solveMs,10:F2}  {pct,8:F1}%");
+            }
         }
 
         [Test, Timeout(10000)]
