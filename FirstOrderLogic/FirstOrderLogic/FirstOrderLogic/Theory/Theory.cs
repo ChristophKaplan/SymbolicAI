@@ -67,30 +67,25 @@ namespace FirstOrderLogic
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(State, target);
 
-        // Our sentences that the other theory also holds.
-        public List<ISentence> Agreements(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
-            HeldBy(other, mode, negate: false);
-
-        // Our sentences the other theory refutes — it holds their negation.
-        public List<ISentence> Conflicts(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
-            HeldBy(other, mode, negate: true);
-
-        // Our sentences the other theory is silent on — it holds neither them nor their negation.
-        public List<ISentence> Silences(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
+        // How our sentences stand against the other theory: each is something it holds (agreement),
+        // something whose negation it holds (disagreement), or something it is silent on.
+        public Stance Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
-            if (other?.State == null) return State.ToList();
-            var closure = ChainingClosure(other, mode);
-            return State.Where(s => !HeldByOther(other, s, closure)
-                                 && !HeldByOther(other, s.Negated(), closure)).ToList();
-        }
+            if (other?.State == null)
+                return new Stance(new List<ISentence>(), new List<ISentence>(), State.ToList());
 
-        private List<ISentence> HeldBy(ITheory? other, ComparisonMode mode, bool negate)
-        {
-            if (other?.State == null) return new List<ISentence>();
             var closure = ChainingClosure(other, mode);
-            return State.Where(s => HeldByOther(other, negate ? s.Negated() : s, closure)).ToList();
+            var agree = new List<ISentence>();
+            var disagree = new List<ISentence>();
+            var silent = new List<ISentence>();
+            foreach (var s in State)
+            {
+                if (HeldByOther(other, s, closure)) agree.Add(s);
+                else if (HeldByOther(other, s.Negated(), closure)) disagree.Add(s);
+                else silent.Add(s);
+            }
+            return new Stance(agree, disagree, silent);
         }
-        
 
         // The other theory's derivable literals under chaining; null means use semantic entailment instead.
         private static IReadOnlyList<ISentence>? ChainingClosure(ITheory other, ComparisonMode mode) =>

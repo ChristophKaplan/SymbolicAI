@@ -6,16 +6,9 @@ using FirstOrderLogic;
 namespace AIPlanning.Planning.GraphPlan {
     public static class HelperExtensions {
         public static bool Match(this ISentence sentence, ISentence other, [NotNullWhen(true)] out Unificator? unificator) {
-            unificator = null;
-            if (sentence.IsNegationOf(other, true)) { return false; }
-
-            var temp = new Unificator(other, sentence);
-            if (!temp.IsUnifiable) {
-                return false;
-            }
-
-            unificator = temp;
-            return true;
+            // Delegates to the shared FOL matching primitive. Argument order is preserved so the
+            // returned unifier binds in the same direction callers (e.g. SpecifyAction) rely on.
+            return Unificator.TryMatch(other, sentence, out unificator);
         }
 
         public static bool IsNegationOfAndMatch(this ISentence sentence, ISentence other, [NotNullWhen(true)] out Unificator? unificator) {

@@ -41,18 +41,16 @@ namespace FirstOrderLogic
 
             var goal = theta.Apply(goals[0]);
             var rest = goals.Skip(1).ToList();
-            var sig = goal.Signature();
 
             foreach (var clause in clauses)
             {
                 var fresh = clause.Renamed(counter.Next++);
-                if (fresh.Head.Signature() != sig) continue;
-                if (!Unificator.TryUnify(goal, fresh.Head, out var mgu)) continue;
+                if (!Unificator.TryMatch(goal, fresh.Head, out var match)) continue;
 
                 var subgoals = new List<ISentence>(fresh.Premises);
                 subgoals.AddRange(rest);
 
-                foreach (var solution in Prove(clauses, subgoals, theta.Extend(mgu),
+                foreach (var solution in Prove(clauses, subgoals, theta.Extend(match.Substitutions),
                              assumed, depth + 1, counter, abducibles, maxDepth))
                     yield return solution;
             }

@@ -59,8 +59,8 @@ namespace FolTests
         {
             var a = new Theory(Set("Have(Alice, Money)"));
             var b = new Theory(Set("Have(Alice, Money)"));
-            Assert.That(a.Agreements(b).Count, Is.EqualTo(1));
-            Assert.That(a.Conflicts(b), Is.Empty);
+            Assert.That(a.Compare(b).Agreements.Count, Is.EqualTo(1));
+            Assert.That(a.Compare(b).Disagreements, Is.Empty);
         }
 
         [Test]
@@ -68,7 +68,7 @@ namespace FolTests
         {
             var claim = S("Have(Alice, Money)");
             var conflicts = new Theory(new List<ISentence> { claim.Negated() })
-                .Conflicts(new Theory(new List<ISentence> { claim }));
+                .Compare(new Theory(new List<ISentence> { claim })).Disagreements;
             Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
@@ -77,17 +77,17 @@ namespace FolTests
         {
             var a = new Theory(Set("Have(Bob, Money)"));
             var b = new Theory(Set("Have(Alice, Money)"));
-            Assert.That(a.Agreements(b), Is.Empty);
-            Assert.That(a.Conflicts(b), Is.Empty);
+            Assert.That(a.Compare(b).Agreements, Is.Empty);
+            Assert.That(a.Compare(b).Disagreements, Is.Empty);
         }
 
         [Test]
         public void Empty_OnEmptyOrNullInputs()
         {
             Assert.That(new Theory(new List<ISentence>())
-                .Agreements(new Theory(Set("Have(Alice, Money)"))), Is.Empty);
-            Assert.That(new Theory(Set("Have(Alice, Money)")).Agreements(null), Is.Empty);
-            Assert.That(new Theory(Set("Have(Alice, Money)")).Conflicts(null), Is.Empty);
+                .Compare(new Theory(Set("Have(Alice, Money)"))).Agreements, Is.Empty);
+            Assert.That(new Theory(Set("Have(Alice, Money)")).Compare(null).Agreements, Is.Empty);
+            Assert.That(new Theory(Set("Have(Alice, Money)")).Compare(null).Disagreements, Is.Empty);
         }
 
         [Test]
@@ -97,8 +97,8 @@ namespace FolTests
             var disputed = S("Have(Alice, Money)");
             var a = new Theory(new List<ISentence> { shared, disputed });
             var b = new Theory(new List<ISentence> { shared, disputed.Negated() });
-            Assert.That(a.Agreements(b).Count, Is.EqualTo(1));
-            Assert.That(a.Conflicts(b).Count, Is.EqualTo(1));
+            Assert.That(a.Compare(b).Agreements.Count, Is.EqualTo(1));
+            Assert.That(a.Compare(b).Disagreements.Count, Is.EqualTo(1));
         }
 
         // ── Chaining vs semantic ────────────────────────────────────────────────
@@ -108,7 +108,7 @@ namespace FolTests
         {
             var a = new Theory(Set("Have(Alice, Money)"));
             var b = new Theory(Set("Owns(Alice, Housea)"));
-            Assert.That(a.Conflicts(b, ComparisonMode.Syntactic), Is.Empty);
+            Assert.That(a.Compare(b, ComparisonMode.Syntactic).Disagreements, Is.Empty);
         }
 
         [Test]
@@ -116,7 +116,7 @@ namespace FolTests
         {
             var claim = S("Have(Alice, Money)");
             var conflicts = new Theory(new List<ISentence> { claim })
-                .Conflicts(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Syntactic);
+                .Compare(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Syntactic).Disagreements;
             Assert.That(conflicts.Count, Is.EqualTo(1));
             Assert.That(conflicts[0], Is.EqualTo(claim));
         }
@@ -126,7 +126,7 @@ namespace FolTests
         {
             var claim = S("Have(Alice, Money)");
             var conflicts = new Theory(new List<ISentence> { claim })
-                .Conflicts(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Semantic);
+                .Compare(new Theory(new List<ISentence> { claim.Negated() }), ComparisonMode.Semantic).Disagreements;
             Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
@@ -134,7 +134,7 @@ namespace FolTests
         public void Semantic_CatchesChainedContradiction()
         {
             var conflicts = new Theory(Set("Rich(Alice)"))
-                .Conflicts(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Semantic);
+                .Compare(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Semantic).Disagreements;
             Assert.That(conflicts, Is.Not.Empty);
         }
 
@@ -145,8 +145,8 @@ namespace FolTests
             // (the clash needs premises from both sides), so only the union check can see it.
             var a = new Theory(Set("P", "P => Q"));
             var b = new Theory(Set("Q => R", "NOT R"));
-            Assert.That(a.Conflicts(b, ComparisonMode.Semantic), Is.Empty);
-            Assert.That(b.Conflicts(a, ComparisonMode.Semantic), Is.Empty);
+            Assert.That(a.Compare(b, ComparisonMode.Semantic).Disagreements, Is.Empty);
+            Assert.That(b.Compare(a, ComparisonMode.Semantic).Disagreements, Is.Empty);
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
             Assert.That(b.IsConsistentWith(a, ComparisonMode.Semantic), Is.False);
         }
@@ -166,7 +166,7 @@ namespace FolTests
             // so the directional Conflicts from B misses it but IsConsistentWith must not.
             var a = new Theory(Set("Rich(Alice)"));
             var b = new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)"));
-            Assert.That(b.Conflicts(a, ComparisonMode.Semantic), Is.Empty);
+            Assert.That(b.Compare(a, ComparisonMode.Semantic).Disagreements, Is.Empty);
             Assert.That(b.IsConsistentWith(a, ComparisonMode.Semantic), Is.False);
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
         }
@@ -178,7 +178,7 @@ namespace FolTests
         {
             // Syntactically silent (Mortal never literally stated), but the closure derives it.
             var agreements = new Theory(Set("Mortal(Sokrates)"))
-                .Agreements(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Syntactic);
+                .Compare(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Syntactic).Agreements;
             Assert.That(agreements.Count, Is.EqualTo(1));
         }
 
@@ -186,7 +186,7 @@ namespace FolTests
         public void Chaining_FindsDerivedContradiction()
         {
             var conflicts = new Theory(Set("Rich(Alice)"))
-                .Conflicts(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Syntactic);
+                .Compare(new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)")), ComparisonMode.Syntactic).Disagreements;
             Assert.That(conflicts.Count, Is.EqualTo(1));
             Assert.That(conflicts[0].Negated().ToString(), Is.EqualTo(S("-Rich(Alice)").ToString()));
         }
@@ -196,7 +196,7 @@ namespace FolTests
         {
             // A shared rule counts as agreement; chaining adds nothing for non-literals.
             var agreements = new Theory(Set("Human(x) => Mortal(x)"))
-                .Agreements(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Syntactic);
+                .Compare(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Syntactic).Agreements;
             Assert.That(agreements.Count, Is.EqualTo(1));
         }
 
@@ -206,7 +206,7 @@ namespace FolTests
             // The complement of a stated rule counts as a conflict (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
             var conflicts = new Theory(new List<ISentence> { rule })
-                .Conflicts(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Syntactic);
+                .Compare(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Syntactic).Disagreements;
             Assert.That(conflicts.Count, Is.EqualTo(1));
         }
 
@@ -280,7 +280,7 @@ namespace FolTests
             var before = rule.ToString();
 
             var conflicts = new Theory(new List<ISentence> { consequent })
-                .Conflicts(new Theory(Set("B")), ComparisonMode.Semantic);
+                .Compare(new Theory(Set("B")), ComparisonMode.Semantic).Disagreements;
 
             Assert.That(conflicts.Count, Is.EqualTo(1));
             Assert.That(rule.ToString(), Is.EqualTo(before));

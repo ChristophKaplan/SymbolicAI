@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace FirstOrderLogic
@@ -81,7 +82,30 @@ namespace FirstOrderLogic
             mgu = new Dictionary<Variable, Term>(unificator.Substitutions);
             return true;
         }
-        
+
+        // The shared single-literal matching primitive: two literals match iff they have the same
+        // polarity and their atoms unify, in which case the unifier is returned. Forward/backward
+        // chaining and the planner's operator graph all bottom out here, so "what it means for two
+        // literals to match" — including the polarity rule — lives in exactly one place.
+        public static bool TryMatch(ISentence a, ISentence b, [NotNullWhen(true)] out Unificator? match)
+        {
+            if (a.IsNegation != b.IsNegation)
+            {
+                match = null;
+                return false;
+            }
+
+            var unificator = new Unificator(a, b);
+            if (!unificator.IsUnifiable)
+            {
+                match = null;
+                return false;
+            }
+
+            match = unificator;
+            return true;
+        }
+
         private bool UnifyLiteral(ISentence lit1, ISentence lit2)
         {
             if (!lit1.IsLiteral || !lit2.IsLiteral)

@@ -24,7 +24,8 @@ namespace FirstOrderLogic
                 foreach (var rule in rules)
                 {
                     var fresh = rule.Renamed(rename++);
-                    foreach (var theta in Match(fresh.Premises, 0, Substitution.Empty, facts))
+                    var matches = Match(fresh.Premises, 0, Substitution.Empty, facts);
+                    foreach (var theta in matches)
                     {
                         var head = theta.Apply(fresh.Head);
                         if (known.Add(head)) added = true;
@@ -56,12 +57,10 @@ namespace FirstOrderLogic
             }
 
             var goal = theta.Apply(premises[index]);
-            var sig = goal.Signature();
             foreach (var fact in facts)
             {
-                if (fact.Signature() != sig) continue;
-                if (!Unificator.TryUnify(goal, fact, out var mgu)) continue;
-                var extended = theta.Extend(mgu);
+                if (!Unificator.TryMatch(goal, fact, out var match)) continue;
+                var extended = theta.Extend(match.Substitutions);
                 foreach (var solution in Match(premises, index + 1, extended, facts))
                     yield return solution;
             }
