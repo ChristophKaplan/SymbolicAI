@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace FirstOrderLogic
 {
     // Builds an Interpretation over a fixed Signature, enforcing that every declared symbol is
-    // interpreted (predicate → relation, constant → function). Rule-derived predicates are exempt.
-    // Concrete subclasses fill the tables in Define().
+    // interpreted (predicate → relation, constant → function). A first-order structure is total
+    // over its signature, so every declared predicate must have a relation. Concrete subclasses
+    // fill the tables in Define().
     public abstract class Semantics
     {
         protected readonly Dictionary<string, Func<IElementOfDiscourse[], bool>> Relations = new();
@@ -15,9 +15,6 @@ namespace FirstOrderLogic
         protected readonly Dictionary<IProposition, bool> PropositionalAssignments = new();
 
         protected abstract Signature Signature { get; }
-
-        // Predicates produced by rules rather than read extensionally — no relation required.
-        protected virtual IReadOnlyCollection<string> DerivedPredicates => Array.Empty<string>();
 
         // Populate Relations / Functions / assignments for the current context.
         protected abstract void Define();
@@ -43,7 +40,7 @@ namespace FirstOrderLogic
             var problems = new List<string>();
 
             foreach (var predicate in Signature.Predicates.Keys)
-                if (!DerivedPredicates.Contains(predicate) && !Relations.ContainsKey(predicate))
+                if (!Relations.ContainsKey(predicate))
                     problems.Add($"no relation for declared predicate '{predicate}'");
 
             foreach (var relation in Relations.Keys)

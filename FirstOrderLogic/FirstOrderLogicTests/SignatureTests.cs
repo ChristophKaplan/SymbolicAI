@@ -87,16 +87,16 @@ namespace FolTests
 
         // ── Semantics base: enforces the signature ↔ interpretation contract ──────
 
-        // Declares Human (interpreted) + Role (derived/exempt) + constant Sokrates; only Human and
-        // the constant are interpreted — Role intentionally has no relation.
+        // Declares Human + Role predicates + constant Sokrates, and interprets all of them: a
+        // first-order structure is total over its signature.
         private sealed class CoveringSemantics : Semantics
         {
             protected override Signature Signature => new Signature.Builder()
                 .Predicate("Human", 1).Predicate("Role", 2).Constant("Sokrates").Build();
-            protected override IReadOnlyCollection<string> DerivedPredicates => new[] { "Role" };
             protected override void Define()
             {
-                Relations["Human"]   = _ => true;
+                Relations["Human"]    = _ => true;
+                Relations["Role"]     = _ => true;
                 Functions["Sokrates"] = _ => new Element(1);
             }
         }
@@ -125,7 +125,7 @@ namespace FolTests
         }
 
         [Test]
-        public void BuildInterpretation_SucceedsWhenCovered_DerivedNeedsNoRelation()
+        public void BuildInterpretation_SucceedsWhenEveryDeclaredSymbolIsInterpreted()
         {
             var interpretation = new CoveringSemantics().BuildInterpretation(new Domain());
             Assert.That(interpretation, Is.Not.Null);
