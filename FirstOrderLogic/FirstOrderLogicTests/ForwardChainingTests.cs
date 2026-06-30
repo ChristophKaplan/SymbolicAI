@@ -125,6 +125,15 @@ namespace FolTests {
             Assert.That(closure.Count, Is.EqualTo(2));
         }
 
+        // Holds is a literal-fact lookup; a non-literal query (e.g. a rule-form norm) is a misuse
+        // and fails loudly rather than silently — callers must not pass implications.
+        [Test]
+        public void Holds_NonLiteralQuery_Throws() {
+            var facts = Set("Have(mySelf, Money)", "Role(mySelf, Worker)");
+            Assert.That(() => ForwardChaining.Holds(facts, S("Role(z, Worker) => Have(z, Money)")),
+                Throws.ArgumentException);
+        }
+
         // An unsafe rule — head variable y is not bound by the body — is rejected loudly rather
         // than silently looping: each round would otherwise derive a freshly-renamed Q(y#n) and
         // never reach a fixpoint.

@@ -17,15 +17,12 @@ namespace FirstOrderLogic
             Disagreements = disagreements;
             Silences      = silences;
         }
+        
+        // Shares are over verdicts (agreements + disagreements), not the total — silence carries no weight,
+        // so the two shares sum to 1 when there is any verdict and are both 0 when the other only stays silent.
+        public float AgreementShare    => Verdicts == 0 ? 0f : (float)Agreements.Count    / Verdicts;
+        public float DisagreementShare => Verdicts == 0 ? 0f : (float)Disagreements.Count / Verdicts;
 
-        // 1 = every verdict agrees, 0 = every verdict disagrees, 0.5 = no verdict (silence only / empty).
-        public float Alignment
-        {
-            get
-            {
-                var decided = Agreements.Count + Disagreements.Count;
-                return decided == 0 ? 0.5f : (float)Agreements.Count / decided;
-            }
-        }
+        private int Verdicts => Agreements.Count + Disagreements.Count;
     }
 }
