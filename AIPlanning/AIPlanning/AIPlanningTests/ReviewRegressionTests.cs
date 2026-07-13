@@ -4,11 +4,11 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // Reproduction tests for suspected correctness bugs found in code review.
-    // Each test asserts the CORRECT behavior — a failing test CONFIRMS the suspected bug.
+    // Regression tests pinning the correctness bugs found (and fixed) in the July 2026
+    // code review. Each test failed against the defect it describes.
     [TestFixture]
-    [Category("SuspectedIssue")]
-    public class SuspectedIssuesTests {
+    [Category("Regression")]
+    public class ReviewRegressionTests {
         private static readonly GpActionFactory Factory = new();
 
         private static GpSolution SolveWithGuard(GpProblem problem) {
@@ -19,7 +19,7 @@ namespace AIPlanningTests {
             return solution!;
         }
 
-        // Suspected: OperatorGraph.cs:47 GetActionsForLiteral uses exact literal equality, so the
+        // Fixed defect: OperatorGraph.cs:47 GetActionsForLiteral uses exact literal equality, so the
         // ground runtime literal Q(Obj) never matches the operator-graph node Q(x) created from a
         // non-ground chained precondition — the second action in the chain never fires.
         [Test]
@@ -39,7 +39,7 @@ namespace AIPlanningTests {
                 "matched by the ground literal Q(Obj)");
         }
 
-        // Suspected: GpPlanGraph.cs FindSolutions has no success base case at level 0, so goals
+        // Fixed defect: GpPlanGraph.cs FindSolutions has no success base case at level 0, so goals
         // already satisfied in the initial state force a needless expansion and yield a spurious
         // one-step persist plan instead of a zero-step plan.
         [Test]
@@ -69,7 +69,7 @@ namespace AIPlanningTests {
                 $"Actual layers: [{string.Join(", ", plan.Keys)}]");
         }
 
-        // Suspected: OperatorGraph reachability is driven purely by precondition edges
+        // Fixed defect: OperatorGraph reachability is driven purely by precondition edges
         // (MapPreConditionsToAction), so an action with an empty precondition list is never
         // returned by GetActionsForLiteral and can never fire.
         [Test]
@@ -88,7 +88,7 @@ namespace AIPlanningTests {
                 "operator graph");
         }
 
-        // Suspected: GpBeliefState.GetSubSetOfNodesMatching (GpBeliefState.cs:47) applies
+        // Fixed defect: GpBeliefState.GetSubSetOfNodesMatching (GpBeliefState.cs:47) applies
         // Distinct() and callers compare the count against literals.Count, so duplicate goal
         // literals make a trivially solvable problem unsolvable.
         [Test]
@@ -106,7 +106,7 @@ namespace AIPlanningTests {
                 "solution means Distinct() made the goal-count comparison fail forever");
         }
 
-        // Suspected: NoGoods.IsStable (NoGoods.cs:27-45) compares the TOTAL nogood count across
+        // Fixed defect: NoGoods.IsStable (NoGoods.cs:27-45) compares the TOTAL nogood count across
         // expansions, but every failed extraction at a NEW level adds a nogood keyed by that
         // level, so the count grows strictly and the termination branch in GraphPlanAlgo.cs:28
         // never fires -> infinite loop on unsolvable problems whose goals stay pairwise non-mutex.
@@ -138,7 +138,7 @@ namespace AIPlanningTests {
                 "recognise the problem as unsolvable and return an empty solution");
         }
 
-        // Suspected: GpAction.SpecifyAction (GpAction.cs:87) applies Unificator.Apply, which
+        // Fixed defect: GpAction.SpecifyAction (GpAction.cs:87) applies Unificator.Apply, which
         // substitutes sequentially without resolving triangular substitutions like
         // {x->Obj, z->f(x)}, leaving under-instantiated (non-ground) literals in the action.
         [Test]

@@ -5,13 +5,13 @@ using FirstOrderLogic;
 using NUnit.Framework;
 
 namespace FolTests {
-    // Reproduction tests for suspected correctness bugs. Each test asserts the CORRECT
-    // (sound) behavior; a failing test confirms the corresponding defect.
-    [Category("SuspectedIssue")]
-    public class SuspectedIssuesTests : TestBase {
+    // Regression tests pinning the correctness bugs found (and fixed) in the July 2026
+    // code review. Each test failed against the defect it describes.
+    [Category("Regression")]
+    public class ReviewRegressionTests : TestBase {
         private static readonly TimeSpan Bound = TimeSpan.FromSeconds(5);
 
-        // Suspect: Unificator.cs ~208 — UnifyVar occurs-checks the raw term without dereferencing
+        // Fixed defect: Unificator.cs ~208 — UnifyVar occurs-checks the raw term without dereferencing
         // existing bindings, so P(x,f(x)) vs P(f(y),y) "unifies" with cyclic {x→f(y), y→f(x)}.
         [Test]
         public void Issue01_OccursCheck_MustDereferenceBindings() {
@@ -20,7 +20,7 @@ namespace FolTests {
                 $"x = f(f(x)) has no solution; got substitutions: {u}");
         }
 
-        // Suspect: Resolution.cs — binary resolution without a separate factoring rule cannot
+        // Fixed defect: Resolution.cs — binary resolution without a separate factoring rule cannot
         // refute {P(x) ∨ P(y)} ∪ {¬P(z) ∨ ¬P(w)}, which is unsatisfiable.
         [Test]
         public void Issue02_Resolution_NeedsFactoring_ReportsUnsatisfiable() {
@@ -30,7 +30,7 @@ namespace FolTests {
             Assert.That(task.Result, Is.True, "clause set is unsatisfiable but was not refuted");
         }
 
-        // Suspect: Sentence.cs line 74 — the recursion drops the boundVariables argument, so
+        // Fixed defect: Sentence.cs line 74 — the recursion drops the boundVariables argument, so
         // HasScopeConflict never sees an enclosing binder and always returns false.
         [Test]
         public void Issue03_HasScopeConflict_DetectsNestedRebinding() {
@@ -38,7 +38,7 @@ namespace FolTests {
             Assert.That(s.HasScopeConflict(), Is.True);
         }
 
-        // Suspect: BackwardChaining.cs ~50 — Prove expands only fresh.Premises and ignores
+        // Fixed defect: BackwardChaining.cs ~50 — Prove expands only fresh.Premises and ignores
         // NafPremises, so a rule blocked by NAF still fires in backward chaining.
         [Test]
         public void Issue04_BackwardChaining_MustRespectNafPremises() {
@@ -50,7 +50,7 @@ namespace FolTests {
                 "NAF Broken(myCar) fails (Broken(myCar) is derivable), so the rule must not fire");
         }
 
-        // Suspect: FirstOrderLogic.cs line 157 — only {x,y,z,w} parse as variables, so in
+        // Fixed defect: FirstOrderLogic.cs line 157 — only {x,y,z,w} parse as variables, so in
         // "FORALL p (Person(p))" the quantifier binds nothing: the term p becomes a Constant.
         [Test]
         public void Issue05_Quantifier_BindsNonWhitelistedVariableName() {
@@ -60,7 +60,7 @@ namespace FolTests {
                 $"term 'p' under FORALL p parsed as {body.Terms[0].GetType().Name}");
         }
 
-        // Suspect: grammar has no operator precedence — "A AND B OR C" should conventionally be
+        // Fixed defect: grammar has no operator precedence — "A AND B OR C" should conventionally be
         // (A AND B) OR C (root OR), but parses right-nested as A AND (B OR C) (root AND).
         [Test]
         public void Issue06_Precedence_ConjunctionBindsTighterThanDisjunction() {
@@ -69,21 +69,21 @@ namespace FolTests {
                 $"parsed as: {s}");
         }
 
-        // Suspect: unary/binary conflation in the grammar — a leading binary connective is
+        // Fixed defect: unary/binary conflation in the grammar — a leading binary connective is
         // accepted as a unary node instead of being rejected.
         [Test]
         public void Issue07_MalformedInput_LeadingBinaryConnective_Throws() {
             Assert.That(() => Logic.TryParse("AND P"), Throws.Exception);
         }
 
-        // Suspect: unary/binary conflation in the grammar — NOT is accepted in a binary position,
+        // Fixed defect: unary/binary conflation in the grammar — NOT is accepted in a binary position,
         // producing a corrupt two-child negation node instead of a parse error.
         [Test]
         public void Issue07_MalformedInput_BinaryNot_Throws() {
             Assert.That(() => Logic.TryParse("P NOT Q"), Throws.Exception);
         }
 
-        // Suspect: FirstOrderLogicExtensions.cs ~148 — skolemCounter is local to each SkolemForm
+        // Fixed defect: FirstOrderLogicExtensions.cs ~148 — skolemCounter is local to each SkolemForm
         // call, so independently skolemized sentences reuse the same Skolem name (sk1).
         [Test]
         public void Issue08_SkolemNames_UniqueAcrossCalls() {
@@ -104,7 +104,7 @@ namespace FolTests {
             }
         }
 
-        // Suspect: Semantic\Semantics.cs ~22 — BuildInterpretation hands its own mutable
+        // Fixed defect: Semantic\Semantics.cs ~22 — BuildInterpretation hands its own mutable
         // dictionaries to every Interpretation and Clear()s them on the next build, so an earlier
         // interpretation silently changes.
         [Test]
@@ -123,7 +123,7 @@ namespace FolTests {
                 "first interpretation changed after the second build (aliased dictionaries)");
         }
 
-        // Suspect: Rule.From accepts function-containing "safe" rules and ForwardChaining.Saturate
+        // Fixed defect: Rule.From accepts function-containing "safe" rules and ForwardChaining.Saturate
         // is unbounded, so {P(a), P(x) ⇒ P(f(x))} derives P(f(a)), P(f(f(a))), … forever.
         [Test]
         public void Issue10_ForwardChaining_FunctionSymbols_MustTerminate() {
@@ -139,7 +139,7 @@ namespace FolTests {
             Assert.That(task.Wait(Bound), Is.True, "Saturate did not terminate within 5s");
         }
 
-        // Suspect: Unificator.cs ~247 — Apply performs one sequential pass over the triangular
+        // Fixed defect: Unificator.cs ~247 — Apply performs one sequential pass over the triangular
         // substitution {x→a, z→f(x)}, so Q(z) becomes Q(f(x)) instead of Q(f(a)).
         [Test]
         public void Issue11_UnificatorApply_ResolvesChainedBindings() {
