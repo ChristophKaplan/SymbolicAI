@@ -8,6 +8,8 @@ namespace AIPlanning.Planning.GraphPlan {
         private readonly GpProblem _problem;
         private readonly List<GpLiteralNode> _literalNodes = new();
         private readonly List<GpAction> _actions;
+        private readonly List<GpAction> _preconditionlessInstances = new();
+        private GpAction? _startAction;
 
         private const int UseCountStop = 10;
 
@@ -25,6 +27,7 @@ namespace AIPlanning.Planning.GraphPlan {
         {
             var startNode = new GpActionNode(new GpAction("Start",
                 new List<ISentence>(), new List<ISentence>(_problem.InitialState)));
+            _startAction = startNode.GpAction;
             var finishNode = new GpActionNode(new GpAction("Finish",
                 new List<ISentence>(_problem.Goals), new List<ISentence>()));
 
@@ -43,22 +46,41 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public List<GpAction> GetActionsForLiteral(ISentence literal)
         {
+            // Unification-based lookup: graph nodes created from non-ground preconditions
+            // (e.g. Q(x)) must be found by the ground literals (Q(a)) that arise at runtime;
+            // exact equality would leave every action anchored only to such a node unreachable.
             var instances = new List<GpAction>();
-            var node = _literalNodes.FirstOrDefault(node => literal.Equals(node.Literal));
-            if (node == null)
+            foreach (var node in _literalNodes)
             {
-                return instances;
-            }
+                if (!node.Literal.Match(literal, out _))
+                {
+                    continue;
+                }
 
-            var direct = node.OutEdges.Select(outEdge => ((GpActionNode)outEdge).GpAction).ToList();
-            instances.AddRange(direct);
+                foreach (var outEdge in node.OutEdges)
+                {
+                    instances.Add(((GpActionNode)outEdge).GpAction);
+                }
+            }
 
             return instances;
         }
 
+        // Actions without preconditions hang off no literal node, so the edge-driven lookup
+        // above can never surface them; they are applicable in any state.
+        public IReadOnlyList<GpAction> GetActionsWithoutPreconditions() => _preconditionlessInstances;
+
         private void ReplaceAbstractWithConcreteActions()
         {
             var instanceMap = InstantiateActions();
+
+            foreach (var pair in instanceMap)
+            {
+                if (pair.Key.Preconditions.Count == 0 && !ReferenceEquals(pair.Key, _startAction))
+                {
+                    _preconditionlessInstances.AddRange(pair.Value);
+                }
+            }
 
             foreach (var literalNode in _literalNodes)
             {

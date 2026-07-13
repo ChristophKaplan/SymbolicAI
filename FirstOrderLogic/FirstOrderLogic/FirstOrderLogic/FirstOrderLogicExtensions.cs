@@ -138,6 +138,13 @@ namespace FirstOrderLogic {
             return clone;
         }
 
+        // Process-wide so that independently skolemized sentences never share a witness name:
+        // conjoining two results that both contain sk1 would conflate distinct existentials.
+        private static int _skolemCounter;
+
+        // Test seam for assertions that pin exact Skolem names.
+        public static void ResetSkolemCounter() => System.Threading.Interlocked.Exchange(ref _skolemCounter, 0);
+
         public static ISentence SkolemForm(this FirstOrderLogic logic, ISentence sentence) {
             var clone = sentence;
 
@@ -145,7 +152,6 @@ namespace FirstOrderLogic {
             // it: sk1 if none, sk1(u, …) otherwise.
             var substitution = new Dictionary<Variable, Function>();
             var universalsInScope = new List<Variable>();
-            var skolemCounter = 0;
 
             var current = clone;
             while (current is IComplexSentence { IsQuantifier: true } quantified) {
@@ -157,7 +163,8 @@ namespace FirstOrderLogic {
                     var args = universalsInScope
                         .Select(v => (Term)new Variable(v.TermSymbol))
                         .ToArray();
-                    substitution.Add(quantifier.Variable, new Function($"sk{++skolemCounter}", args));
+                    substitution.Add(quantifier.Variable,
+                        new Function($"sk{System.Threading.Interlocked.Increment(ref _skolemCounter)}", args));
                 }
 
                 current = quantified.Children[0];

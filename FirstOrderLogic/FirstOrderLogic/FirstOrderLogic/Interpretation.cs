@@ -94,16 +94,19 @@ namespace FirstOrderLogic {
         private readonly Dictionary<string, Func<Term[], IElementOfDiscourse>> _functions = new();
         private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment = new();
     
-        public Interpretation(IDomainOfDiscourse domain, 
-            Dictionary<string, Func<IElementOfDiscourse[], bool>> relations, 
-            Dictionary<string, Func<Term[], IElementOfDiscourse>> functions, 
-            Dictionary<string, IElementOfDiscourse> variableAssigment, 
-            Dictionary<IProposition, bool> propositionalAssignment) : base(propositionalAssignment) {
-        
+        // The tables are copied: builders like Semantics reuse and Clear() their dictionaries
+        // between builds, and quantifier evaluation adds synthetic constants — neither may leak
+        // into (or out of) a previously built interpretation.
+        public Interpretation(IDomainOfDiscourse domain,
+            Dictionary<string, Func<IElementOfDiscourse[], bool>> relations,
+            Dictionary<string, Func<Term[], IElementOfDiscourse>> functions,
+            Dictionary<string, IElementOfDiscourse> variableAssigment,
+            Dictionary<IProposition, bool> propositionalAssignment) : base(new Dictionary<IProposition, bool>(propositionalAssignment)) {
+
             Domain = domain;
-            _relations = relations;
-            _functions = functions;
-            _variableAssigment = variableAssigment;
+            _relations = new Dictionary<string, Func<IElementOfDiscourse[], bool>>(relations);
+            _functions = new Dictionary<string, Func<Term[], IElementOfDiscourse>>(functions);
+            _variableAssigment = new Dictionary<string, IElementOfDiscourse>(variableAssigment);
         }
     
         public IElementOfDiscourse EvaluateTerm(Term term) => Evaluate(term);

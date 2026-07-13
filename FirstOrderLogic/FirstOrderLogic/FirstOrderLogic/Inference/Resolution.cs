@@ -52,6 +52,59 @@ namespace FirstOrderLogic {
             return resolvents;
         }
 
+        // Binary resolution is refutation-complete only together with factoring: unifying two
+        // same-polarity literals of one clause and collapsing them. Without it, e.g.
+        // {P(x) ∨ P(y)} ∪ {¬P(u) ∨ ¬P(v)} saturates without ever deriving ⊥.
+        private static List<Clause> GetFactors(Clause clause)
+        {
+            var factors = new List<Clause>();
+            var literals = clause.Literals;
+
+            for (var i = 0; i < literals.Count; i++)
+            {
+                for (var j = i + 1; j < literals.Count; j++)
+                {
+                    if (literals[i].IsNegation != literals[j].IsNegation) continue;
+
+                    var unify = new Unificator(literals[i], literals[j]);
+                    if (!unify.IsUnifiable) continue;
+
+                    var mgu = new Substitution(unify.Substitutions);
+                    var res = new List<ISentence>(literals.Count - 1);
+                    foreach (var literal in literals)
+                    {
+                        var applied = mgu.Apply(literal);
+                        if (!res.Contains(applied)) res.Add(applied);
+                    }
+
+                    if (res.Count == literals.Count) continue;
+
+                    CanonicalizeVariables(res);
+                    factors.Add(new Clause(res.ToArray()));
+                }
+            }
+
+            return factors;
+        }
+
+        // Every transitive factor of `clause` not seen before, appended to `sink` (factors of
+        // factors count: three literals may collapse pairwise).
+        private static void AddNewFactors(Clause clause, HashSet<Clause> seen, List<Clause> sink)
+        {
+            var pending = new Stack<Clause>();
+            pending.Push(clause);
+            while (pending.Count > 0)
+            {
+                foreach (var factor in GetFactors(pending.Pop()))
+                {
+                    if (IsTautology(factor)) continue;
+                    if (!seen.Add(factor)) continue;
+                    sink.Add(factor);
+                    pending.Push(factor);
+                }
+            }
+        }
+
         // Clones of `right` with colliding variables renamed fresh; never mutates either input.
         // "y$" names cannot pre-exist ('$' is unparseable, resolvents are canonicalized to "x$"),
         // so a per-call counter suffices.
@@ -160,6 +213,13 @@ namespace FirstOrderLogic {
 
             var seen = new HashSet<Clause>(clauses, ClauseByContent);
 
+            // Input clauses contribute their factors up front; resolvents get theirs as they
+            // are derived below.
+            var inputFactors = new List<Clause>();
+            foreach (var clause in clauses)
+                AddNewFactors(clause, seen, inputFactors);
+            clauses.AddRange(inputFactors);
+
             // Unit-clause index for cheap forward subsumption: a unit {L} subsumes every clause
             // containing L, so a hash lookup replaces an O(n) scan.
             var unitLiterals = new HashSet<ISentence>();
@@ -184,7 +244,7 @@ namespace FirstOrderLogic {
                 for (var i = 0; i < count; i++)
                 {
                     // Each unordered pair once, skipping old-old pairs and self-pairing
-                    // (self-resolution is unsound).
+                    // (with factoring, resolving a clause against itself adds nothing).
                     var j = i < resolvedUpTo ? resolvedUpTo : i + 1;
                     for (; j < count; j++)
                     {
@@ -206,6 +266,16 @@ namespace FirstOrderLogic {
                             fresh.Add(resolvent);
                             if (useSubsumption && resolvent.Literals.Count == 1)
                                 unitLiterals.Add(resolvent.Literals[0]);
+
+                            var factors = new List<Clause>();
+                            AddNewFactors(resolvent, seen, factors);
+                            foreach (var factor in factors)
+                            {
+                                if (useSubsumption && IsUnitSubsumed(factor, unitLiterals)) continue;
+                                fresh.Add(factor);
+                                if (useSubsumption && factor.Literals.Count == 1)
+                                    unitLiterals.Add(factor.Literals[0]);
+                            }
                         }
                     }
                 }

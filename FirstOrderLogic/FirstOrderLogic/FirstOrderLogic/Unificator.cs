@@ -205,13 +205,40 @@ namespace FirstOrderLogic
                 return UnifyTerm(var, subTerm);
             }
 
-            if (term.Occurs(var))
+            if (OccursAfterWalk(var, term))
             {
                 return false;
             }
 
             Substitutions.Add(var, term);
             return true;
+        }
+
+        // Occurs check modulo the current substitution: a variable bound to f(x) transitively
+        // contains x, so a raw syntactic check would accept cyclic "unifiers" like
+        // {x/f(y), y/f(x)} for P(x,f(x)) ~ P(f(y),y).
+        private bool OccursAfterWalk(Variable var, Term term)
+        {
+            switch (term)
+            {
+                case Variable v:
+                    if (v.Equals(var))
+                    {
+                        return true;
+                    }
+                    return Substitutions.TryGetValue(v, out var bound) && OccursAfterWalk(var, bound);
+                case Function f:
+                    foreach (var arg in f.Terms)
+                    {
+                        if (OccursAfterWalk(var, arg))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                default:
+                    return false;
+            }
         }
 
         public override string ToString()
@@ -244,6 +271,8 @@ namespace FirstOrderLogic
         }
 
         // Applies the unifier, returning a new sentence; the input is never mutated.
+        // Delegates to Substitution so triangular bindings like {x/a, z/f(x)} resolve their
+        // chains (z -> f(a)) instead of depending on dictionary iteration order.
         public ISentence Apply(ISentence sentence)
         {
             if (!IsUnifiable)
@@ -251,13 +280,7 @@ namespace FirstOrderLogic
                 throw new Exception("Unificator is not usable!");
             }
 
-            var result = sentence;
-            foreach (var pair in Substitutions)
-            {
-                result = result.Substitute(pair.Key, pair.Value);
-            }
-
-            return result;
+            return new Substitution(Substitutions).Apply(sentence);
         }
     }
 }

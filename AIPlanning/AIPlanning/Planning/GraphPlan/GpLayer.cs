@@ -36,6 +36,10 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
             }
 
+            foreach (var action in operatorGraph.GetActionsWithoutPreconditions()) {
+                usableActions.Add(action);
+            }
+
             return usableActions.ToList();
         }
 

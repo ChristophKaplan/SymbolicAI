@@ -42,12 +42,32 @@ namespace FirstOrderLogic
             var goal = theta.Apply(goals[0]);
             var rest = goals.Skip(1).ToList();
 
+            // Negation as failure: NAF l holds iff no instance of l is derivable (the same ∄
+            // reading ForwardChaining uses for variables only occurring under NAF). The sub-proof
+            // gets no abducibles and a throwaway assumption list — failure must be genuine.
+            if (goal.IsNaf)
+            {
+                var target = goal.Children[0];
+                if (Prove(clauses, new List<ISentence> { target }, theta, new List<ISentence>(),
+                        depth + 1, counter, NoAbducibles, maxDepth).Any())
+                    yield break;
+
+                foreach (var solution in Prove(clauses, rest, theta, assumed,
+                             depth + 1, counter, abducibles, maxDepth))
+                    yield return solution;
+                yield break;
+            }
+
             foreach (var clause in clauses)
             {
                 var fresh = clause.Renamed(counter.Next++);
                 if (!Unificator.TryMatch(goal, fresh.Head, out var match)) continue;
 
+                // NAF premises go after the positive premises so their variables are bound by the
+                // time the failure test runs.
                 var subgoals = new List<ISentence>(fresh.Premises);
+                subgoals.AddRange(fresh.NafPremises.Select(n =>
+                    (ISentence)new ComplexSentence(Connective.LogicSymbol.NAF, n)));
                 subgoals.AddRange(rest);
 
                 foreach (var solution in Prove(clauses, subgoals, theta.Extend(match.Substitutions),

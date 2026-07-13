@@ -66,15 +66,17 @@ namespace AIPlanning.Planning.GraphPlan {
                 var preConditionalState = possibleConditionalActions.GetJointPreconditionsIfConflictFree();
 
                 // Skip action sets whose joint preconditions are mutex at the previous
-                // literal level (infeasible) OR are empty (nothing left to recurse on).
-                if (preConditionalState == null || preConditionalState.GetNodes.Count == 0) {
+                // literal level (infeasible).
+                if (preConditionalState == null) {
                     continue;
                 }
 
                 var possibleLayer = new GpLayer(nextLevelIndex, preConditionalState, possibleConditionalActions);
                 var outcomeBranch = new Dictionary<int, GpLayer>(outcome) { { nextLevelIndex, possibleLayer } };
 
-                if (nextLevelIndex == 0) {
+                // Empty joint preconditions (all chosen actions are precondition-less) means the
+                // branch needs nothing from the levels below — it is complete, not a dead end.
+                if (nextLevelIndex == 0 || preConditionalState.GetNodes.Count == 0) {
                     var solution = outcomeBranch.Reverse().ToDictionary(pair => pair.Key, pair => pair.Value);
                     solutions.Add(solution);
                     anyBranchSucceeded = true;
@@ -98,6 +100,9 @@ namespace AIPlanning.Planning.GraphPlan {
         // A single "layer N == layer N-1" is not enough because the unification-driven
         // OperatorGraph can produce a transient identity between two levels and then
         // grow again — we therefore require TWO consecutive equalities.
+        // The comparison must include the mutex relations: the literal set typically
+        // stabilises several levels before the mutexes finish relaxing, and declaring
+        // level-off on literals alone reports solvable problems as unsolvable.
         public bool Stable(int levelIndex) {
             if (levelIndex < 2 || _layers.Count < 3) {
                 return false;
@@ -106,7 +111,7 @@ namespace AIPlanning.Planning.GraphPlan {
             var n0 = _layers[levelIndex].BeliefState;
             var n1 = _layers[levelIndex - 1].BeliefState;
             var n2 = _layers[levelIndex - 2].BeliefState;
-            return n0.EqualStateLiterals(n1) && n1.EqualStateLiterals(n2);
+            return n0.EqualState(n1) && n1.EqualState(n2);
         }
 
         public void ExpandGraph() {

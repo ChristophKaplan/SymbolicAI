@@ -8,13 +8,22 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             var graph = new GpPlanGraph(problem);
+
+            // Goals already hold in the initial state: nothing to do.
+            if (graph.StateNotMutex(0, problem.Goals)) {
+                return GpSolution.EmptyPlan();
+            }
+
             var noGoods = new NoGoods();
             var levelIndex = 0;
-            var extractionAttemptedSinceStable = false;
+            var levelledOffAt = -1;
 
             while (true) {
                 var goalsReachable = graph.StateNotMutex(levelIndex, problem.Goals);
                 var graphStable = graph.Stable(levelIndex);
+                if (graphStable && levelledOffAt < 0) {
+                    levelledOffAt = levelIndex;
+                }
 
                 if (goalsReachable) {
                     var solution = graph.ExtractSolution(levelIndex, noGoods);
@@ -22,20 +31,20 @@ namespace AIPlanning.Planning.GraphPlan {
                         return solution;
                     }
 
-                    // Termination per Blum/Furst: when the graph has levelled off and a
-                    // fresh extraction attempt produced no new nogoods, no plan exists.
-                    if (graphStable && extractionAttemptedSinceStable && noGoods.IsStable()) {
-                        return new GpSolution();
-                    }
-
-                    noGoods.MarkExpansion();
-                    if (graphStable) {
-                        extractionAttemptedSinceStable = true;
+                    // Termination per Blum/Furst: once the graph has levelled off, snapshot the
+                    // nogood count at the levelled-off level after each failed extraction. Two
+                    // equal consecutive snapshots mean a whole search stage discovered nothing
+                    // new — further stages explore the same space and can never succeed.
+                    if (levelledOffAt >= 0) {
+                        noGoods.MarkExpansion(levelledOffAt);
+                        if (noGoods.IsStable()) {
+                            return new GpSolution();
+                        }
                     }
                 }
                 else if (graphStable) {
-                    // Graph cannot produce new literals AND goals are unreachable here;
-                    // they will never become reachable. No plan exists.
+                    // Graph can produce no new literals and relax no mutexes AND the goals are
+                    // not jointly reachable here; they never will be. No plan exists.
                     return new GpSolution();
                 }
 

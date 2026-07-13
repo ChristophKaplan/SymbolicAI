@@ -54,8 +54,33 @@ namespace AIPlanning.Planning.GraphPlan {
             return aSubsetB && bSubsetA;
         }
 
+        // Same literals AND the same mutex relations between them. This is the fixed-point
+        // notion level-off detection needs: literal sets stabilise before mutexes do.
+        public bool EqualState(GpBeliefState other) {
+            if (!EqualStateLiterals(other)) {
+                return false;
+            }
+
+            for (var i = 0; i < _literalNodes.Count; i++) {
+                for (var j = i + 1; j < _literalNodes.Count; j++) {
+                    var a = _literalNodes[i];
+                    var b = _literalNodes[j];
+                    var otherA = other._literalNodes.First(a.EqualLiteral);
+                    var otherB = other._literalNodes.First(b.EqualLiteral);
+                    if (AreMutex(a, b) != AreMutex(otherA, otherB)) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
         public bool IsConflictFreeStateReachable(List<ISentence> literals, out GpBeliefState? conflictFreeState) {
-            var reachedSubState = GetSubSetOfNodesMatching(literals);
+            // Duplicate goal literals map onto one node; comparing against the raw count would
+            // make such goal lists unsatisfiable forever.
+            var distinct = literals.Distinct().ToList();
+            var reachedSubState = GetSubSetOfNodesMatching(distinct);
 
             if (reachedSubState == null) {
                 conflictFreeState = null;
@@ -64,7 +89,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
             var conflictFree = reachedSubState.GetConflictFreeSubset();
             conflictFreeState = new GpBeliefState(conflictFree);
-            return conflictFree.Count == literals.Count;
+            return conflictFree.Count == distinct.Count;
         }
 
         // Blum & Furst §3.2: choose one supporting action per goal literal, never picking a

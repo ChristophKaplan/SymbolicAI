@@ -64,6 +64,14 @@ namespace FirstOrderLogic
                     $"Unsafe rule '{new Rule(head, premises, nafPremises)}': head variable(s) " +
                     $"{string.Join(", ", unbound.Select(v => v.TermSymbol))} not bound by the body.");
 
+            // A function symbol in the head mints a fresh term on every saturation round
+            // (P(x) ⇒ P(f(x)) derives P(f(a)), P(f(f(a))), …), so chaining only admits the
+            // function-free fragment its completeness contract promises.
+            if (HasCompoundTerm(head))
+                throw new ArgumentException(
+                    $"Rule '{new Rule(head, premises, nafPremises)}': function symbol in the head " +
+                    "makes saturation non-terminating; chaining is restricted to the function-free fragment.");
+
             return new Rule(head, premises, nafPremises);
         }
 
@@ -86,6 +94,13 @@ namespace FirstOrderLogic
             foreach (var p in Premises) all.AddRange(p.VariablesOf());
             foreach (var n in NafPremises) all.AddRange(n.VariablesOf());
             return all.Distinct();
+        }
+
+        private static bool HasCompoundTerm(ISentence literal)
+        {
+            var atom = literal is IComplexSentence complex ? complex.Children[0] : literal;
+            // Constants are arity-0 Functions; only terms with arguments are compound.
+            return atom is IPredicate predicate && predicate.Terms.Any(t => t is Function f && f.Terms.Length > 0);
         }
 
         private static ISentence StripUniversals(ISentence s)

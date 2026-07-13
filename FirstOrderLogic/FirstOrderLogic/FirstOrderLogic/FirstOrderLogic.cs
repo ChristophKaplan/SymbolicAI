@@ -31,9 +31,12 @@ namespace FirstOrderLogic {
         Term,
         TermList,
         Sentence,
-        ComplexSentence,
-        LogicalOperator,
-        ComplexSentenceUnary
+        IffSentence,
+        ImpliesSentence,
+        OrSentence,
+        AndSentence,
+        UnarySentence,
+        PrimarySentence
     }
 
     public class FirstOrderLogic : Language<Terminal, NonTerminal>
@@ -61,59 +64,52 @@ namespace FirstOrderLogic {
             };
         }
 
+        // Precedence, tightest first: NOT/NAF/quantifiers, then AND, then OR, then
+        // IMPLIES, then IFF. AND and OR are left-associative (left-recursive rules,
+        // fine for an LALR parser); IMPLIES and IFF are right-associative.
         protected override void SetUpGrammar()
         {
             AddRule(rhs => rhs[0].Attribute, NonTerminal.LangObject, NonTerminal.Sentence);
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.Sentence, NonTerminal.IffSentence);
 
-            AddRule(rhs => rhs[1].Attribute, NonTerminal.Sentence, Terminal.Open, NonTerminal.Sentence, Terminal.Close);
-            AddRule(rhs => rhs[0].Attribute, NonTerminal.Sentence, NonTerminal.ComplexSentence);
-            AddRule(rhs => rhs[0].Attribute, NonTerminal.Sentence, NonTerminal.AtomicSentence);
-            AddRule(rhs =>
-            {
-                var boolean = ((LexValue)rhs[0].Attribute).ToLogicalConstant();
-                return new Proposition(Connective.SymbolToString(boolean));
-            }, NonTerminal.Sentence, Terminal.Boolean);
+            AddRule(Binary(Connective.LogicSymbol.BICONDITIONAL),
+                NonTerminal.IffSentence, NonTerminal.ImpliesSentence, Terminal.Biconditional, NonTerminal.IffSentence);
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.IffSentence, NonTerminal.ImpliesSentence);
+
+            AddRule(Binary(Connective.LogicSymbol.IMPLICATION),
+                NonTerminal.ImpliesSentence, NonTerminal.OrSentence, Terminal.Implication, NonTerminal.ImpliesSentence);
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.ImpliesSentence, NonTerminal.OrSentence);
+
+            AddRule(Binary(Connective.LogicSymbol.DISJUNCTION),
+                NonTerminal.OrSentence, NonTerminal.OrSentence, Terminal.Disjunction, NonTerminal.AndSentence);
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.OrSentence, NonTerminal.AndSentence);
+
+            AddRule(Binary(Connective.LogicSymbol.CONJUNCTION),
+                NonTerminal.AndSentence, NonTerminal.AndSentence, Terminal.Conjunction, NonTerminal.UnarySentence);
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.AndSentence, NonTerminal.UnarySentence);
+
+            AddRule(Unary(Connective.LogicSymbol.NEGATION),
+                NonTerminal.UnarySentence, Terminal.Negation, NonTerminal.UnarySentence);
+            AddRule(Unary(Connective.LogicSymbol.NAF),
+                NonTerminal.UnarySentence, Terminal.Naf, NonTerminal.UnarySentence);
 
             AddRule(rhs =>
             {
                 var quantifierSymbol = ((LexValue)rhs[0].Attribute).ToLogicalConstant();
-                var variableString = ((LexValue)rhs[1].Attribute).Value;
-                var sentence = (Sentence)rhs[2].Attribute;
-                return new ComplexSentence(new Quantifier(quantifierSymbol, new Variable(variableString)), sentence);
-            }, NonTerminal.ComplexSentence, Terminal.Quantifier, Terminal.Identifier, NonTerminal.Sentence);
+                var variable = new Variable(((LexValue)rhs[1].Attribute).Value);
+                var body = BindConstantsToVariable((ISentence)rhs[2].Attribute, variable);
+                return new ComplexSentence(new Quantifier(quantifierSymbol, variable), body);
+            }, NonTerminal.UnarySentence, Terminal.Quantifier, Terminal.Identifier, NonTerminal.UnarySentence);
 
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.UnarySentence, NonTerminal.PrimarySentence);
+
+            AddRule(rhs => rhs[1].Attribute, NonTerminal.PrimarySentence, Terminal.Open, NonTerminal.Sentence, Terminal.Close);
+            AddRule(rhs => rhs[0].Attribute, NonTerminal.PrimarySentence, NonTerminal.AtomicSentence);
             AddRule(rhs =>
             {
-                var atomic = (Sentence)rhs[0].Attribute;
-                var extArray = (ArrayValue)rhs[1].Attribute;
-                var connective = (Connective)extArray.Value[0];
-                var sentence = (Sentence)extArray.Value[1];
-                return new ComplexSentence(atomic, connective, sentence);
-            }, NonTerminal.ComplexSentence, NonTerminal.AtomicSentence, NonTerminal.ComplexSentenceUnary);
-
-            AddRule(rhs =>
-            {
-                var atomic = (Sentence)rhs[1].Attribute;
-                var extArray = (ArrayValue)rhs[3].Attribute;
-                var connective = (Connective)extArray.Value[0];
-                var sentence = (Sentence)extArray.Value[1];
-                return new ComplexSentence(atomic, connective, sentence);
-            }, NonTerminal.ComplexSentence, Terminal.Open, NonTerminal.Sentence, Terminal.Close, NonTerminal.ComplexSentenceUnary);
-
-            AddRule(rhs =>
-            {
-                var extArray = (ArrayValue)rhs[0].Attribute;
-                var negation = (Connective)extArray.Value[0];
-                var sentence = (Sentence)extArray.Value[1];
-                return new ComplexSentence(negation, sentence);
-            }, NonTerminal.ComplexSentence, NonTerminal.ComplexSentenceUnary);
-
-            AddRule(rhs =>
-            {
-                var connective = (Connective)rhs[0].Attribute;
-                var sentences = (Sentence)rhs[1].Attribute;
-                return new ArrayValue(connective, sentences);
-            }, NonTerminal.ComplexSentenceUnary, NonTerminal.LogicalOperator, NonTerminal.Sentence);
+                var boolean = ((LexValue)rhs[0].Attribute).ToLogicalConstant();
+                return new Proposition(Connective.SymbolToString(boolean));
+            }, NonTerminal.PrimarySentence, Terminal.Boolean);
 
             AddRule(rhs =>
             {
@@ -166,16 +162,49 @@ namespace FirstOrderLogic {
                 var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(lo => (Term)lo).ToArray();
                 return new Function(symbol, terms);
             }, NonTerminal.Term, Terminal.Identifier, Terminal.Open, NonTerminal.TermList, Terminal.Close);
-
-            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Conjunction);
-            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Disjunction);
-            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Implication);
-            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Biconditional);
-            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Negation);
-            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Naf);
         }
 
-        ILanguageObject GetConnective(Symbol[] rhs) => new Connective(((LexValue)rhs[0].Attribute).ToLogicalConstant());
+        private static Production.SemanticActionDelegate Binary(Connective.LogicSymbol symbol) =>
+            rhs => new ComplexSentence((ISentence)rhs[0].Attribute, symbol, (ISentence)rhs[2].Attribute);
+
+        private static Production.SemanticActionDelegate Unary(Connective.LogicSymbol symbol) =>
+            rhs => new ComplexSentence(symbol, (ISentence)rhs[1].Attribute);
+
+        // A quantifier may bind any identifier, but the term rule only whitelists
+        // {x,y,z,w} as variables; every other identifier is parsed as a Constant.
+        // On reducing a quantifier, rewrite the constants it binds into its variable.
+        // Scoping falls out of bottom-up evaluation: an inner quantifier over the
+        // same name has already converted its occurrences to Variables, which this
+        // type-precise rewrite leaves untouched.
+        private static ISentence BindConstantsToVariable(ISentence sentence, Variable variable)
+        {
+            switch (sentence)
+            {
+                case Predicate predicate:
+                {
+                    var terms = predicate.Terms.Select(term => BindTerm(term, variable)).ToArray();
+                    return predicate.Time.HasValue
+                        ? new Predicate(predicate.Symbol, terms, predicate.Time.Value)
+                        : new Predicate(predicate.Symbol, terms);
+                }
+                case ComplexSentence complex:
+                    return complex.WithChildren(complex.Children
+                        .Select(child => BindConstantsToVariable(child, variable)).ToList());
+                default:
+                    return sentence;
+            }
+        }
+
+        private static Term BindTerm(Term term, Variable variable)
+        {
+            return term switch
+            {
+                Constant constant => constant.TermSymbol == variable.TermSymbol ? variable : term,
+                Function { Arity: > 0 } function =>
+                    new Function(function.TermSymbol, function.Terms.Select(t => BindTerm(t, variable)).ToArray()),
+                _ => term
+            };
+        }
 
         // LRParser renamed the throwing entry point to Parse; keep TryParse(string)
         // here so existing callers (and the List overload below) keep working.

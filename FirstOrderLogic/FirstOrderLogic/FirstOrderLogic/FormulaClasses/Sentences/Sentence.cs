@@ -71,7 +71,9 @@ namespace FirstOrderLogic {
                 boundVariables.Add(boundVariable);
             }
 
-            return Children.Any(child => child.HasScopeConflict());
+            // Each child sees the bindings of its ancestors (including this node's), but not
+            // those of its siblings' subtrees, so every branch gets its own copy.
+            return Children.Any(child => child.HasScopeConflict(new List<Variable>(boundVariables)));
         }
 
         public bool HasQuantifier() {

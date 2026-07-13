@@ -38,6 +38,11 @@ namespace FolTests {
         }
 
         // ── Skolemization ──────────────────────────────────────────────────────────
+        // Skolem names come from a process-wide counter; reset so the pinned names below
+        // stay deterministic regardless of test order.
+        [SetUp]
+        public void ResetSkolemNames() => FirstOrderLogicExtensions.ResetSkolemCounter();
+
         [Test]
         public void Skolem_ExistentialBeforeUniversal_UsesConstant() {
             Assert.That(Logic.SkolemForm(S("EXISTS x (FORALL y P(x,y))")), Is.EqualTo(S("P(sk1,y)")));

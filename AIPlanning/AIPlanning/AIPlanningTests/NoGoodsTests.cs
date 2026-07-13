@@ -54,10 +54,10 @@ namespace AIPlanningTests {
 
             Assert.That(nogoods.IsStable(), Is.False, "no markers yet, cannot be stable");
 
-            nogoods.MarkExpansion();
+            nogoods.MarkExpansion(level: 0);
             Assert.That(nogoods.IsStable(), Is.False, "single marker, cannot be stable");
 
-            nogoods.MarkExpansion();
+            nogoods.MarkExpansion(level: 0);
             Assert.That(nogoods.IsStable(), Is.True,
                 "two consecutive markers with identical nogood count = stable");
         }
@@ -65,13 +65,28 @@ namespace AIPlanningTests {
         [Test]
         public void IsStable_FalseWhenNogoodsGrowBetweenMarkers() {
             var nogoods = new NoGoods();
-            nogoods.MarkExpansion();
+            nogoods.MarkExpansion(level: 0);
 
             nogoods.Add(level: 0, StateOf("Have(Apple)"));
-            nogoods.MarkExpansion();
+            nogoods.MarkExpansion(level: 0);
 
             Assert.That(nogoods.IsStable(), Is.False,
                 "a new nogood was added → not stable yet");
+        }
+
+        // MarkExpansion watches ONE level (where the graph levelled off): nogoods recorded at
+        // other levels — e.g. the goal set keyed under each new top level — must not defeat
+        // stability detection, or unsolvable problems loop forever.
+        [Test]
+        public void IsStable_IgnoresNogoodsAtOtherLevels() {
+            var nogoods = new NoGoods();
+            nogoods.MarkExpansion(level: 2);
+
+            nogoods.Add(level: 5, StateOf("Have(Apple)"));
+            nogoods.MarkExpansion(level: 2);
+
+            Assert.That(nogoods.IsStable(), Is.True,
+                "growth at level 5 is irrelevant when watching level 2");
         }
 
         private static GpBeliefState StateOf(params string[] literals) {
