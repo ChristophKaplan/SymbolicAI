@@ -66,17 +66,17 @@ namespace FolTests
         [Test]
         public void Symbol_GroundEqualsParsedAtom()
         {
-            Assert.That(new Signature.Symbol("Owns", 2).Ground("mySelf", "Housea"),
-                Is.EqualTo(S("Owns(mySelf, Housea)")));
-            Assert.That((ISentence)new Signature.Symbol("Employed", 1).Ground("mySelf"),
-                Is.Not.EqualTo(S("-Employed(mySelf)")));
-            Assert.That(((ISentence)new Signature.Symbol("Employed", 1).Ground("mySelf")).Negated(),
-                Is.EqualTo(S("-Employed(mySelf)")));
+            Assert.That(new Signature.Symbol("Knows", 2).Ground("Anna", "Bob"),
+                Is.EqualTo(S("Knows(Anna, Bob)")));
+            Assert.That((ISentence)new Signature.Symbol("Sleeps", 1).Ground("Anna"),
+                Is.Not.EqualTo(S("-Sleeps(Anna)")));
+            Assert.That(((ISentence)new Signature.Symbol("Sleeps", 1).Ground("Anna")).Negated(),
+                Is.EqualTo(S("-Sleeps(Anna)")));
         }
 
         [Test]
         public void Symbol_GroundThrowsOnArityMismatch() =>
-            Assert.That(() => new Signature.Symbol("Owns", 2).Ground("z"), Throws.TypeOf<ArgumentException>());
+            Assert.That(() => new Signature.Symbol("Knows", 2).Ground("Anna"), Throws.TypeOf<ArgumentException>());
 
         [Test]
         public void Builder_AcceptsSymbol()

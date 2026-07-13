@@ -12,7 +12,11 @@ namespace FirstOrderLogic {
             FALSE,
             EXISTENTIAL,
             UNIVERSAL,
-            BICONDITIONAL
+            BICONDITIONAL,
+            // Negation as failure — "not derivable", not "asserted false". Has no classical
+            // model semantics: only ForwardChaining consumes it (stratified); CNF/Resolution
+            // and Interpretation.Evaluate reject it.
+            NAF
         }
 
         public readonly LogicSymbol Symbol;
@@ -39,6 +43,7 @@ namespace FirstOrderLogic {
                 LogicSymbol.TRUE => "\u22A4",
                 LogicSymbol.FALSE => "\u22A5",
                 LogicSymbol.BICONDITIONAL => "\u21d4",
+                LogicSymbol.NAF => "NAF",
                 _ => throw new Exception($"Error: {symbol} not found.")
             };
         }

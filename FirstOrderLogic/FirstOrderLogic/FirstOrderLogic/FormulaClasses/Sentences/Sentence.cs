@@ -12,6 +12,7 @@ namespace FirstOrderLogic {
         bool IsNullary { get; }
         bool IsLiteral { get; }
         bool IsNegation { get; }
+        bool IsNaf { get; }
         bool IsImplication { get; }
         bool IsNegationOf(ISentence other, bool onlyPredSignature = false);
         ISentence Substitute(Term target, Term replacement);
@@ -41,6 +42,7 @@ namespace FirstOrderLogic {
         public bool IsLiteral => this is IAtomicSentence || 
                                  (this is IComplexSentence { IsNegation: true } complex && complex.Children[0] is IAtomicSentence);
         public bool IsNegation => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.NEGATION;
+        public bool IsNaf => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.NAF;
         public bool IsImplication => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.IMPLICATION;
         public abstract ISentence Substitute(Term target, Term replacement);
         public abstract ISentence WithChildren(IReadOnlyList<ISentence> children);

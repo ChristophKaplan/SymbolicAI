@@ -148,11 +148,10 @@ namespace FolTests {
 
         [Test]
         public void IsChainable_AcceptsFactsAndRules() {
-            Assert.That(Rule.IsChainable(S("Owns(mySelf, Workplacea)")), Is.True);
-            Assert.That(Rule.IsChainable(S("NOT Owns(mySelf, Workplacea)")), Is.True);
-            Assert.That(Rule.IsChainable(S("Owns(mySelf, y) => Role(mySelf, Owner)")), Is.True);
-            Assert.That(Rule.IsChainable(
-                S("(WorksAt(mySelf, y) AND NOT Owns(mySelf, y)) => Role(mySelf, Worker)")), Is.True);
+            Assert.That(Rule.IsChainable(S("Human(Sokrates)")), Is.True);
+            Assert.That(Rule.IsChainable(S("NOT Flies(pingu)")), Is.True);
+            Assert.That(Rule.IsChainable(S("Human(x) => Mortal(x)")), Is.True);
+            Assert.That(Rule.IsChainable(S("(Bird(x) AND NOT Penguin(x)) => Flies(x)")), Is.True);
             Assert.That(Rule.IsChainable(S("FORALL x (Human(x) => Mortal(x))")), Is.True);
         }
 
@@ -160,9 +159,102 @@ namespace FolTests {
         // Saturate would silently drop them, so callers can validate up front instead.
         [Test]
         public void IsChainable_RejectsRicherForms() {
-            Assert.That(Rule.IsChainable(S("(EXISTS y (Owns(mySelf, y))) => Role(mySelf, Owner)")), Is.False);
-            Assert.That(Rule.IsChainable(S("Owns(mySelf, y) OR Role(mySelf, Owner)")), Is.False);
+            Assert.That(Rule.IsChainable(S("(EXISTS y (Parent(Tom, y))) => IsParent(Tom)")), Is.False);
+            Assert.That(Rule.IsChainable(S("Rain(x) OR Snow(x)")), Is.False);
             Assert.That(Rule.IsChainable(S("Human(x) => (Mortal(x) AND Alive(x))")), Is.False);
+        }
+
+        // ── Negation as failure: NAF l holds when l is NOT derivable (closed world) ──────
+
+        // The classic default: birds fly unless something says penguin.
+        [Test]
+        public void Naf_DerivesFromAbsence() {
+            Assert.That(
+                Entails("Bird(tweety)",
+                        "(Bird(x) AND NAF Penguin(x)) => Flies(x)",
+                        "Flies(tweety)"),
+                Is.True);
+        }
+
+        [Test]
+        public void Naf_BlockedByDerivedInstance() {
+            // Penguin(tweety) is not asserted but derivable through the first rule, so NAF fails.
+            Assert.That(
+                Entails("Bird(tweety)", "Antarctic(tweety)",
+                        "Antarctic(x) => Penguin(x)",
+                        "(Bird(x) AND NAF Penguin(x)) => Flies(x)",
+                        "Flies(tweety)"),
+                Is.False);
+        }
+
+        // A variable occurring only under NAF reads "no derivable instance" (∄y) — no summary
+        // predicate needed for "has no children".
+        [Test]
+        public void Naf_FreeVariable_MeansNoInstance() {
+            Assert.That(
+                Entails("Person(Tom)",
+                        "(Person(x) AND NAF Parent(x, y)) => Childless(x)",
+                        "Childless(Tom)"),
+                Is.True);
+            Assert.That(
+                Entails("Person(Tom)", "Parent(Tom, Bob)",
+                        "(Person(x) AND NAF Parent(x, y)) => Childless(x)",
+                        "Childless(Tom)"),
+                Is.False);
+        }
+
+        // The closed-world assumption as a rule: non-derivability materialised into explicit ¬,
+        // range-restricted over a positively bound domain.
+        [Test]
+        public void Naf_ClosedWorldBridgeRule() {
+            var closure = ForwardChaining.Saturate(Set(
+                "Course(math)", "Course(art)", "Enrolled(Tom, math)",
+                "(Course(y) AND NAF Enrolled(Tom, y)) => NOT Enrolled(Tom, y)"));
+            Assert.That(closure, Has.Member(S("NOT Enrolled(Tom, art)")));
+            Assert.That(closure, Has.No.Member(S("NOT Enrolled(Tom, math)")));
+        }
+
+        // Strata evaluate in dependency order: Q is fully derived before NAF Q is asked, so R
+        // never fires. A single unordered pass could fire both. (NAF binds loosely like NOT —
+        // a bare NAF antecedent needs parentheses, else NAF swallows the implication.)
+        [Test]
+        public void Naf_StratifiedOrder() {
+            var closure = ForwardChaining.Saturate(Set(
+                "(NAF P(a)) => Q(a)",
+                "(NAF Q(a)) => R(a)"));
+            Assert.That(closure, Has.Member(S("Q(a)")));
+            Assert.That(closure, Has.No.Member(S("R(a)")));
+        }
+
+        // NAF through a cycle has no evaluation order that makes "not derivable" well-defined.
+        [Test]
+        public void Naf_CycleIsRejected() {
+            Assert.That(
+                () => ForwardChaining.Saturate(Set("(NAF P(a)) => Q(a)", "(NAF Q(a)) => P(a)")),
+                Throws.ArgumentException);
+        }
+
+        // NAF premises never bind variables — failure produces no substitution — so they cannot
+        // make a head variable safe.
+        [Test]
+        public void Naf_CannotBindHeadVariable() {
+            Assert.That(
+                () => ForwardChaining.Saturate(Set("(NAF P(x)) => Q(x)")),
+                Throws.ArgumentException);
+        }
+
+        [Test]
+        public void Naf_RulesAreChainable() {
+            Assert.That(Rule.IsChainable(S("(Bird(x) AND NAF Penguin(x)) => Flies(x)")), Is.True);
+        }
+
+        // NAF has no classical model semantics — the classical pipeline refuses it instead of
+        // treating it as ordinary negation.
+        [Test]
+        public void Naf_RejectedByCnf() {
+            Assert.That(
+                () => Logic.ToConjunctiveNormalForm(S("(Bird(x) AND NAF Penguin(x)) => Flies(x)")),
+                Throws.ArgumentException);
         }
     }
 }

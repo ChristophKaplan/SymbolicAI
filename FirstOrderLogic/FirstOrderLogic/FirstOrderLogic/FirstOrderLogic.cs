@@ -20,7 +20,8 @@ namespace FirstOrderLogic {
         Boolean,
         Quantifier,
         Biconditional,
-        TimeAttribute
+        TimeAttribute,
+        Naf
     }
 
     public enum NonTerminal
@@ -51,6 +52,7 @@ namespace FirstOrderLogic {
                 new TokenDefinition<Terminal>(Terminal.Negation, "NOT|!|-|~|\u00ac"),
                 new TokenDefinition<Terminal>(Terminal.Boolean, "TRUE|FALSE|\u22a4|\u22a5"),
                 new TokenDefinition<Terminal>(Terminal.Quantifier, "FORALL|EXISTS|\u2200|\u2203"),
+                new TokenDefinition<Terminal>(Terminal.Naf, "NAF"),
                 new TokenDefinition<Terminal>(Terminal.TimeAttribute, "\\^[0-9]"),
                 // Unicode letters/digits, not just ASCII, so non-English symbol names (Wählt, Citté,
                 // 本) are valid identifiers. Keyword tokens above are matched first, and logical
@@ -170,6 +172,7 @@ namespace FirstOrderLogic {
             AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Implication);
             AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Biconditional);
             AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Negation);
+            AddRule(GetConnective, NonTerminal.LogicalOperator, Terminal.Naf);
         }
 
         ILanguageObject GetConnective(Symbol[] rhs) => new Connective(((LexValue)rhs[0].Attribute).ToLogicalConstant());

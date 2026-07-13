@@ -31,6 +31,8 @@ namespace FirstOrderLogic {
                 case "=>":
                 case "\u21d2":
                     return Connective.LogicSymbol.IMPLICATION;
+                case "NAF":
+                    return Connective.LogicSymbol.NAF;
                 case "TRUE":
                 case "\u22a4":
                     return Connective.LogicSymbol.TRUE;
@@ -119,6 +121,11 @@ namespace FirstOrderLogic {
             ToConjunctiveNormalFormCore(sentence, null);
 
         private static ISentence ToConjunctiveNormalFormCore(ISentence sentence, List<ISentence>? steps) {
+            if (sentence.ContainsNaf()) {
+                throw new ArgumentException(
+                    $"'{sentence}' contains negation-as-failure, which has no classical semantics — CNF/Resolution cannot consume it.");
+            }
+
             var clone = ToPrenexFormCore(sentence, steps);
 
             var transformations = new List<TransformationDelegate> {
@@ -201,6 +208,9 @@ namespace FirstOrderLogic {
             secondTerm = terms[1].ToString();
             return !string.IsNullOrEmpty(secondTerm);
         }
+
+        public static bool ContainsNaf(this ISentence sentence) =>
+            sentence.IsNaf || sentence.Children.Any(ContainsNaf);
 
         // Positive literals within the list whose negation is also present (its counter is the negation).
         public static List<ISentence> Conflicts(this IReadOnlyList<ISentence> literals) {
