@@ -19,20 +19,31 @@ namespace AIPlanning.Planning.GraphPlan {
         public List<ISentence> Effects { get; }
         public HashSet<Unificator> Unificators { get; private set; } = new();
 
+        // Marks the Start/Finish actions the OperatorGraph injects to bootstrap its backward
+        // construction; they must never surface at runtime. A flag (survives Clone) instead of
+        // reference identity, which a clone would silently lose.
+        public bool IsSynthetic { get; }
+
         private GpAction(GpAction action) : this(action.Signifier,
             action.Preconditions.ToList(),
-            action.Effects.ToList()) {
+            action.Effects.ToList(),
+            action.IsSynthetic) {
         }
 
-        public GpAction(string name, List<ISentence> preconditions, List<ISentence> effects)
+        public GpAction(string name, List<ISentence> preconditions, List<ISentence> effects, bool isSynthetic = false)
         {
             Signifier = name;
             Preconditions = preconditions;
             Effects = effects;
+            IsSynthetic = isSynthetic;
             UpdateHashCode();
         }
 
         public GpAction Clone() => new GpAction(this);
+
+        // Belief-state matching is exact over ground literals, so only a fully ground action
+        // can ever fire.
+        public bool IsGround() => Preconditions.All(p => p.IsGround()) && Effects.All(e => e.IsGround());
 
         public void AddUnificators(IEnumerable<Unificator> unificators)
         {

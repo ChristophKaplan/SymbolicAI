@@ -8,19 +8,14 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             var graph = new GpPlanGraph(problem);
-
-            // Goals already hold in the initial state: nothing to do.
-            if (graph.StateNotMutex(0, problem.Goals)) {
-                return GpSolution.EmptyPlan();
-            }
-
             var noGoods = new NoGoods();
             var levelIndex = 0;
             var levelledOffAt = -1;
 
             while (true) {
                 var goalsReachable = graph.StateNotMutex(levelIndex, problem.Goals);
-                var graphStable = graph.Stable(levelIndex);
+                // Level-off is permanent, so stop re-comparing layers once it is known.
+                var graphStable = levelledOffAt >= 0 || graph.Stable(levelIndex);
                 if (graphStable && levelledOffAt < 0) {
                     levelledOffAt = levelIndex;
                 }

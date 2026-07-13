@@ -98,9 +98,9 @@ namespace FirstOrderLogic
 
         private static bool HasCompoundTerm(ISentence literal)
         {
-            var atom = literal is IComplexSentence complex ? complex.Children[0] : literal;
             // Constants are arity-0 Functions; only terms with arguments are compound.
-            return atom is IPredicate predicate && predicate.Terms.Any(t => t is Function f && f.Terms.Length > 0);
+            return literal.AtomOf() is IPredicate predicate &&
+                   predicate.Terms.Any(t => t is Function f && f.Terms.Length > 0);
         }
 
         private static ISentence StripUniversals(ISentence s)

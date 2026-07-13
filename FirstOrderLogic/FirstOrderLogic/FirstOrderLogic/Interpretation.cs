@@ -12,9 +12,12 @@ namespace FirstOrderLogic {
     }
 
     public class PossibleWorld : ILanguageObject{
-        public readonly Dictionary<IProposition, bool> _propositionalAssignment = new();
+        public readonly Dictionary<IProposition, bool> _propositionalAssignment;
+
+        // Copies the assignment: builders reuse (and Clear()) their dictionaries between
+        // builds, and a world's identity must not change under the caller's hands.
         public PossibleWorld(Dictionary<IProposition, bool> propositionalAssignment) {
-            _propositionalAssignment = propositionalAssignment;
+            _propositionalAssignment = new Dictionary<IProposition, bool>(propositionalAssignment);
         }
     
         public void Assign(IProposition proposition, bool value) {
@@ -42,7 +45,9 @@ namespace FirstOrderLogic {
                 Connective.LogicSymbol.DISJUNCTION => Evaluate(complexSentence.Children[0]) || Evaluate(complexSentence.Children[1]),
                 Connective.LogicSymbol.IMPLICATION => !Evaluate(complexSentence.Children[0]) || Evaluate(complexSentence.Children[1]),
                 Connective.LogicSymbol.BICONDITIONAL => Evaluate(complexSentence.Children[0]) == Evaluate(complexSentence.Children[1]),
-                _ => throw new Exception($"Error: subtype of {complexSentence.Connective.Symbol} not found.")
+                // A connective without classical truth conditions (e.g. NAF) is a sentence
+                // this interpretation does not cover — the skippable category, not a bug.
+                _ => throw new InterpretationException($"Error: connective {complexSentence.Connective.Symbol} cannot be evaluated in a possible world.")
             };
         }
     
@@ -95,7 +100,7 @@ namespace FirstOrderLogic {
         }
 
         public PossibleWorld Clone() {
-            return new PossibleWorld(new Dictionary<IProposition, bool>(_propositionalAssignment));
+            return new PossibleWorld(_propositionalAssignment);
         }
     }
 
@@ -105,14 +110,15 @@ namespace FirstOrderLogic {
         private readonly Dictionary<string, Func<Term[], IElementOfDiscourse>> _functions = new();
         private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment = new();
     
-        // The tables are copied: builders like Semantics reuse and Clear() their dictionaries
-        // between builds, and quantifier evaluation adds synthetic constants — neither may leak
-        // into (or out of) a previously built interpretation.
+        // The tables are copied (the propositional one by the base ctor): builders like
+        // Semantics reuse and Clear() their dictionaries between builds, and quantifier
+        // evaluation adds synthetic constants — neither may leak into (or out of) a
+        // previously built interpretation.
         public Interpretation(IDomainOfDiscourse domain,
             Dictionary<string, Func<IElementOfDiscourse[], bool>> relations,
             Dictionary<string, Func<Term[], IElementOfDiscourse>> functions,
             Dictionary<string, IElementOfDiscourse> variableAssigment,
-            Dictionary<IProposition, bool> propositionalAssignment) : base(new Dictionary<IProposition, bool>(propositionalAssignment)) {
+            Dictionary<IProposition, bool> propositionalAssignment) : base(propositionalAssignment) {
 
             Domain = domain;
             _relations = new Dictionary<string, Func<IElementOfDiscourse[], bool>>(relations);
@@ -131,9 +137,12 @@ namespace FirstOrderLogic {
         }
     
         protected override bool Evaluate(IComplexSentence complexSentence) {
+            // base.Evaluate skips the scope-conflict re-check: validation happens once at the
+            // public entry, and substituting a constant for the bound variable cannot
+            // introduce a conflict.
             return complexSentence.Connective.Symbol switch {
-                Connective.LogicSymbol.UNIVERSAL => Domain.Elements.All(element => Evaluate(InstantiateVariable(((Quantifier)complexSentence.Connective).Variable, complexSentence.Children[0], element))),
-                Connective.LogicSymbol.EXISTENTIAL => Domain.Elements.Any(element => Evaluate(InstantiateVariable(((Quantifier)complexSentence.Connective).Variable, complexSentence.Children[0], element))),
+                Connective.LogicSymbol.UNIVERSAL => Domain.Elements.All(element => base.Evaluate(InstantiateVariable(((Quantifier)complexSentence.Connective).Variable, complexSentence.Children[0], element))),
+                Connective.LogicSymbol.EXISTENTIAL => Domain.Elements.Any(element => base.Evaluate(InstantiateVariable(((Quantifier)complexSentence.Connective).Variable, complexSentence.Children[0], element))),
                 _ => base.Evaluate(complexSentence)
             };
         }

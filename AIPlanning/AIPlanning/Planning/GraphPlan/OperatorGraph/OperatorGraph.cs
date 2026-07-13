@@ -9,8 +9,6 @@ namespace AIPlanning.Planning.GraphPlan {
         private readonly List<GpLiteralNode> _literalNodes = new();
         private readonly List<GpAction> _actions;
         private readonly List<GpAction> _preconditionlessInstances = new();
-        private GpAction? _startAction;
-        private GpAction? _finishAction;
 
         // Caps how often one action node is revisited while the graph is built backwards from
         // Finish; without it, mutually-supporting actions (A enables B enables A ...) would
@@ -31,11 +29,9 @@ namespace AIPlanning.Planning.GraphPlan {
         private void Init()
         {
             var startNode = new GpActionNode(new GpAction("Start",
-                new List<ISentence>(), new List<ISentence>(_problem.InitialState)));
-            _startAction = startNode.GpAction;
+                new List<ISentence>(), new List<ISentence>(_problem.InitialState), isSynthetic: true));
             var finishNode = new GpActionNode(new GpAction("Finish",
-                new List<ISentence>(_problem.Goals), new List<ISentence>()));
-            _finishAction = finishNode.GpAction;
+                new List<ISentence>(_problem.Goals), new List<ISentence>(), isSynthetic: true));
 
             //init the effects of start as preconditions
             foreach (var preCon in startNode.GpAction.Effects)
@@ -82,7 +78,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
             foreach (var pair in instanceMap)
             {
-                if (pair.Key.Preconditions.Count == 0 && !IsSynthetic(pair.Key))
+                if (pair.Key.Preconditions.Count == 0 && !pair.Key.IsSynthetic)
                 {
                     _preconditionlessInstances.AddRange(pair.Value);
                 }
@@ -104,7 +100,7 @@ namespace AIPlanning.Planning.GraphPlan {
                     // construction; their instances must not surface at runtime (a Finish
                     // hanging off the goal literals would enter every layer's action set and
                     // mutex computation once the goals appear in a belief state).
-                    if (!IsSynthetic(actionNode.GpAction))
+                    if (!actionNode.GpAction.IsSynthetic)
                     {
                         allInstances.AddRange(instances);
                     }
@@ -119,11 +115,6 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        private bool IsSynthetic(GpAction action)
-        {
-            return ReferenceEquals(action, _startAction) || ReferenceEquals(action, _finishAction);
-        }
-
         private Dictionary<GpAction, List<GpAction>> InstantiateActions()
         {
             var mapping = new Dictionary<GpAction, List<GpAction>>();
@@ -135,7 +126,9 @@ namespace AIPlanning.Planning.GraphPlan {
                 if (noMultipleInstancesNeeded)
                 {
                     var clone = action.Clone();
-                    if (IsFullyGround(clone) || IsSynthetic(action))
+                    // Non-ground instances can never fire (belief states hold only ground
+                    // literals, matched exactly) — dead weight in every layer's scans.
+                    if (clone.IsGround() || action.IsSynthetic)
                     {
                         possibleInstances.Add(clone);
                     }
@@ -148,7 +141,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 {
                     var clone = action.Clone();
                     clone.SpecifyAction(unificator);
-                    if (clone.IsConsistent() && IsFullyGround(clone))
+                    if (clone.IsConsistent() && clone.IsGround())
                     {
                         possibleInstances.Add(clone);
                     }
@@ -158,15 +151,6 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             return mapping;
-        }
-
-        // Runtime matching against belief states is exact (GpBeliefState.GetSubSetOfNodesMatching
-        // uses Equals), and belief states only ever contain ground literals — so an instance with
-        // an unbound variable left in any literal can never fire and would only be dead weight in
-        // every layer's applicability and mutex scans.
-        private static bool IsFullyGround(GpAction action)
-        {
-            return action.Preconditions.All(p => p.IsGround()) && action.Effects.All(e => e.IsGround());
         }
 
         private void ConstructGraphRecursivly(GpNode curNode)

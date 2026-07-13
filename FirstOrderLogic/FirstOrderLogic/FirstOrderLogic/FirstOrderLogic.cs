@@ -41,6 +41,13 @@ namespace FirstOrderLogic {
 
     public class FirstOrderLogic : Language<Terminal, NonTerminal>
     {
+        // Variable-ness is decided by TWO cooperating mechanisms: these names are always
+        // variables (so unquantified rules like "P(x) => Q(x)" work), and any other
+        // identifier becomes a variable when an enclosing quantifier binds it (see
+        // BindConstantsToVariable). Quantified whitelist names work only because the term
+        // rule already made them Variables and the rewrite skips Variables.
+        private static readonly string[] FreeVariableNames = { "x", "y", "z", "w" };
+
         protected override TokenDefinition<Terminal>[] SetUpTokenDefinitions()
         {
             return new[]
@@ -150,8 +157,7 @@ namespace FirstOrderLogic {
             AddRule(rhs =>
             {
                 var symbol = ((LexValue)rhs[0].Attribute).Value;
-                var variableList = new[] { "x", "y", "z", "w" };
-                return variableList.Contains(symbol)
+                return FreeVariableNames.Contains(symbol)
                     ? (ILanguageObject)new Variable(symbol)
                     : new Constant(symbol);
             }, NonTerminal.Term, Terminal.Identifier);
@@ -206,14 +212,9 @@ namespace FirstOrderLogic {
             };
         }
 
-        /// <summary>
-        /// Misleadingly named: this THROWS on invalid input (it is a plain alias for the
-        /// inherited <see cref="LRParser.Language.Language{T,N}.Parse(string)"/>, which is the
-        /// properly-named entry point — prefer calling <c>Parse</c> directly). The inherited
-        /// <c>TryParse(string, out ILanguageObject)</c> overload provides real try-semantics.
-        /// Kept because the name is baked into many call sites across dependent projects
-        /// (AIPlanning, examples, docs); renaming would churn them all for no behavior change.
-        /// </summary>
+        // Throws on invalid input — plain alias for the inherited Parse, kept only because the
+        // name is baked into many call sites. The inherited TryParse(string, out …) overload
+        // has real try-semantics.
         public ILanguageObject TryParse(string input) => base.Parse(input);
 
         public List<ILanguageObject> TryParse(List<string> inputList)

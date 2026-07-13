@@ -5,9 +5,7 @@ namespace AIPlanningTests {
     // Direct tests on NoGoods. Guards the B1 fix (set-per-level instead of one
     // belief state per level), the B2 pruning contract, and the IsStable semantics.
     [TestFixture]
-    public class NoGoodsTests {
-        private static readonly GpActionFactory Factory = new();
-
+    public class NoGoodsTests : PlanningTestBase {
         [Test]
         public void Add_StoresMultipleStatesPerLevel() {
             var nogoods = new NoGoods();

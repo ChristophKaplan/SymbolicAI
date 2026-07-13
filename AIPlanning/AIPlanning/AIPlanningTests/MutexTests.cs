@@ -13,13 +13,7 @@ namespace AIPlanningTests {
     //   Literal negation     — the two literals are negations of each other.
     //   Inconsistent support — every pair of actions supporting the two literals is mutex.
     [TestFixture]
-    public class MutexTests {
-        private static readonly GpActionFactory Factory = new();
-
-        private static ISentence L(string s) {
-            return Factory.StringToSentence(new List<string> { s }).Single();
-        }
-
+    public class MutexTests : PlanningTestBase {
         [Test]
         public void InconsistentEffects_WhenEffectsNegateEachOther() {
             var a = new GpActionNode(new GpAction("A", new() { L("P(Obj)") }, new() { L("Q(Obj)") }));

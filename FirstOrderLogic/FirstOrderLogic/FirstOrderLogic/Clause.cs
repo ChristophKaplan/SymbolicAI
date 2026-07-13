@@ -9,28 +9,21 @@ namespace FirstOrderLogic {
 
         public Clause(params ISentence[] literals)
         {
-            // An empty literal list must mean "empty clause": silently dropping bad input here
-            // would let a malformed sentence masquerade as a refutation.
-            var nonLiteral = literals.FirstOrDefault(t => !t.IsLiteral);
-            if (nonLiteral != null)
-            {
-                throw new ArgumentException($"{nonLiteral} is not a literal", nameof(literals));
-            }
-
-            // A clause is a set: duplicates change nothing semantically and must not survive
-            // construction (AddLiteral already dedups).
             Literals = new List<ISentence>(literals.Length);
             foreach (var literal in literals)
             {
-                if (!Literals.Contains(literal)) Literals.Add(literal);
+                AddLiteral(literal);
             }
         }
-    
+
+        // Throws on non-literals rather than dropping them: an empty literal list must mean
+        // "empty clause", so a malformed sentence must not masquerade as a refutation.
+        // A clause is a set — duplicates change nothing semantically and are not kept.
         public void AddLiteral(ISentence literal)
         {
             if (!literal.IsLiteral)
             {
-                throw new Exception($"{literal} is not a literal");
+                throw new ArgumentException($"{literal} is not a literal", nameof(literal));
             }
 
             if (Literals.Contains(literal))

@@ -129,8 +129,9 @@ namespace FirstOrderLogic
                 if (i == left.Count) return true;
 
                 var headIndex = left.Count - 1;
-                var candidates = i == headIndex ? new[] { headIndex } : Enumerable.Range(0, headIndex).ToArray();
-                foreach (var j in candidates)
+                var first = i == headIndex ? headIndex : 0;
+                var last = i == headIndex ? headIndex : headIndex - 1;
+                for (var j = first; j <= last; j++)
                 {
                     if (used[j]) continue;
                     if (!Unificator.TryMatch(left[i], right[j], out var match)) continue;

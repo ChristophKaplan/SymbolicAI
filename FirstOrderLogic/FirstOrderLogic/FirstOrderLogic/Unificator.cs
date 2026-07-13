@@ -216,7 +216,10 @@ namespace FirstOrderLogic
 
         // Occurs check modulo the current substitution: a variable bound to f(x) transitively
         // contains x, so a raw syntactic check would accept cyclic "unifiers" like
-        // {x/f(y), y/f(x)} for P(x,f(x)) ~ P(f(y),y).
+        // {x/f(y), y/f(x)} for P(x,f(x)) ~ P(f(y),y). Deliberately not
+        // Substitution.Walk(term).Occurs(var): Walk rebuilds function terms, and this runs
+        // per variable binding in the unification hot path — the direct recursion is
+        // allocation-free.
         private bool OccursAfterWalk(Variable var, Term term)
         {
             switch (term)

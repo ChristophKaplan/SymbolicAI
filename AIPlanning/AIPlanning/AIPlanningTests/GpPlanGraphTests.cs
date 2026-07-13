@@ -6,9 +6,7 @@ namespace AIPlanningTests {
     // Direct tests on GpPlanGraph.ExtractSolution: honoring the goal-reachability result
     // and the first-solution (stopAtFirst) extraction mode.
     [TestFixture]
-    public class GpPlanGraphTests {
-        private static readonly GpActionFactory Factory = new();
-
+    public class GpPlanGraphTests : PlanningTestBase {
         [Test]
         public void ExtractSolution_ReturnsEmpty_WhenGoalsAreMutexAtTheLevel() {
             // A(K) and B(K) get inconsistent support at level 1 (their only supporters X and Y

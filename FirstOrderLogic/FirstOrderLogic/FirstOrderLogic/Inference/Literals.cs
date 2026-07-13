@@ -28,7 +28,7 @@ namespace FirstOrderLogic
             return atom is IPredicate predicate ? predicate.Symbol : ((IAtomicSentence)atom).Symbol;
         }
 
-        private static ISentence AtomOf(this ISentence literal) =>
+        public static ISentence AtomOf(this ISentence literal) =>
             literal.IsNegation ? literal.Children[0] : literal;
     }
 }

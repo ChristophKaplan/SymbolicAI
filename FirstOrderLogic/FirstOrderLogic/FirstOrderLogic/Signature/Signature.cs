@@ -91,7 +91,7 @@ namespace FirstOrderLogic
             if (sentence.IsLiteral)
             {
                 // Propositional atoms carry no predicate symbol, so only IPredicate atoms count.
-                var atom = sentence.IsNegation ? sentence.Children[0] : sentence;
+                var atom = sentence.AtomOf();
                 if (atom is IPredicate predicate && !HasPredicate(predicate.Symbol, predicate.Arity))
                     missing.Add($"{predicate.Symbol}/{predicate.Arity}");
                 return;

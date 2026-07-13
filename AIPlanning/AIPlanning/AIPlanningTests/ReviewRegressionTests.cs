@@ -8,18 +8,9 @@ namespace AIPlanningTests {
     // code review. Each test failed against the defect it describes.
     [TestFixture]
     [Category("Regression")]
-    public class ReviewRegressionTests {
-        private static readonly GpActionFactory Factory = new();
+    public class ReviewRegressionTests : PlanningTestBase {
 
-        private static GpSolution SolveWithGuard(GpProblem problem) {
-            GpSolution? solution = null;
-            var task = Task.Run(() => solution = problem.Solve());
-            Assert.That(task.Wait(TimeSpan.FromSeconds(10)), Is.True,
-                "Solve() did not terminate within 10 seconds");
-            return solution!;
-        }
-
-        // Fixed defect: OperatorGraph.cs:47 GetActionsForLiteral uses exact literal equality, so the
+        // Fixed defect: OperatorGraph.cs GetActionsForLiteral uses exact literal equality, so the
         // ground runtime literal Q(Obj) never matches the operator-graph node Q(x) created from a
         // non-ground chained precondition — the second action in the chain never fires.
         [Test]
@@ -88,7 +79,7 @@ namespace AIPlanningTests {
                 "operator graph");
         }
 
-        // Fixed defect: GpBeliefState.GetSubSetOfNodesMatching (GpBeliefState.cs:47) applies
+        // Fixed defect: GpBeliefState.GetSubSetOfNodesMatching (GpBeliefState.cs) applies
         // Distinct() and callers compare the count against literals.Count, so duplicate goal
         // literals make a trivially solvable problem unsolvable.
         [Test]
@@ -106,9 +97,9 @@ namespace AIPlanningTests {
                 "solution means Distinct() made the goal-count comparison fail forever");
         }
 
-        // Fixed defect: NoGoods.IsStable (NoGoods.cs:27-45) compares the TOTAL nogood count across
+        // Fixed defect: NoGoods.IsStable (NoGoods.cs) compares the TOTAL nogood count across
         // expansions, but every failed extraction at a NEW level adds a nogood keyed by that
-        // level, so the count grows strictly and the termination branch in GraphPlanAlgo.cs:28
+        // level, so the count grows strictly and the termination branch in GraphPlanAlgo.cs
         // never fires -> infinite loop on unsolvable problems whose goals stay pairwise non-mutex.
         [Test]
         public void Issue05_UnsolvableThreeWayConflict_TerminatesWithEmptySolution() {
@@ -138,7 +129,7 @@ namespace AIPlanningTests {
                 "recognise the problem as unsolvable and return an empty solution");
         }
 
-        // Fixed defect: GpAction.SpecifyAction (GpAction.cs:87) applies Unificator.Apply, which
+        // Fixed defect: GpAction.SpecifyAction (GpAction.cs) applies Unificator.Apply, which
         // substitutes sequentially without resolving triangular substitutions like
         // {x->Obj, z->f(x)}, leaving under-instantiated (non-ground) literals in the action.
         [Test]

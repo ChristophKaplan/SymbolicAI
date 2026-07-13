@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading.Tasks;
 using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
@@ -9,9 +8,7 @@ namespace AIPlanningTests {
     // End-to-end tests on GraphPlanAlgo.Run via GpProblem.Solve.
     // These guard against algorithmic regressions in the planner.
     [TestFixture]
-    public class GraphPlanAlgorithmTests {
-        private static readonly GpActionFactory Factory = new();
-
+    public class GraphPlanAlgorithmTests : PlanningTestBase {
         [Test]
         public void CakeProblem_FindsFiveStepPlan() {
             var problem = BuildCakeProblem();
@@ -61,20 +58,16 @@ namespace AIPlanningTests {
 
             var problem = new GpProblem(initialState, goals, new() { noOp });
 
-            // Regression guard against the prior infinite loop. NUnit's [Timeout] cannot abort
-            // a hung test on .NET Core, so run the solve in a Task with a hard wait bound.
-            var task = Task.Run(() => problem.Solve());
-            Assert.That(task.Wait(TimeSpan.FromSeconds(30)), Is.True,
-                "unsolvable problem did not terminate within 30 s (regression guard against the prior infinite loop)");
-
-            Assert.That(task.Result.IsEmpty, Is.True,
+            // Regression guard against the prior infinite loop.
+            var solution = SolveWithGuard(problem, "unsolvable problem");
+            Assert.That(solution.IsEmpty, Is.True,
                 "unsolvable problem must yield an empty solution, not a fake plan");
         }
 
         [Test]
         public void GoalsAlreadySatisfied_FindsPlanViaPersistence() {
-            // Initial state already contains the goal literal — algorithm should still
-            // produce a plan (1+ persistence layers), not loop forever.
+            // Initial state already contains the goal literal — a (possibly zero-step)
+            // plan must come back, not an endless loop.
             var initialState = Factory.StringToSentence(new() {
                 "Have(Apple)",
                 "Subject(Subject1)"

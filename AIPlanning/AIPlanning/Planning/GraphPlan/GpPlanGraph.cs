@@ -29,6 +29,8 @@ namespace AIPlanning.Planning.GraphPlan {
         // stopAtFirst: return as soon as ONE complete plan is found instead of enumerating
         // every supporter combination — the exhaustive walk is exponential in the number of
         // interchangeable supporters, and callers that only execute one plan don't need it.
+        // Note the early exit also skips nogood recording for branches never explored; that
+        // only matters on success, where the nogood table is discarded anyway.
         public GpSolution ExtractSolution(int levelIndex, NoGoods noGoods, bool stopAtFirst = false) {
             var lastState = _layers[levelIndex].BeliefState;
             var solutions = new GpSolution();
@@ -45,6 +47,14 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolution solutions, bool stopAtFirst) {
+            // Extraction entered at layer 0: the initial state itself supplies the (already
+            // conflict-free) goals, so the empty plan succeeds. Only top-level calls can land
+            // here — the recursion below handles nextLevelIndex == 0 before recursing.
+            if (levelIndex == 0) {
+                solutions.Add(outcome);
+                return true;
+            }
+
             // The "no goal literals at this level" branch was reached either because a
             // recursive call drilled below level 0 or because the goals were empty.
             // Treat it as a base case with success.

@@ -36,16 +36,13 @@ namespace FirstOrderLogic {
                     for (var k = 0; k < literals2.Count; k++)
                         if (k != j) kept.Add(mgu.Apply(literals2[k]));
 
-                    // Factoring: collapse literals that became identical after substitution.
-                    var res = new List<ISentence>(kept.Count);
-                    foreach (var literal in kept)
-                        if (!res.Contains(literal)) res.Add(literal);
-
                     // Canonicalize names so alpha-variant resolvents dedup in the seen-set;
-                    // otherwise saturation is never detected and non-entailed queries loop forever.
-                    CanonicalizeVariables(res);
+                    // otherwise saturation is never detected and non-entailed queries loop
+                    // forever. Literals that became identical under the mgu collapse in the
+                    // Clause ctor.
+                    CanonicalizeVariables(kept);
 
-                    resolvents.Add(new Resolvent(clause1, clause2, res.ToArray()));
+                    resolvents.Add(new Resolvent(clause1, clause2, kept.ToArray()));
                 }
             }
 
@@ -70,17 +67,17 @@ namespace FirstOrderLogic {
                     if (!unify.IsUnifiable) continue;
 
                     var mgu = new Substitution(unify.Substitutions);
-                    var res = new List<ISentence>(literals.Count - 1);
+                    var applied = new List<ISentence>(literals.Count);
                     foreach (var literal in literals)
                     {
-                        var applied = mgu.Apply(literal);
-                        if (!res.Contains(applied)) res.Add(applied);
+                        applied.Add(mgu.Apply(literal));
                     }
 
-                    if (res.Count == literals.Count) continue;
+                    CanonicalizeVariables(applied);
+                    var factor = new Clause(applied.ToArray());
+                    if (factor.Literals.Count == literals.Count) continue;
 
-                    CanonicalizeVariables(res);
-                    factors.Add(new Clause(res.ToArray()));
+                    factors.Add(factor);
                 }
             }
 
@@ -91,6 +88,8 @@ namespace FirstOrderLogic {
         // factors count: three literals may collapse pairwise).
         private static void AddNewFactors(Clause clause, HashSet<Clause> seen, List<Clause> sink)
         {
+            if (clause.Literals.Count < 2) return;
+
             var pending = new Stack<Clause>();
             pending.Push(clause);
             while (pending.Count > 0)
@@ -257,24 +256,19 @@ namespace FirstOrderLogic {
                         foreach (var resolvent in possibleResolvents)
                         {
                             if (IsTautology(resolvent)) continue;
-
-                            // Forward subsumption drops only the new clause, never kept ones, so
-                            // the resolvedUpTo watermark stays valid.
-                            if (useSubsumption && IsUnitSubsumed(resolvent, unitLiterals)) continue;
-
                             if (!seen.Add(resolvent)) continue;
-                            fresh.Add(resolvent);
-                            if (useSubsumption && resolvent.Literals.Count == 1)
-                                unitLiterals.Add(resolvent.Literals[0]);
 
-                            var factors = new List<Clause>();
-                            AddNewFactors(resolvent, seen, factors);
-                            foreach (var factor in factors)
+                            var candidates = new List<Clause> { resolvent };
+                            AddNewFactors(resolvent, seen, candidates);
+
+                            foreach (var candidate in candidates)
                             {
-                                if (useSubsumption && IsUnitSubsumed(factor, unitLiterals)) continue;
-                                fresh.Add(factor);
-                                if (useSubsumption && factor.Literals.Count == 1)
-                                    unitLiterals.Add(factor.Literals[0]);
+                                // Forward subsumption drops only the new clause, never kept
+                                // ones, so the resolvedUpTo watermark stays valid.
+                                if (useSubsumption && IsUnitSubsumed(candidate, unitLiterals)) continue;
+                                fresh.Add(candidate);
+                                if (useSubsumption && candidate.Literals.Count == 1)
+                                    unitLiterals.Add(candidate.Literals[0]);
                             }
                         }
                     }

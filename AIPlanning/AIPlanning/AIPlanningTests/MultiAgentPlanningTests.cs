@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
@@ -71,21 +70,7 @@ namespace AIPlanningTests {
     //      planner (weeks of work, lifted-mutex-as-CSP correctness risk) is NOT worth building;
     //      it is dominated by decomposition on one side and powerless on the other.
     [TestFixture]
-    public class MultiAgentPlanningTests {
-        private static readonly GpActionFactory Factory = new();
-
-        // Runaway guard for CI-path solves. NUnit's [Timeout] cannot abort a hung test on
-        // .NET Core (no Thread.Abort), so suspect calls run in a Task and must finish within
-        // this bound — generous, since wall-clock assertions flake on loaded CI machines.
-        private static readonly TimeSpan SolveBound = TimeSpan.FromSeconds(30);
-
-        private static GpSolution SolveWithinBound(GpProblem problem, string label) {
-            var task = Task.Run(() => problem.Solve());
-            Assert.That(task.Wait(SolveBound), Is.True,
-                $"{label} did not terminate within {SolveBound.TotalSeconds:F0} s — runaway regression");
-            return task.Result;
-        }
-
+    public class MultiAgentPlanningTests : PlanningTestBase {
         // ── Action templates ──────────────────────────────────────────────────────────
 
         private static GpAction MakeMove() => Factory.Create("Move",
@@ -297,7 +282,7 @@ namespace AIPlanningTests {
                 trees: trees,
                 workplaces: new[] { "YardA" });
 
-            var solution = SolveWithinBound(problem, "2-agent / 3-tree joint solve");
+            var solution = SolveWithGuard(problem, "2-agent / 3-tree joint solve");
 
             Assert.That(solution.IsEmpty, Is.False);
         }
@@ -316,7 +301,7 @@ namespace AIPlanningTests {
                 trees:      new[] { "TreeA" },
                 workplaces: new[] { "YardA" });
 
-            var solution = SolveWithinBound(problem, "4-agent joint solve (1 tree, 1 workplace)");
+            var solution = SolveWithGuard(problem, "4-agent joint solve (1 tree, 1 workplace)");
 
             Assert.That(solution.IsEmpty, Is.False,
                 "4 agents in a small world must find a valid joint plan");

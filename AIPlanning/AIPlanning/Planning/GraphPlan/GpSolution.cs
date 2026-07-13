@@ -19,17 +19,16 @@ namespace AIPlanning.Planning.GraphPlan {
             _solutions.Add(solution);
         }
     
-        public Dictionary<int, GpActionSet> GetSolution(int index) {
+        public SortedDictionary<int, GpActionSet> GetSolution(int index) {
             if (index < 0 || index >= _solutions.Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), index,
                     $"Solution index must be in [0, {_solutions.Count - 1}]");
             }
 
-            // Explicitly ordered by step: callers (and ToString) must not depend on the
-            // unspecified enumeration order of the underlying dictionary.
-            var solution = new Dictionary<int, GpActionSet>();
-            foreach (var solutionLayer in _solutions[index].OrderBy(pair => pair.Key)) {
+            // SortedDictionary so step order is a property of the type, not of insertion order.
+            var solution = new SortedDictionary<int, GpActionSet>();
+            foreach (var solutionLayer in _solutions[index]) {
                 solution.Add(solutionLayer.Key, solutionLayer.Value.ActionSet);
             }
 
@@ -45,7 +44,7 @@ namespace AIPlanning.Planning.GraphPlan {
             {
                 result += $"Solution: {i}\n";
                 var solution = GetSolution(i);
-                foreach (var step in solution.OrderBy(pair => pair.Key))
+                foreach (var step in solution)
                 {
                     var actions = step.Value.GetActionNodes.Where(actionNode => !actionNode.IsPersistenceAction);
                     var actionsAsString = string.Join("\n", actions);

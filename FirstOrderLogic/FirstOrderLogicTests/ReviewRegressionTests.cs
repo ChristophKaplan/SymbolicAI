@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using FirstOrderLogic;
 using NUnit.Framework;
 
@@ -11,7 +10,7 @@ namespace FolTests {
     public class ReviewRegressionTests : TestBase {
         private static readonly TimeSpan Bound = TimeSpan.FromSeconds(5);
 
-        // Fixed defect: Unificator.cs ~208 — UnifyVar occurs-checks the raw term without dereferencing
+        // Fixed defect: Unificator.cs — UnifyVar occurs-checks the raw term without dereferencing
         // existing bindings, so P(x,f(x)) vs P(f(y),y) "unifies" with cyclic {x→f(y), y→f(x)}.
         [Test]
         public void Issue01_OccursCheck_MustDereferenceBindings() {
@@ -25,12 +24,11 @@ namespace FolTests {
         [Test]
         public void Issue02_Resolution_NeedsFactoring_ReportsUnsatisfiable() {
             var clauses = S("(P(x) OR P(y)) AND ((NOT P(z)) OR (NOT P(w)))");
-            var task = Task.Run(() => Resolution.IsUnsatisfiable(clauses, false, 200));
-            Assert.That(task.Wait(Bound), Is.True, "Resolution did not terminate within 5s");
-            Assert.That(task.Result, Is.True, "clause set is unsatisfiable but was not refuted");
+            var refuted = RunWithin(Bound, "Resolution", () => Resolution.IsUnsatisfiable(clauses, false, 200));
+            Assert.That(refuted, Is.True, "clause set is unsatisfiable but was not refuted");
         }
 
-        // Fixed defect: Sentence.cs line 74 — the recursion drops the boundVariables argument, so
+        // Fixed defect: Sentence.cs — the recursion drops the boundVariables argument, so
         // HasScopeConflict never sees an enclosing binder and always returns false.
         [Test]
         public void Issue03_HasScopeConflict_DetectsNestedRebinding() {
@@ -38,7 +36,7 @@ namespace FolTests {
             Assert.That(s.HasScopeConflict(), Is.True);
         }
 
-        // Fixed defect: BackwardChaining.cs ~50 — Prove expands only fresh.Premises and ignores
+        // Fixed defect: BackwardChaining.cs — Prove expands only fresh.Premises and ignores
         // NafPremises, so a rule blocked by NAF still fires in backward chaining.
         [Test]
         public void Issue04_BackwardChaining_MustRespectNafPremises() {
@@ -50,7 +48,7 @@ namespace FolTests {
                 "NAF Broken(myCar) fails (Broken(myCar) is derivable), so the rule must not fire");
         }
 
-        // Fixed defect: FirstOrderLogic.cs line 157 — only {x,y,z,w} parse as variables, so in
+        // Fixed defect: FirstOrderLogic.cs — only {x,y,z,w} parse as variables, so in
         // "FORALL p (Person(p))" the quantifier binds nothing: the term p becomes a Constant.
         [Test]
         public void Issue05_Quantifier_BindsNonWhitelistedVariableName() {
@@ -83,7 +81,7 @@ namespace FolTests {
             Assert.That(() => Logic.TryParse("P NOT Q"), Throws.Exception);
         }
 
-        // Fixed defect: FirstOrderLogicExtensions.cs ~148 — skolemCounter is local to each SkolemForm
+        // Fixed defect: FirstOrderLogicExtensions.cs — skolemCounter is local to each SkolemForm
         // call, so independently skolemized sentences reuse the same Skolem name (sk1).
         [Test]
         public void Issue08_SkolemNames_UniqueAcrossCalls() {
@@ -104,7 +102,7 @@ namespace FolTests {
             }
         }
 
-        // Fixed defect: Semantic\Semantics.cs ~22 — BuildInterpretation hands its own mutable
+        // Fixed defect: Semantic\Semantics.cs — BuildInterpretation hands its own mutable
         // dictionaries to every Interpretation and Clear()s them on the next build, so an earlier
         // interpretation silently changes.
         [Test]
@@ -128,7 +126,7 @@ namespace FolTests {
         [Test]
         public void Issue10_ForwardChaining_FunctionSymbols_MustTerminate() {
             var kb = Set("P(a)", "P(x) => P(f(x))");
-            var task = Task.Run(() => {
+            RunWithin(Bound, "Saturate", () => {
                 try {
                     ForwardChaining.Saturate(kb);
                 }
@@ -136,10 +134,9 @@ namespace FolTests {
                     // Rejecting the rule up front is a sound way to terminate.
                 }
             });
-            Assert.That(task.Wait(Bound), Is.True, "Saturate did not terminate within 5s");
         }
 
-        // Fixed defect: Unificator.cs ~247 — Apply performs one sequential pass over the triangular
+        // Fixed defect: Unificator.cs — Apply performs one sequential pass over the triangular
         // substitution {x→a, z→f(x)}, so Q(z) becomes Q(f(x)) instead of Q(f(a)).
         [Test]
         public void Issue11_UnificatorApply_ResolvesChainedBindings() {

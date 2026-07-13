@@ -7,13 +7,11 @@ namespace AIPlanningTests {
     // Equality + GetHashCode contracts. These guard the C2 fixes (set-based equality)
     // and the GpLiteralNode hash bug (identity hash + literal-based Equals → broken).
     [TestFixture]
-    public class EqualityAndHashTests {
-        private static readonly GpActionFactory Factory = new();
-
+    public class EqualityAndHashTests : PlanningTestBase {
         [Test]
         public void GpLiteralNode_HashCode_IsConsistentWithEquals() {
-            var literalA = ParseLiteral("Have(Cake)");
-            var literalB = ParseLiteral("Have(Cake)");
+            var literalA = L("Have(Cake)");
+            var literalB = L("Have(Cake)");
 
             var nodeA = new GpLiteralNode(literalA);
             var nodeB = new GpLiteralNode(literalB);
@@ -29,9 +27,9 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpAction_Equality_IsOrderInsensitive() {
-            var pre1 = ParseLiteral("At(z, Work)");
-            var pre2 = ParseLiteral("Subject(z)");
-            var eff = ParseLiteral("Have(Money)");
+            var pre1 = L("At(z, Work)");
+            var pre2 = L("Subject(z)");
+            var eff = L("Have(Money)");
 
             var workAB = new GpAction("Work", new() { pre1, pre2 }, new() { eff });
             var workBA = new GpAction("Work", new() { pre2, pre1 }, new() { eff });
@@ -43,9 +41,9 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpAction_Equality_IsMultisetSensitive() {
-            var p = ParseLiteral("P(Obj)");
-            var q = ParseLiteral("Q(Obj)");
-            var eff = ParseLiteral("R(Obj)");
+            var p = L("P(Obj)");
+            var q = L("Q(Obj)");
+            var eff = L("R(Obj)");
 
             var ppq = new GpAction("A", new() { p, p, q }, new() { eff });
             var pqq = new GpAction("A", new() { p, q, q }, new() { eff });
@@ -57,9 +55,9 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpAction_Equality_DuplicatesInDifferentOrder_AreEqualWithEqualHashes() {
-            var p = ParseLiteral("P(Obj)");
-            var q = ParseLiteral("Q(Obj)");
-            var eff = ParseLiteral("R(Obj)");
+            var p = L("P(Obj)");
+            var q = L("Q(Obj)");
+            var eff = L("R(Obj)");
 
             var a = new GpAction("A", new() { p, p, q }, new() { eff });
             var b = new GpAction("A", new() { q, p, p }, new() { eff });
@@ -71,9 +69,9 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpAction_HashCode_DuplicatePairsDoNotCancel() {
-            var p = ParseLiteral("P(Obj)");
-            var q = ParseLiteral("Q(Obj)");
-            var eff = ParseLiteral("R(Obj)");
+            var p = L("P(Obj)");
+            var q = L("Q(Obj)");
+            var eff = L("R(Obj)");
 
             // Under the old XOR combination P^P and Q^Q both cancelled to 0, giving
             // {P,P} and {Q,Q} identical hashes gratuitously.
@@ -87,9 +85,9 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpAction_Equality_DistinguishesDifferentEffects() {
-            var pre = ParseLiteral("At(z, Work)");
-            var eff1 = ParseLiteral("Have(Money)");
-            var eff2 = ParseLiteral("Have(Cake)");
+            var pre = L("At(z, Work)");
+            var eff1 = L("Have(Money)");
+            var eff2 = L("Have(Cake)");
 
             var a = new GpAction("Work", new() { pre }, new() { eff1 });
             var b = new GpAction("Work", new() { pre }, new() { eff2 });
@@ -99,8 +97,8 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpBeliefState_Equality_IsOrderInsensitive() {
-            var lit1 = ParseLiteral("Have(Apple)");
-            var lit2 = ParseLiteral("Subject(Subject1)");
+            var lit1 = L("Have(Apple)");
+            var lit2 = L("Subject(Subject1)");
 
             var stateAB = new GpBeliefState();
             stateAB.TryAdd(new GpLiteralNode(lit1));
@@ -117,7 +115,7 @@ namespace AIPlanningTests {
 
         [Test]
         public void GpBeliefState_Add_ReturnsCanonicalNode() {
-            var literal = ParseLiteral("Have(Apple)");
+            var literal = L("Have(Apple)");
             var first = new GpLiteralNode(literal);
             var duplicate = new GpLiteralNode(literal);
 
@@ -156,10 +154,6 @@ namespace AIPlanningTests {
             setB.TryAdd(new GpActionNode(MakeAction("B")));
 
             Assert.That(setA, Is.Not.EqualTo(setB));
-        }
-
-        private static ISentence ParseLiteral(string s) {
-            return Factory.StringToSentence(new() { s }).Single();
         }
 
         private static GpAction MakeAction(string name) {

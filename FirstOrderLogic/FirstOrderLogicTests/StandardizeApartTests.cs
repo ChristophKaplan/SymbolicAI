@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using FirstOrderLogic;
 using NUnit.Framework;
 
@@ -42,14 +41,11 @@ namespace FolTests {
 
         // {¬P(x), Q(y)} and {¬Q(x), P(y)} keep producing alpha-variants of each other's
         // resolvents. Without canonical variable renaming the seen-set never saturates and
-        // this query loops forever instead of answering false. NUnit's [Timeout] cannot abort
-        // a hung test on .NET Core, so the query runs in a Task with a hard wait bound.
+        // this query loops forever instead of answering false.
         [Test]
         public void NotEntailed_AlphaVariantResolvents_StillSaturates() {
-            var task = Task.Run(() =>
+            RunWithin(TimeSpan.FromSeconds(10), "Resolution (standardize-apart regression guard)", () =>
                 AssertResolves("((NOT P(x)) OR Q(y)) AND ((NOT Q(x)) OR P(y))", "R", expected: false));
-            Assert.That(task.Wait(TimeSpan.FromSeconds(10)), Is.True,
-                "Resolution did not saturate within 10 s — likely a standardize-apart regression");
         }
 
         // ── maxRounds escape hatch ───────────────────────────────────────────────

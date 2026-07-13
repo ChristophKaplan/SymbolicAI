@@ -73,8 +73,17 @@ namespace FirstOrderLogic {
             }
 
             // Each child sees the bindings of its ancestors (including this node's), but not
-            // those of its siblings' subtrees, so every branch gets its own copy.
-            return Children.Any(child => child.HasScopeConflict(new List<Variable>(boundVariables)));
+            // those of its siblings' subtrees: truncate the shared list back after each child
+            // instead of copying it per branch.
+            var mark = boundVariables.Count;
+            foreach (var child in Children) {
+                if (child.HasScopeConflict(boundVariables)) {
+                    return true;
+                }
+                boundVariables.RemoveRange(mark, boundVariables.Count - mark);
+            }
+
+            return false;
         }
 
         public bool HasQuantifier() {

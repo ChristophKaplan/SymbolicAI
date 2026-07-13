@@ -61,13 +61,15 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
+            // Align the node lists once, not inside the pair loop (that made this O(L³)).
+            var aligned = new GpLiteralNode[_literalNodes.Count];
+            for (var i = 0; i < _literalNodes.Count; i++) {
+                aligned[i] = other._literalNodes.First(_literalNodes[i].EqualLiteral);
+            }
+
             for (var i = 0; i < _literalNodes.Count; i++) {
                 for (var j = i + 1; j < _literalNodes.Count; j++) {
-                    var a = _literalNodes[i];
-                    var b = _literalNodes[j];
-                    var otherA = other._literalNodes.First(a.EqualLiteral);
-                    var otherB = other._literalNodes.First(b.EqualLiteral);
-                    if (AreMutex(a, b) != AreMutex(otherA, otherB)) {
+                    if (_literalNodes[i].IsMutexWith(_literalNodes[j]) != aligned[i].IsMutexWith(aligned[j])) {
                         return false;
                     }
                 }
@@ -123,7 +125,7 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             foreach (var supporter in goalSupporters) {
-                if (chosen.Any(c => AreMutex(c, supporter))) {
+                if (chosen.Any(c => c.IsMutexWith(supporter))) {
                     continue;
                 }
 
@@ -133,11 +135,6 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
                 chosen.RemoveAt(chosen.Count - 1);
             }
-        }
-
-        // Mutex is recorded symmetrically (GpNode.TryAddMutexRelations), so checking one side suffices.
-        private static bool AreMutex(GpNode a, GpNode b) {
-            return a.MutexRelation.Any(m => m.ToNode.Equals(b));
         }
 
         public override int GetHashCode() {

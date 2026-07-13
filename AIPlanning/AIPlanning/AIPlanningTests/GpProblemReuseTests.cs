@@ -8,9 +8,7 @@ namespace AIPlanningTests {
     // not mutate the problem's action list (the planner used to inject Start/Finish into it and
     // accumulate grounding state on the shared GpAction instances, crashing the second solve).
     [TestFixture]
-    public class GpProblemReuseTests {
-        private static readonly GpActionFactory Factory = new();
-
+    public class GpProblemReuseTests : PlanningTestBase {
         private static List<GpAction> BuildCakeActions() {
             var move = Factory.Create("Move",
                 new() { "-At(z, x)", "At(z, y)", "Subject(z)" },

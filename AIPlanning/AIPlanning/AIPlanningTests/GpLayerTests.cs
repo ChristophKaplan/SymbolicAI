@@ -6,13 +6,7 @@ using FirstOrderLogic;
 namespace AIPlanningTests {
     // Direct tests on GpLayer: usable-action collection and layer expansion.
     [TestFixture]
-    public class GpLayerTests {
-        private static readonly GpActionFactory Factory = new();
-
-        private static ISentence L(string s) {
-            return Factory.StringToSentence(new List<string> { s }).Single();
-        }
-
+    public class GpLayerTests : PlanningTestBase {
         private static GpLayer LayerWithBelief(params string[] literals) {
             var layer = new GpLayer(0);
             foreach (var literal in literals) {

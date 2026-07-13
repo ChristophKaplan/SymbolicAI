@@ -8,13 +8,7 @@ namespace AIPlanningTests {
     // precondition-less action surface, and the exclusion of the synthetic Start/Finish
     // bootstrap actions from runtime results.
     [TestFixture]
-    public class OperatorGraphTests {
-        private static readonly GpActionFactory Factory = new();
-
-        private static ISentence L(string s) {
-            return Factory.StringToSentence(new List<string> { s }).Single();
-        }
-
+    public class OperatorGraphTests : PlanningTestBase {
         [Test]
         public void GetActionsForLiteral_GroundLiteral_FindsActionAnchoredAtVariableNode() {
             // A2's precondition node in the operator graph is the non-ground Q(x);
@@ -30,8 +24,7 @@ namespace AIPlanningTests {
 
             Assert.That(actions.Select(a => a.Signifier), Does.Contain("A2"),
                 "the ground literal Q(Obj) must unify with the operator-graph node Q(x)");
-            Assert.That(actions.Where(a => a.Signifier == "A2")
-                    .All(a => a.Preconditions.All(p => p.IsGround()) && a.Effects.All(e => e.IsGround())),
+            Assert.That(actions.Where(a => a.Signifier == "A2").All(a => a.IsGround()),
                 Is.True, "surfaced instances must be fully ground");
         }
 
@@ -46,9 +39,7 @@ namespace AIPlanningTests {
 
             foreach (var literal in new[] { "P(Obj)", "Q(Obj)", "R(Obj)" }) {
                 var actions = graph.GetActionsForLiteral(L(literal));
-                var nonGround = actions
-                    .Where(a => a.Preconditions.Concat(a.Effects).Any(s => !s.IsGround()))
-                    .ToList();
+                var nonGround = actions.Where(a => !a.IsGround()).ToList();
                 Assert.That(nonGround, Is.Empty,
                     $"instances with unbound variables can never match a ground belief state; " +
                     $"found for {literal}: [{string.Join("; ", nonGround)}]");

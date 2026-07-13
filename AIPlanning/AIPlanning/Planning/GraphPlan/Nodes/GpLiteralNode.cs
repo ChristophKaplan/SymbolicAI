@@ -41,15 +41,8 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            var isAPossibleWay = InEdges.Any(inNode => other.InEdges.Any(otherInNode => !AreMutex(inNode, otherInNode)));
+            var isAPossibleWay = InEdges.Any(inNode => other.InEdges.Any(otherInNode => !inNode.IsMutexWith(otherInNode)));
             return !isAPossibleWay;
-        }
-
-        // Mutex is recorded symmetrically (GpNode.TryAddMutexRelations), one side suffices.
-        // A node shared by both literals has no relation to itself and counts as non-mutex,
-        // matching GetMutexType's Equals short-circuit.
-        private static bool AreMutex(GpNode a, GpNode b) {
-            return a.MutexRelation.Any(m => m.ToNode.Equals(b));
         }
     }
 }
