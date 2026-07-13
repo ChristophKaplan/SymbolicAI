@@ -11,20 +11,10 @@ namespace FirstOrderLogic {
             TermSymbol = termSymbol;
         }
     
-        public override bool Equals(object? obj) {
-            if(ReferenceEquals(this, obj)) {
-                return true;
-            }
-        
-            if (obj is not Term other) {
-                return false;
-            }
-            return TermSymbol.Equals(other.TermSymbol);
-        }
-    
-        public override int GetHashCode() {
-            return TermSymbol.GetHashCode();
-        }
+        // Abstract on purpose: a symbol-only comparison here would equate Variable("x") with
+        // Function("x"). Every subclass must define its own sound equality.
+        public abstract override bool Equals(object? obj);
+        public abstract override int GetHashCode();
 
         public override string ToString() {
             return TermSymbol;

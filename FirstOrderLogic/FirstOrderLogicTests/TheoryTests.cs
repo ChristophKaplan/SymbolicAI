@@ -25,6 +25,15 @@ namespace FolTests
         public void Entails_NotEntailed_False() =>
             Assert.That(new Theory(Set("A")).Entails(S("B")), Is.False);
 
+        // The empty theory entails exactly the tautologies.
+        [Test]
+        public void Entails_EmptyTheory_EntailsTautology()
+        {
+            var empty = new Theory(new List<ISentence>());
+            Assert.That(empty.Entails(S("P(a) OR (NOT P(a))")), Is.True);
+            Assert.That(empty.Entails(S("P(a)")), Is.False);
+        }
+
         [Test]
         public void Entails_FirstOrderModusPonens() =>
             Assert.That(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")).Entails(S("Mortal(Sokrates)")), Is.True);
@@ -156,6 +165,43 @@ namespace FolTests
             var a = new Theory(Set("P", "P => Q"));
             var b = new Theory(Set("Q => R"));
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.True);
+        }
+
+        // Explicit quantifiers must not derail the semantic check (IsUnsatisfiable
+        // prenexes/skolemizes internally; a premature CNF conversion used to throw here).
+        [Test]
+        public void Semantic_IsConsistentWith_HandlesQuantifiedTheories()
+        {
+            var a = new Theory(Set("FORALL x (Human(x) => Mortal(x))", "Human(Sokrates)"));
+            var b = new Theory(Set("FORALL x (Mortal(x) => Dies(x))"));
+            Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.True);
+
+            var c = new Theory(Set("FORALL x (NOT Mortal(x))"));
+            Assert.That(a.IsConsistentWith(c, ComparisonMode.Semantic), Is.False);
+        }
+
+        [Test]
+        public void Compare_NullOther_ThrowsArgumentNullException() =>
+            Assert.That(
+                () => new Theory(Set("P(a)")).Compare(null),
+                Throws.TypeOf<System.ArgumentNullException>());
+
+        // Premise order carries no logical meaning: P ∧ Q ⇒ R and Q ∧ P ⇒ R are the same rule.
+        [Test]
+        public void Chaining_NonLiterals_AgreeWhenPremiseOrderPermuted()
+        {
+            var stance = new Theory(Set("(P(x) AND Q(x)) => R(x)"))
+                .Compare(new Theory(Set("(Q(x) AND P(x)) => R(x)")), ComparisonMode.Syntactic);
+            Assert.That(stance.Agreements.Count, Is.EqualTo(1));
+            Assert.That(stance.Silences, Is.Empty);
+        }
+
+        [Test]
+        public void Chaining_NonLiterals_ConflictWhenPremiseOrderPermutedAndHeadOpposite()
+        {
+            var stance = new Theory(Set("(P(x) AND Q(x)) => R(x)"))
+                .Compare(new Theory(Set("(Q(x) AND P(x)) => (NOT R(x))")), ComparisonMode.Syntactic);
+            Assert.That(stance.Disagreements.Count, Is.EqualTo(1));
         }
 
         [Test]

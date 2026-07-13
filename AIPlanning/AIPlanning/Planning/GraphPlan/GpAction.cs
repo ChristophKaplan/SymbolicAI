@@ -74,8 +74,13 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
 
                 foreach (var substitution in unificator.Substitutions) {
-                    if (!collectPossibilities.TryAdd(substitution.Key, new List<Term> { substitution.Value })) {
-                        collectPossibilities[substitution.Key].Add(substitution.Value);
+                    // Dedup per variable: k unifiers all binding x→a must not inflate the
+                    // materialized cartesian product k-fold with identical combinations.
+                    if (!collectPossibilities.TryGetValue(substitution.Key, out var terms)) {
+                        collectPossibilities.Add(substitution.Key, new List<Term> { substitution.Value });
+                    }
+                    else if (!terms.Contains(substitution.Value)) {
+                        terms.Add(substitution.Value);
                     }
                 }
             }
@@ -100,20 +105,24 @@ namespace AIPlanning.Planning.GraphPlan {
             return _hashcode;
         }
 
-        // Order-insensitive: preconditions/effects are conceptually sets.
-        // XOR of element hashes preserves that.
+        // Order-insensitive AND multiset-safe: summing the element hashes keeps duplicates
+        // visible ({P,P,Q} vs {P,Q,Q} differ), whereas XOR let duplicate pairs cancel out.
         private void UpdateHashCode()
         {
             var preHash = 0;
-            foreach (var precondition in Preconditions)
-            {
-                preHash ^= precondition.GetHashCode();
+            unchecked {
+                foreach (var precondition in Preconditions)
+                {
+                    preHash += precondition.GetHashCode();
+                }
             }
 
             var effHash = 0;
-            foreach (var effect in Effects)
-            {
-                effHash ^= effect.GetHashCode();
+            unchecked {
+                foreach (var effect in Effects)
+                {
+                    effHash += effect.GetHashCode();
+                }
             }
 
             _hashcode = HashCode.Combine(Signifier, Preconditions.Count, Effects.Count, preHash, effHash);
@@ -143,15 +152,29 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            // Set semantics on preconditions and effects (order-insensitive).
-            foreach (var p in Preconditions)
+            // Multiset semantics (order-insensitive, duplicate counts matter):
+            // {P,P,Q} must NOT equal {P,Q,Q}, which a one-directional Contains check allows.
+            return MultisetEquals(Preconditions, other.Preconditions)
+                && MultisetEquals(Effects, other.Effects);
+        }
+
+        private static bool MultisetEquals(List<ISentence> left, List<ISentence> right)
+        {
+            var counts = new Dictionary<ISentence, int>();
+            foreach (var sentence in left)
             {
-                if (!other.Preconditions.Contains(p)) return false;
+                counts.TryGetValue(sentence, out var count);
+                counts[sentence] = count + 1;
             }
 
-            foreach (var e in Effects)
+            foreach (var sentence in right)
             {
-                if (!other.Effects.Contains(e)) return false;
+                if (!counts.TryGetValue(sentence, out var count) || count == 0)
+                {
+                    return false;
+                }
+
+                counts[sentence] = count - 1;
             }
 
             return true;

@@ -24,10 +24,4 @@
       <None Remove="AIPlanningTests\**\*.cs" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Compile Update="AIPlanningTests\AiPlanningTests.cs">
-        <Link>TestProject1\UnitTest1.cs</Link>
-      </Compile>
-    </ItemGroup>
-
 </Project>

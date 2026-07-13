@@ -45,8 +45,9 @@ Targets `netstandard2.1` / `net8.0`, C# 9. The `AIPlanning` library stays
 
 A library for parsing and reasoning over first-order logic: a parser, an AST,
 equivalence transformations, normal forms (PNF/CNF/Skolem), a resolution theorem
-prover with unification, kernel sets for explainability, and a WalkSAT solver for the
-propositional fragment.
+prover with unification, forward/backward/abductive chaining, theory comparison,
+model-theoretic semantics, kernel sets for explainability, and a WalkSAT solver for
+the propositional fragment.
 
 ## Features
 
@@ -55,6 +56,19 @@ propositional fragment.
   quantifier pulling, distribution.
 - **Normal forms**: Prenex (PNF), Conjunctive (CNF), Skolem.
 - **Resolution** theorem prover with unification (optional clause subsumption).
+- **Forward chaining**: `Saturate`/`Entails` fire rules to a fixpoint, with stratified
+  negation-as-failure; unsafe rules and function symbols in rule heads are rejected up front.
+- **Backward chaining**: goal-driven proof search with backtracking, NAF via failure
+  sub-proofs, and a depth bound against cyclic rules.
+- **Abductive chaining**: `Explain` yields the minimal sets of assumed ground literals
+  (over declared abducible predicates) that would make an observation derivable.
+- **Theory**: belief-base wrapper with `Entails`, consistency checks, and `Compare`
+  against another theory — returns a `Stance` (agreements / disagreements / silences),
+  in `Syntactic` or `Semantic` `ComparisonMode`.
+- **Signature**: declare predicate/function/constant symbols with arities and validate
+  sentences against the declaration.
+- **Semantics / Interpretation**: model-theoretic evaluation over a domain of discourse,
+  including quantifier evaluation by ranging over the domain's elements.
 - **Kernel sets**: minimal entailing subsets of a belief base (Hansson 1994).
 - **WalkSAT** for propositional clause sets.
 - **Time-indexed predicates** for temporal reasoning (`P(x)^1`).
@@ -66,11 +80,16 @@ propositional fragment.
 - Implication — `IMPLIES`, `=>`
 - Biconditional — `IFF`, `<=>`
 - Negation — `NOT`, `!`, `-`, `~`, `¬`
+- Negation as failure — `NAF` (used by the chaining engines)
 - Quantifiers — `FORALL x ...`, `EXISTS x ...`
 - Constants — `TRUE`, `FALSE`
 - Time index — `P(x)^1`
 
 Identifiers starting with `x`, `y`, `z`, `w` are variables; all others are constants.
+
+Operator precedence, tightest first: `NOT` / `NAF` / quantifiers, then `AND`, then `OR`,
+then `IMPLIES`, then `IFF`. `AND` and `OR` are left-associative; `IMPLIES` and `IFF` are
+right-associative. Parentheses override as usual.
 
 ## Example
 

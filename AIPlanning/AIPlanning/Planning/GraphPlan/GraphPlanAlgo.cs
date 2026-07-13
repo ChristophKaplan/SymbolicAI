@@ -26,7 +26,9 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
 
                 if (goalsReachable) {
-                    var solution = graph.ExtractSolution(levelIndex, noGoods);
+                    // One plan is enough for execution — skip the exhaustive (worst-case
+                    // exponential) enumeration of every interchangeable supporter combination.
+                    var solution = graph.ExtractSolution(levelIndex, noGoods, stopAtFirst: true);
                     if (!solution.IsEmpty) {
                         return solution;
                     }

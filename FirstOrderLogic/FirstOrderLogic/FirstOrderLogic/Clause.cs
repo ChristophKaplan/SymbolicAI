@@ -5,8 +5,8 @@ using System.Linq;
 namespace FirstOrderLogic {
     public class Clause
     {
-        public List<ISentence> Literals { get; } = new();
-    
+        public List<ISentence> Literals { get; }
+
         public Clause(params ISentence[] literals)
         {
             // An empty literal list must mean "empty clause": silently dropping bad input here
@@ -17,7 +17,13 @@ namespace FirstOrderLogic {
                 throw new ArgumentException($"{nonLiteral} is not a literal", nameof(literals));
             }
 
-            Literals = new List<ISentence>(literals);
+            // A clause is a set: duplicates change nothing semantically and must not survive
+            // construction (AddLiteral already dedups).
+            Literals = new List<ISentence>(literals.Length);
+            foreach (var literal in literals)
+            {
+                if (!Literals.Contains(literal)) Literals.Add(literal);
+            }
         }
     
         public void AddLiteral(ISentence literal)
@@ -71,14 +77,7 @@ namespace FirstOrderLogic {
                 output += parent2.TraceResolution() + "\n";
             }
 
-            if (this is Resolvent)
-            {
-                output += ResolventAsString() + "\n";
-            }
-            else
-            {
-                output += "literal:\n" + ToString() + "\n";
-            }
+            output += ResolventAsString() + "\n";
 
             return output;
         }

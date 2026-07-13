@@ -16,7 +16,7 @@ namespace FirstOrderLogic
                 if (s is not IComplexSentence rule || !rule.IsImplication) continue;
                 bool holds;
                 try   { holds = model.Evaluate(rule.Children[0]); }
-                catch { continue; } // model can't evaluate this rule (unknown predicate/term) — skip
+                catch (InterpretationException) { continue; } // model doesn't cover this rule's symbols — skip
                 if (holds) result.Add(rule.Children[1]);
             }
             return result;

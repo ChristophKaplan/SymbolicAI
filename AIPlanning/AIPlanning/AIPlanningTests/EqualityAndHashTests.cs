@@ -42,6 +42,50 @@ namespace AIPlanningTests {
         }
 
         [Test]
+        public void GpAction_Equality_IsMultisetSensitive() {
+            var p = ParseLiteral("P(Obj)");
+            var q = ParseLiteral("Q(Obj)");
+            var eff = ParseLiteral("R(Obj)");
+
+            var ppq = new GpAction("A", new() { p, p, q }, new() { eff });
+            var pqq = new GpAction("A", new() { p, q, q }, new() { eff });
+
+            Assert.That(ppq, Is.Not.EqualTo(pqq),
+                "pre={P,P,Q} and pre={P,Q,Q} have the same size and mutual containment but " +
+                "different element counts — multiset equality must distinguish them");
+        }
+
+        [Test]
+        public void GpAction_Equality_DuplicatesInDifferentOrder_AreEqualWithEqualHashes() {
+            var p = ParseLiteral("P(Obj)");
+            var q = ParseLiteral("Q(Obj)");
+            var eff = ParseLiteral("R(Obj)");
+
+            var a = new GpAction("A", new() { p, p, q }, new() { eff });
+            var b = new GpAction("A", new() { q, p, p }, new() { eff });
+
+            Assert.That(a, Is.EqualTo(b), "same multiset in different order must be Equal");
+            Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()),
+                "equal actions MUST have equal hash codes");
+        }
+
+        [Test]
+        public void GpAction_HashCode_DuplicatePairsDoNotCancel() {
+            var p = ParseLiteral("P(Obj)");
+            var q = ParseLiteral("Q(Obj)");
+            var eff = ParseLiteral("R(Obj)");
+
+            // Under the old XOR combination P^P and Q^Q both cancelled to 0, giving
+            // {P,P} and {Q,Q} identical hashes gratuitously.
+            var pp = new GpAction("A", new() { p, p }, new() { eff });
+            var qq = new GpAction("A", new() { q, q }, new() { eff });
+
+            Assert.That(pp, Is.Not.EqualTo(qq));
+            Assert.That(pp.GetHashCode(), Is.Not.EqualTo(qq.GetHashCode()),
+                "duplicate literals must contribute to the hash instead of XOR-cancelling");
+        }
+
+        [Test]
         public void GpAction_Equality_DistinguishesDifferentEffects() {
             var pre = ParseLiteral("At(z, Work)");
             var eff1 = ParseLiteral("Have(Money)");

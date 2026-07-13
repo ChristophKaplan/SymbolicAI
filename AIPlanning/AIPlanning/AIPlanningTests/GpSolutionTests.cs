@@ -27,5 +27,13 @@ namespace AIPlanningTests {
 
             Assert.That(solution.ToString(), Does.Contain("No solutions"));
         }
+
+        [Test]
+        public void GetSolution_InvalidIndex_ThrowsArgumentOutOfRange() {
+            var solution = GpSolution.EmptyPlan();
+
+            Assert.That(() => solution.GetSolution(-1), Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(() => solution.GetSolution(1), Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
     }
 }

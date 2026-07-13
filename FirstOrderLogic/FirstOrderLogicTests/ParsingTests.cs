@@ -59,6 +59,20 @@ namespace FolTests {
             Assert.That(pred.Time, Is.EqualTo(3));
         }
 
+        // Time indices are not limited to a single digit.
+        [Test]
+        public void TimeIndex_MultiDigitIsParsed() {
+            var prop = (Proposition)Logic.TryParse("Cook^12");
+            Assert.That(prop.Time, Is.EqualTo(12));
+
+            var pred = (Predicate)Logic.TryParse("At(Home)^12");
+            Assert.That(pred.Time, Is.EqualTo(12));
+
+            // Round-trips through ToString + reparse.
+            Assert.That(S(prop.ToString()!), Is.EqualTo((ISentence)prop));
+            Assert.That(S(pred.ToString()!), Is.EqualTo((ISentence)pred));
+        }
+
         // ToString() emits math glyphs (∧ ∨ ⇒ ⇔ ¬ ∀ ∃ ⊤ ⊥); the lexer accepts them too, so
         // parse(print(s)) round-trips for every operator.
         [Test]

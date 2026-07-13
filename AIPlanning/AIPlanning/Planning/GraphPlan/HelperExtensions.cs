@@ -11,21 +11,6 @@ namespace AIPlanning.Planning.GraphPlan {
             return Unificator.TryMatch(other, sentence, out unificator);
         }
 
-        public static bool IsNegationOfAndMatch(this ISentence sentence, ISentence other, [NotNullWhen(true)] out Unificator? unificator) {
-            unificator = null;
-            if (!sentence.IsNegationOf(other, true)) {
-                return false;
-            }
-
-            var temp = new Unificator(other, sentence);
-            if (!temp.IsUnifiable) {
-                return false;
-            }
-
-            unificator = temp;
-            return true;
-        }
-
         public static List<GpNode> GetConflictFreeSubset(this IReadOnlyList<GpNode> nodes) {
             return nodes.Where(node => !node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode))).ToList();
         }
@@ -39,11 +24,10 @@ namespace AIPlanning.Planning.GraphPlan {
                 for (var j = i + 1; j < nodes.Count; j++) {
                     var nodeA = nodes[i];
                     var nodeB = nodes[j];
-                    if (!nodeA.Equals(nodeB)) {
-                        var mutexType = nodeA.GetMutexType(nodeB);
-                        if (mutexType != MutexType.None) {
-                            nodeA.TryAddMutexRelations(nodeB, mutexType);
-                        }
+                    // GetMutexType already returns None for equal nodes; no pre-check needed.
+                    var mutexType = nodeA.GetMutexType(nodeB);
+                    if (mutexType != MutexType.None) {
+                        nodeA.TryAddMutexRelations(nodeB, mutexType);
                     }
                 }
             }

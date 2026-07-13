@@ -45,8 +45,10 @@ namespace FirstOrderLogic
                 case ComparisonMode.Syntactic:
                     return Inconsistencies(other).Count == 0;
                 case ComparisonMode.Semantic:
+                    // Pass the raw conjunction: IsUnsatisfiable prenexes/skolemizes/CNFs itself,
+                    // which explicit ToConjunctiveNormalForm cannot do for quantified sentences.
                     var union = Union(other);
-                    return union.Count == 0 || !Resolution.IsUnsatisfiable(_logic.ToConjunctiveNormalForm(Conjoin(union)));
+                    return union.Count == 0 || !Resolution.IsUnsatisfiable(Conjoin(union));
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode");
             }
@@ -61,14 +63,16 @@ namespace FirstOrderLogic
         
         public bool Entails(ISentence target)
         {
-            if (this.Count == 0) return false;
+            // The empty theory entails exactly the tautologies: ⊨ target iff ¬target is unsatisfiable.
+            if (this.Count == 0) return Resolution.IsUnsatisfiable(target.Negated());
             return Resolution.Resolve(Conjoin(this), target);
         }
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(this, target);
         
-        public Stance Compare(ITheory other, ComparisonMode mode = ComparisonMode.Syntactic)
+        public Stance Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
+            if (other == null) throw new ArgumentNullException(nameof(other), "Cannot compare against a null theory.");
             var closure = ChainingClosure(other, mode);
             var agree = new List<ISentence>();
             var disagree = new List<ISentence>();
@@ -115,19 +119,43 @@ namespace FirstOrderLogic
             var left = rule.Premises.Append(rule.Head).ToList();
             var right = candidate.Premises.Append(negatedHead ? candidate.Head.Negated() : candidate.Head).ToList();
 
-            for (var i = 0; i < left.Count; i++)
-            {
-                if (!Unificator.TryMatch(left[i], right[i], out var match)) return false;
-                if (match.IsEmpty) continue;
-                var substitution = new Substitution(match.Substitutions);
-                for (var j = i + 1; j < left.Count; j++)
-                {
-                    left[j] = substitution.Apply(left[j]);
-                    right[j] = substitution.Apply(right[j]);
-                }
-            }
+            // Premise order carries no logical meaning: each left premise must match a distinct
+            // right premise (backtracking over a used-set; premise lists are small). The heads —
+            // last in both lists — are still matched only against each other.
+            return MatchFrom(left, 0, right, new bool[right.Count]);
 
-            return true;
+            static bool MatchFrom(List<ISentence> left, int i, List<ISentence> right, bool[] used)
+            {
+                if (i == left.Count) return true;
+
+                var headIndex = left.Count - 1;
+                var candidates = i == headIndex ? new[] { headIndex } : Enumerable.Range(0, headIndex).ToArray();
+                foreach (var j in candidates)
+                {
+                    if (used[j]) continue;
+                    if (!Unificator.TryMatch(left[i], right[j], out var match)) continue;
+
+                    var nextLeft = left;
+                    var nextRight = right;
+                    if (!match.IsEmpty)
+                    {
+                        var substitution = new Substitution(match.Substitutions);
+                        nextLeft = new List<ISentence>(left);
+                        nextRight = new List<ISentence>(right);
+                        for (var k = i + 1; k < left.Count; k++)
+                            nextLeft[k] = substitution.Apply(left[k]);
+                        for (var k = 0; k < right.Count; k++)
+                            if (!used[k] && k != j)
+                                nextRight[k] = substitution.Apply(right[k]);
+                    }
+
+                    used[j] = true;
+                    if (MatchFrom(nextLeft, i + 1, nextRight, used)) return true;
+                    used[j] = false;
+                }
+
+                return false;
+            }
         }
 
         private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => _logic.ConnectSentences(sentences.ToList());

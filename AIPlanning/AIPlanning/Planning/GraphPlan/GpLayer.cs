@@ -5,16 +5,16 @@ using FirstOrderLogic;
 namespace AIPlanning.Planning.GraphPlan {
     public class GpLayer {
         public readonly int Level;
-        public GpBeliefState BeliefState = new();
-        public readonly GpActionSet ActionSet = new();
+        public GpBeliefState BeliefState { get; }
+        public readonly GpActionSet ActionSet;
 
-        public GpLayer(int level, GpBeliefState beliefState, GpActionSet actionSet) : this(level) {
+        public GpLayer(int level, GpBeliefState beliefState, GpActionSet actionSet) {
+            Level = level;
             BeliefState = beliefState;
             ActionSet = actionSet;
         }
 
-        public GpLayer(int level) {
-            Level = level;
+        public GpLayer(int level) : this(level, new GpBeliefState(), new GpActionSet()) {
         }
 
         public void TryAdd(GpNode gpNode) {
@@ -72,10 +72,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public GpLayer ExpandLayer() {
-            var nextLayer = new GpLayer(Level + 1) {
-                BeliefState = ActionSet.ExpandBeliefState()
-            };
-            return nextLayer;
+            return new GpLayer(Level + 1, ActionSet.ExpandBeliefState(), new GpActionSet());
         }
 
         public override string ToString() {

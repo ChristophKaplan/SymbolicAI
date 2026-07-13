@@ -35,6 +35,13 @@ namespace FolTests {
             Assert.That(S("A OR (B AND C)").IsCNF(), Is.False);
         }
 
+        // NAF is not a classical connective, so no NAF-containing sentence is in CNF.
+        [Test]
+        public void IsCNF_NafIsNeverCNF() {
+            Assert.That(S("NAF P(a)").IsCNF(), Is.False);
+            Assert.That(S("(NAF P(a)) AND Q(a)").IsCNF(), Is.False);
+        }
+
         [Test]
         public void IsDisjunctionOfLiterals() {
             Assert.That(S("A OR (NOT B) OR C").IsDisjunctionOfLiterals(), Is.True);
@@ -54,6 +61,19 @@ namespace FolTests {
             Assert.That(notP.IsNegationOf(p), Is.True);
             Assert.That(p.IsNegationOf(notP), Is.True);
             Assert.That(p.IsNegationOf(S("P(b)")), Is.False);
+        }
+
+        // Signature-only comparison must handle propositional literals (they have no predicate).
+        [Test]
+        public void IsNegationOf_PredSignature_WorksForPropositions() {
+            Assert.That(S("NOT A").IsNegationOf(S("A"), onlyPredSignature: true), Is.True);
+            Assert.That(S("A").IsNegationOf(S("NOT A"), onlyPredSignature: true), Is.True);
+            Assert.That(S("NOT A").IsNegationOf(S("B"), onlyPredSignature: true), Is.False);
+            // Mixed atom kinds never share a signature.
+            Assert.That(S("NOT A").IsNegationOf(S("P(a)"), onlyPredSignature: true), Is.False);
+            Assert.That(S("NOT P(a)").IsNegationOf(S("A"), onlyPredSignature: true), Is.False);
+            // Predicate behavior is unchanged: same symbol/arity matches regardless of terms.
+            Assert.That(S("NOT P(a)").IsNegationOf(S("P(b)"), onlyPredSignature: true), Is.True);
         }
 
         [Test]
@@ -98,6 +118,10 @@ namespace FolTests {
             var action = S("Cook^0 => HaveIngredient^0 AND Food^1");
             var instances = action.GetInstancesOverTime(0, 3);
             Assert.That(instances.Count, Is.EqualTo(3));
+            // Every time index is shifted by the instance's offset.
+            Assert.That(instances[0], Is.EqualTo(S("Cook^0 => HaveIngredient^0 AND Food^1")));
+            Assert.That(instances[1], Is.EqualTo(S("Cook^1 => HaveIngredient^1 AND Food^2")));
+            Assert.That(instances[2], Is.EqualTo(S("Cook^2 => HaveIngredient^2 AND Food^3")));
             // Originals are untouched (clones were shifted).
             Assert.That(action, Is.EqualTo(S("Cook^0 => HaveIngredient^0 AND Food^1")));
         }

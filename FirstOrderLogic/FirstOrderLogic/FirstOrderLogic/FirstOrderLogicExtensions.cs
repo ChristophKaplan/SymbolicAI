@@ -180,6 +180,10 @@ namespace FirstOrderLogic {
         }
     
         public static List<Clause> GetClauseSet(this ISentence sentence, List<Clause>? clauseSet = null) {
+            if (sentence.ContainsNaf()) {
+                throw new ArgumentException(
+                    $"'{sentence}' contains negation-as-failure, which has no classical semantics — CNF/Resolution cannot consume it.");
+            }
             if (!sentence.IsCNF()) { throw new Exception("Sentence is not in CNF"); }
         
             clauseSet ??= new List<Clause>();

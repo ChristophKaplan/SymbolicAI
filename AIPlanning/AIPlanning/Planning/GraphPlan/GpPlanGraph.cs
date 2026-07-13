@@ -26,27 +26,31 @@ namespace AIPlanning.Planning.GraphPlan {
             return _layers[i].BeliefState.IsConflictFreeStateReachable(sentences, out _);
         }
 
-        public GpSolution ExtractSolution(int levelIndex, NoGoods noGoods) {
+        // stopAtFirst: return as soon as ONE complete plan is found instead of enumerating
+        // every supporter combination — the exhaustive walk is exponential in the number of
+        // interchangeable supporters, and callers that only execute one plan don't need it.
+        public GpSolution ExtractSolution(int levelIndex, NoGoods noGoods, bool stopAtFirst = false) {
             var lastState = _layers[levelIndex].BeliefState;
-            lastState.IsConflictFreeStateReachable(_problem.Goals, out var currentState);
-
             var solutions = new GpSolution();
-            if (currentState == null) {
+
+            // When the goals are not jointly conflict-free at this level, the out-state is only
+            // the mutex-stripped SUBSET of the goals — extracting from it would yield a plan
+            // that achieves part of the goals. No plan exists at this level.
+            if (!lastState.IsConflictFreeStateReachable(_problem.Goals, out var currentState)) {
                 return solutions;
             }
 
-            FindSolutions(levelIndex, currentState, noGoods, new Dictionary<int, GpLayer>(), solutions);
+            FindSolutions(levelIndex, currentState!, noGoods, new Dictionary<int, GpLayer>(), solutions, stopAtFirst);
             return solutions;
         }
 
-        private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolution solutions) {
+        private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolution solutions, bool stopAtFirst) {
             // The "no goal literals at this level" branch was reached either because a
             // recursive call drilled below level 0 or because the goals were empty.
             // Treat it as a base case with success.
             if (curBeliefState.GetNodes.Count == 0) {
                 if (levelIndex < 0) {
-                    var emptySolution = outcome.Reverse().ToDictionary(pair => pair.Key, pair => pair.Value);
-                    solutions.Add(emptySolution);
+                    solutions.Add(outcome);
                     return true;
                 }
                 return false;
@@ -77,14 +81,19 @@ namespace AIPlanning.Planning.GraphPlan {
                 // Empty joint preconditions (all chosen actions are precondition-less) means the
                 // branch needs nothing from the levels below — it is complete, not a dead end.
                 if (nextLevelIndex == 0 || preConditionalState.GetNodes.Count == 0) {
-                    var solution = outcomeBranch.Reverse().ToDictionary(pair => pair.Key, pair => pair.Value);
-                    solutions.Add(solution);
+                    solutions.Add(outcomeBranch);
                     anyBranchSucceeded = true;
+                    if (stopAtFirst) {
+                        return true;
+                    }
                     continue;
                 }
 
-                if (FindSolutions(nextLevelIndex, preConditionalState, noGoods, outcomeBranch, solutions)) {
+                if (FindSolutions(nextLevelIndex, preConditionalState, noGoods, outcomeBranch, solutions, stopAtFirst)) {
                     anyBranchSucceeded = true;
+                    if (stopAtFirst) {
+                        return true;
+                    }
                 }
             }
 

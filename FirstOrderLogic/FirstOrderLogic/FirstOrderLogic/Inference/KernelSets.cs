@@ -27,24 +27,17 @@ namespace FirstOrderLogic
         private static bool Entails(IList<ISentence> sentences, ISentence target) =>
             new Theory(sentences as List<ISentence> ?? new List<ISentence>(sentences)).Entails(target);
 
-        // Precondition: Entails(sentences, α) == true.
+        // Precondition: Entails(sentences, α) == true. Standard single downward-deletion pass:
+        // when index i is tested, the set is a superset of the final result, so by monotonicity
+        // every survivor is still load-bearing at the end — one pass suffices for minimality.
         private List<ISentence> Shrink(List<ISentence> sentences, ISentence α)
         {
-            bool changed;
-            do
+            for (var i = sentences.Count - 1; i >= 0; i--)
             {
-                changed = false;
-                for (var i = sentences.Count - 1; i >= 0; i--)
-                {
-                    var candidate = new List<ISentence>(sentences);
-                    candidate.RemoveAt(i);
-                    if (!Entails(candidate, α)) continue;
-                    sentences = candidate;
-                    changed   = true;
-                    break;
-                }
+                var candidate = new List<ISentence>(sentences);
+                candidate.RemoveAt(i);
+                if (Entails(candidate, α)) sentences = candidate;
             }
-            while (changed);
             return sentences;
         }
 

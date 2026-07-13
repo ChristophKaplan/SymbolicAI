@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LogHelper;
 using LRParser.Language;
 
 namespace FirstOrderLogic {
@@ -29,8 +28,6 @@ namespace FirstOrderLogic {
         IPredicate GetPredicate();
         IProposition GetProposition();
         bool IsImplicationAndEqualPremise(ISentence premise);
-        public bool Equals(object? obj);
-        public int GetHashCode();
     }
 
     public abstract class Sentence : ISentence {
@@ -55,7 +52,11 @@ namespace FirstOrderLogic {
             return false;
 
             bool Compare(ISentence A, ISentence B) {
-                return onlyPredSignature ? A.GetPredicate().EqualSignature(B.GetPredicate()) : A.Equals(B);
+                if (!onlyPredSignature) return A.Equals(B);
+                // Propositional atoms have no predicate; their "signature" is the bare symbol.
+                if (A is IProposition propA) return B is IProposition propB && propA.Symbol.Equals(propB.Symbol);
+                if (B is IProposition) return false;
+                return A.GetPredicate().EqualSignature(B.GetPredicate());
             }
         }
 
@@ -86,12 +87,13 @@ namespace FirstOrderLogic {
 
             var complexSentence = (IComplexSentence)this;
 
-            if (complexSentence.IsNegation || 
+            if (complexSentence.IsNegation ||
+                complexSentence.IsNaf ||
                 complexSentence.IsQuantifier ||
-                complexSentence.Connective == Connective.LogicSymbol.IMPLICATION || 
+                complexSentence.Connective == Connective.LogicSymbol.IMPLICATION ||
                 complexSentence.Connective == Connective.LogicSymbol.BICONDITIONAL) {
                 return false;
-            } 
+            }
         
             var eval = complexSentence.Connective == Connective.LogicSymbol.DISJUNCTION ? complexSentence.Children.All(child => child.IsDisjunctionOfLiterals()) : Children.All(child => child.IsCNF());
             return eval;
@@ -152,17 +154,11 @@ namespace FirstOrderLogic {
         }
 
         public bool IsPropositional() {
-            var isPropositional = this switch {
+            return this switch {
                 IProposition => true,
                 IComplexSentence complexSentence => complexSentence.Children.All(child => child.IsPropositional()),
                 _ => false
             };
-
-            if (!isPropositional) {
-                Logger.Log($"{this} is not propositional");
-            }
-        
-            return isPropositional;
         }
 
         // No variables anywhere (distinct from IsPropositional, which is about zero-arity atoms).
@@ -172,10 +168,13 @@ namespace FirstOrderLogic {
         }
 
         public override bool Equals(object? obj) {
-            if (obj == null || GetType() != obj.GetType()) { //TODO: what if we compare atomic pred with complex pred
+            // Exact-type check is sound for atomic-vs-complex: an atom and a complex sentence can
+            // never be structurally equal, and every subclass (AtomicSentence, Predicate,
+            // ComplexSentence) starts its own Equals with the same GetType() comparison.
+            if (obj == null || GetType() != obj.GetType()) {
                 return false;
             }
-        
+
             return Children.SequenceEqual(((Sentence)obj).Children);
         }
 

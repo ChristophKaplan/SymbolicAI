@@ -5,6 +5,12 @@ using System.Text;
 using LRParser.Language;
 
 namespace FirstOrderLogic {
+    // A sentence mentions a symbol the interpretation does not cover — distinguishable from
+    // genuine programming errors, so callers can skip such sentences without swallowing bugs.
+    public class InterpretationException : Exception {
+        public InterpretationException(string message) : base(message) { }
+    }
+
     public class PossibleWorld : ILanguageObject{
         public readonly Dictionary<IProposition, bool> _propositionalAssignment = new();
         public PossibleWorld(Dictionary<IProposition, bool> propositionalAssignment) {
@@ -28,9 +34,9 @@ namespace FirstOrderLogic {
         }
     
         protected virtual bool Evaluate(IComplexSentence complexSentence) {
+            // No TRUE/FALSE connective cases: the parser emits ⊤/⊥ as Propositions
+            // (handled via Tautology/Contradiction below), never as connectives.
             return complexSentence.Connective.Symbol switch {
-                Connective.LogicSymbol.TRUE => true,
-                Connective.LogicSymbol.FALSE => false,
                 Connective.LogicSymbol.NEGATION => !Evaluate(complexSentence.Children[0]),
                 Connective.LogicSymbol.CONJUNCTION => Evaluate(complexSentence.Children[0]) && Evaluate(complexSentence.Children[1]),
                 Connective.LogicSymbol.DISJUNCTION => Evaluate(complexSentence.Children[0]) || Evaluate(complexSentence.Children[1]),
@@ -43,16 +49,21 @@ namespace FirstOrderLogic {
         protected virtual bool Evaluate(IAtomicSentence atomicSentence) {
             return atomicSentence switch {
                 Proposition proposition => Evaluate(proposition),
-                _ => throw new Exception($"Error: {atomicSentence} not found in interpretation.")
+                _ => throw new InterpretationException($"Error: {atomicSentence} not found in interpretation.")
             };
         }
-    
+
         private bool Evaluate(IProposition proposition) {
+            // The logical constants ⊤/⊥ have fixed truth values in every world; they never
+            // need (and never get) an entry in the assignment.
+            if (proposition.Tautology) return true;
+            if (proposition.Contradiction) return false;
+
             if (_propositionalAssignment.TryGetValue(proposition, out var value)) {
                 return value;
             }
-        
-            throw new Exception($"Error: {proposition} not found in interpretation.");
+
+            throw new InterpretationException($"Error: {proposition} not found in interpretation.");
         }
     
         public bool Evaluate(List<Clause> clauseSet) {
@@ -136,7 +147,7 @@ namespace FirstOrderLogic {
     
         private bool Evaluate(IPredicate predicate) {
             if(!_relations.TryGetValue(predicate.Symbol, out var relation)) {
-                throw new Exception($"Error: {predicate} not found in interpretation.");
+                throw new InterpretationException($"Error: {predicate} not found in interpretation.");
             }
 
             return relation(Array.ConvertAll(predicate.Terms, Evaluate));
@@ -145,9 +156,9 @@ namespace FirstOrderLogic {
         private IElementOfDiscourse Evaluate(Term term) {
             return term switch {
                 // Constants are arity-0 functions: function.Terms is empty for them.
-                Function function =>  _functions.TryGetValue(function.TermSymbol, out var func) ? func(function.Terms) : throw new Exception("Error: function not found in interpretation."),
-                Variable variable => _variableAssigment.TryGetValue(variable.TermSymbol, out var domain) ? domain : throw new Exception("Error: variable not found in interpretation."),
-                _ => throw new Exception($"Error: {term} not found in interpretation.")
+                Function function =>  _functions.TryGetValue(function.TermSymbol, out var func) ? func(function.Terms) : throw new InterpretationException("Error: function not found in interpretation."),
+                Variable variable => _variableAssigment.TryGetValue(variable.TermSymbol, out var domain) ? domain : throw new InterpretationException("Error: variable not found in interpretation."),
+                _ => throw new InterpretationException($"Error: {term} not found in interpretation.")
             };
         }
 

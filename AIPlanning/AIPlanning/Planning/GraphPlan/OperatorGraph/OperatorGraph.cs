@@ -10,7 +10,12 @@ namespace AIPlanning.Planning.GraphPlan {
         private readonly List<GpAction> _actions;
         private readonly List<GpAction> _preconditionlessInstances = new();
         private GpAction? _startAction;
+        private GpAction? _finishAction;
 
+        // Caps how often one action node is revisited while the graph is built backwards from
+        // Finish; without it, mutually-supporting actions (A enables B enables A ...) would
+        // recurse forever. The graph only needs each literal→action edge once, so a small
+        // constant bound loses nothing.
         private const int UseCountStop = 10;
 
         public OperatorGraph(GpProblem problem)
@@ -30,6 +35,7 @@ namespace AIPlanning.Planning.GraphPlan {
             _startAction = startNode.GpAction;
             var finishNode = new GpActionNode(new GpAction("Finish",
                 new List<ISentence>(_problem.Goals), new List<ISentence>()));
+            _finishAction = finishNode.GpAction;
 
             //init the effects of start as preconditions
             foreach (var preCon in startNode.GpAction.Effects)
@@ -76,7 +82,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
             foreach (var pair in instanceMap)
             {
-                if (pair.Key.Preconditions.Count == 0 && !ReferenceEquals(pair.Key, _startAction))
+                if (pair.Key.Preconditions.Count == 0 && !IsSynthetic(pair.Key))
                 {
                     _preconditionlessInstances.AddRange(pair.Value);
                 }
@@ -88,12 +94,22 @@ namespace AIPlanning.Planning.GraphPlan {
                 for (var i = literalNode.OutEdges.Count - 1; i >= 0; i--)
                 {
                     var outEdge = literalNode.OutEdges[i];
-                    if (outEdge is GpActionNode actionNode &&
-                        instanceMap.TryGetValue(actionNode.GpAction, out var instances))
+                    if (outEdge is not GpActionNode actionNode ||
+                        !instanceMap.TryGetValue(actionNode.GpAction, out var instances))
+                    {
+                        continue;
+                    }
+
+                    // The synthetic Start/Finish actions only bootstrap the backward graph
+                    // construction; their instances must not surface at runtime (a Finish
+                    // hanging off the goal literals would enter every layer's action set and
+                    // mutex computation once the goals appear in a belief state).
+                    if (!IsSynthetic(actionNode.GpAction))
                     {
                         allInstances.AddRange(instances);
-                        literalNode.OutEdges.Remove(actionNode);
                     }
+
+                    literalNode.OutEdges.Remove(actionNode);
                 }
 
                 foreach (var instance in allInstances)
@@ -101,6 +117,11 @@ namespace AIPlanning.Planning.GraphPlan {
                     literalNode.ConnectTo(new GpActionNode(instance));
                 }
             }
+        }
+
+        private bool IsSynthetic(GpAction action)
+        {
+            return ReferenceEquals(action, _startAction) || ReferenceEquals(action, _finishAction);
         }
 
         private Dictionary<GpAction, List<GpAction>> InstantiateActions()
@@ -113,7 +134,11 @@ namespace AIPlanning.Planning.GraphPlan {
                 var noMultipleInstancesNeeded = action.Unificators.All(u => u.IsEmpty);
                 if (noMultipleInstancesNeeded)
                 {
-                    possibleInstances.Add(action.Clone());
+                    var clone = action.Clone();
+                    if (IsFullyGround(clone) || IsSynthetic(action))
+                    {
+                        possibleInstances.Add(clone);
+                    }
                     mapping.Add(action, possibleInstances);
                     continue;
                 }
@@ -123,7 +148,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 {
                     var clone = action.Clone();
                     clone.SpecifyAction(unificator);
-                    if (clone.IsConsistent())
+                    if (clone.IsConsistent() && IsFullyGround(clone))
                     {
                         possibleInstances.Add(clone);
                     }
@@ -133,6 +158,15 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             return mapping;
+        }
+
+        // Runtime matching against belief states is exact (GpBeliefState.GetSubSetOfNodesMatching
+        // uses Equals), and belief states only ever contain ground literals — so an instance with
+        // an unbound variable left in any literal can never fire and would only be dead weight in
+        // every layer's applicability and mutex scans.
+        private static bool IsFullyGround(GpAction action)
+        {
+            return action.Preconditions.All(p => p.IsGround()) && action.Effects.All(e => e.IsGround());
         }
 
         private void ConstructGraphRecursivly(GpNode curNode)
@@ -158,7 +192,10 @@ namespace AIPlanning.Planning.GraphPlan {
             {
                 if (!TryGetMatchingLiteralNodes(preCon, out var literalNodes, out var unificators))
                 {
-                    //TODO: clarify if its a problem that we can add literals with "unspecified variables" here.
+                    // Non-ground literal nodes (e.g. Q(x)) are fine here: they act as unification
+                    // anchors — GetActionsForLiteral matches ground runtime literals against them
+                    // via Match, and InstantiateActions later drops any action INSTANCE that keeps
+                    // an unbound variable, so no non-ground literal ever reaches a belief state.
                     literalNodes = new List<GpLiteralNode>() { new(preCon) };
                     _literalNodes.AddRange(literalNodes);
                 }
