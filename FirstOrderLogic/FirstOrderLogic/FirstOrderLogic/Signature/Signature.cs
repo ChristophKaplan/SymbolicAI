@@ -11,7 +11,8 @@ namespace FirstOrderLogic
     {
         // A declared name + arity. Converts implicitly to its name so it drops in wherever a
         // string symbol is expected; Of(args) renders the applied syntax "Name(a, b)" with an
-        // arity check.
+        // arity check; Ground(args) builds the same atom directly as a Predicate over constant
+        // terms, so ground facts need no parser round-trip.
         public sealed class Symbol
         {
             public string Name { get; }
@@ -32,6 +33,14 @@ namespace FirstOrderLogic
                     throw new ArgumentException(
                         $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
                 return args.Length == 0 ? Name : $"{Name}({string.Join(", ", args)})";
+            }
+
+            public Predicate Ground(params string[] args)
+            {
+                if (args.Length != Arity)
+                    throw new ArgumentException(
+                        $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
+                return new Predicate(Name, args.Select(a => (Term)new Constant(a)).ToArray());
             }
         }
 

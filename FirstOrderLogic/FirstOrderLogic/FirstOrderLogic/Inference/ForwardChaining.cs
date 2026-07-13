@@ -42,6 +42,11 @@ namespace FirstOrderLogic
 
         public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {
+            if (!query.IsLiteral)
+            {
+                throw new System.ArgumentException($"Holds is literal-only; got non-literal query '{query}'.");
+            }
+
             var sig = query.Signature();
             return facts.Any(f => f.Signature() == sig && Unificator.TryUnify(query, f, out _));
         }

@@ -61,6 +61,23 @@ namespace FolTests
         public void Symbol_OfThrowsOnArityMismatch() =>
             Assert.That(() => new Signature.Symbol("Owns", 2).Of("z"), Throws.TypeOf<ArgumentException>());
 
+        // Ground-built atoms must be Equals-identical to their parsed counterparts — Theory,
+        // Holds and Compare all rely on structural equality between the two construction paths.
+        [Test]
+        public void Symbol_GroundEqualsParsedAtom()
+        {
+            Assert.That(new Signature.Symbol("Owns", 2).Ground("mySelf", "Housea"),
+                Is.EqualTo(S("Owns(mySelf, Housea)")));
+            Assert.That((ISentence)new Signature.Symbol("Employed", 1).Ground("mySelf"),
+                Is.Not.EqualTo(S("-Employed(mySelf)")));
+            Assert.That(((ISentence)new Signature.Symbol("Employed", 1).Ground("mySelf")).Negated(),
+                Is.EqualTo(S("-Employed(mySelf)")));
+        }
+
+        [Test]
+        public void Symbol_GroundThrowsOnArityMismatch() =>
+            Assert.That(() => new Signature.Symbol("Owns", 2).Ground("z"), Throws.TypeOf<ArgumentException>());
+
         [Test]
         public void Builder_AcceptsSymbol()
         {

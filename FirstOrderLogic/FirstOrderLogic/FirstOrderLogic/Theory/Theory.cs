@@ -12,8 +12,7 @@ namespace FirstOrderLogic
         private static readonly KernelSets _kernels = new();
 
         private readonly List<ISentence> _state;
-
-        // A theory is its belief base: enumerate, count, and index it directly.
+        
         public int Count => _state.Count;
         public ISentence this[int index] => _state[index];
         public IEnumerator<ISentence> GetEnumerator() => _state.GetEnumerator();
@@ -21,20 +20,17 @@ namespace FirstOrderLogic
 
         public Theory(List<ISentence> state) =>
             _state = (state ?? Enumerable.Empty<ISentence>()).Where(s => s != null).ToList();
-
-        // Intentional mutation of the belief base; State stays a read-only view.
+        
         public bool Contains(ISentence sentence) => _state.Contains(sentence);
         public void Add(ISentence sentence) { if (sentence != null) _state.Add(sentence); }
         public int RemoveAll(Predicate<ISentence> match) => _state.RemoveAll(match);
 
         public List<ISentence> Inconsistencies() => Inconsistencies(null);
-
-        // Conflicting literals in the closure of our state merged with the other's.
+        
         public List<ISentence> Inconsistencies(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
             mode switch
             {
                 ComparisonMode.Syntactic => ForwardChaining.Saturate(Union(other)).Conflicts(),
-                // Semantic refutation yields only a verdict; a witness set needs unsat-core extraction.
                 ComparisonMode.Semantic  => throw new NotImplementedException(
                     "Semantic inconsistency witnesses require unsat-core extraction."),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode"),
@@ -63,7 +59,6 @@ namespace FirstOrderLogic
             return union;
         }
         
-        
         public bool Entails(ISentence target)
         {
             if (this.Count == 0) return false;
@@ -71,14 +66,9 @@ namespace FirstOrderLogic
         }
 
         public List<List<ISentence>> Explain(ISentence target) => _kernels.FindAllKernels(this, target);
-
-        // How our sentences stand against the other theory: each is something it holds (agreement),
-        // something whose negation it holds (disagreement), or something it is silent on.
-        public Stance Compare(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic)
+        
+        public Stance Compare(ITheory other, ComparisonMode mode = ComparisonMode.Syntactic)
         {
-            if (other == null)
-                return new Stance(new List<ISentence>(), new List<ISentence>(), this.ToList());
-
             var closure = ChainingClosure(other, mode);
             var agree = new List<ISentence>();
             var disagree = new List<ISentence>();
@@ -86,24 +76,58 @@ namespace FirstOrderLogic
             foreach (var s in this)
             {
                 if (HeldByOther(other, s, closure)) agree.Add(s);
-                else if (HeldByOther(other, s.Negated(), closure)) disagree.Add(s);
+                else if (DeniedByOther(other, s, closure)) disagree.Add(s);
                 else silent.Add(s);
             }
             return new Stance(agree, disagree, silent);
         }
-
-        // The other theory's derivable literals under chaining; null means use semantic entailment instead.
+        
         private static IReadOnlyList<ISentence>? ChainingClosure(ITheory other, ComparisonMode mode) =>
             mode == ComparisonMode.Syntactic ? ForwardChaining.Saturate(other) : null;
-
-        // Does the other theory hold s? With a chaining closure, check literal derivation
-        // (a non-literal rule can only be matched by identity); without one, use semantic entailment.
+        
         private static bool HeldByOther(ITheory other, ISentence s, IReadOnlyList<ISentence>? closure)
         {
             if (closure == null) return other.Entails(s);
-            return s.IsLiteral
-                ? ForwardChaining.Holds(closure, s)
-                : other.Any(x => x != null && x.Equals(s));
+            if (s.IsLiteral) return ForwardChaining.Holds(closure, s);
+            return other.Any(x => x != null && x.Equals(s)) || HoldsRuleForm(other, s, negatedHead: false);
+        }
+        
+        private static bool DeniedByOther(ITheory other, ISentence s, IReadOnlyList<ISentence>? closure)
+        {
+            if (HeldByOther(other, s.Negated(), closure)) return true;
+            return closure != null && !s.IsLiteral && HoldsRuleForm(other, s, negatedHead: true);
+        }
+
+        private static bool HoldsRuleForm(ITheory other, ISentence s, bool negatedHead)
+        {
+            var rule = Rule.From(s);
+            if (rule == null) return false;
+            return other.Where(x => x != null && !x.IsLiteral)
+                .Select(Rule.From)
+                .Any(candidate => candidate != null && RulesMatch(rule, candidate, negatedHead));
+        }
+        
+        private static bool RulesMatch(Rule rule, Rule candidate, bool negatedHead)
+        {
+            if (rule.Premises.Count != candidate.Premises.Count) return false;
+
+            candidate = candidate.Renamed(0);
+            var left = rule.Premises.Append(rule.Head).ToList();
+            var right = candidate.Premises.Append(negatedHead ? candidate.Head.Negated() : candidate.Head).ToList();
+
+            for (var i = 0; i < left.Count; i++)
+            {
+                if (!Unificator.TryMatch(left[i], right[i], out var match)) return false;
+                if (match.IsEmpty) continue;
+                var substitution = new Substitution(match.Substitutions);
+                for (var j = i + 1; j < left.Count; j++)
+                {
+                    left[j] = substitution.Apply(left[j]);
+                    right[j] = substitution.Apply(right[j]);
+                }
+            }
+
+            return true;
         }
 
         private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => _logic.ConnectSentences(sentences.ToList());

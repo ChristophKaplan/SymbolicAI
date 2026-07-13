@@ -22,6 +22,10 @@ namespace FirstOrderLogic
         // The rule subset of `kb`; non-rule sentences are dropped.
         public static List<Rule> FromAll(IEnumerable<ISentence> kb) => kb.Select(From).OfType<Rule>().ToList();
 
+        // Whether forward chaining can consume this sentence (a fact or a chainable rule) — the
+        // queryable form of the fragment decision From makes. Unsafe rules still throw.
+        public static bool IsChainable(ISentence sentence) => From(sentence) != null;
+
         // Null if `sentence` is not a rule (bare literal, or literal-conjunction ⇒ literal; a
         // leading universal-quantifier prefix is tolerated). Works on a clone.
         public static Rule? From(ISentence sentence)

@@ -82,12 +82,11 @@ namespace FolTests
         }
 
         [Test]
-        public void Empty_OnEmptyOrNullInputs()
+        public void Empty_OnEmptyInput()
         {
-            Assert.That(new Theory(new List<ISentence>())
-                .Compare(new Theory(Set("Have(Alice, Money)"))).Agreements, Is.Empty);
-            Assert.That(new Theory(Set("Have(Alice, Money)")).Compare(null).Agreements, Is.Empty);
-            Assert.That(new Theory(Set("Have(Alice, Money)")).Compare(null).Disagreements, Is.Empty);
+            var stance = new Theory(new List<ISentence>()).Compare(new Theory(Set("Have(Alice, Money)")));
+            Assert.That(stance.Agreements, Is.Empty);
+            Assert.That(stance.Disagreements, Is.Empty);
         }
 
         [Test]
@@ -208,6 +207,35 @@ namespace FolTests
             var conflicts = new Theory(new List<ISentence> { rule })
                 .Compare(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Syntactic).Disagreements;
             Assert.That(conflicts.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Chaining_NonLiterals_AgreeByUnification()
+        {
+            // A schema rule and its self-bound instance are the same commitment, not silence.
+            var stance = new Theory(Set("IsFemale(z) => -Employed(z)"))
+                .Compare(new Theory(Set("IsFemale(mySelf) => -Employed(mySelf)")), ComparisonMode.Syntactic);
+            Assert.That(stance.Agreements.Count, Is.EqualTo(1));
+            Assert.That(stance.Silences, Is.Empty);
+        }
+
+        [Test]
+        public void Chaining_NonLiterals_ConflictOnOppositeHead()
+        {
+            // Same condition, opposite demand: A ⇒ B against A ⇒ ¬B is a disagreement even though
+            // neither is the literal negation of the other.
+            var stance = new Theory(Set("IsFemale(z) => -Employed(z)"))
+                .Compare(new Theory(Set("IsFemale(mySelf) => Employed(mySelf)")), ComparisonMode.Syntactic);
+            Assert.That(stance.Disagreements.Count, Is.EqualTo(1));
+            Assert.That(stance.Agreements, Is.Empty);
+        }
+
+        [Test]
+        public void Chaining_NonLiterals_SilentWhenPremisesDiffer()
+        {
+            var stance = new Theory(Set("IsFemale(z) => -Employed(z)"))
+                .Compare(new Theory(Set("IsElder(z) => Employed(z)")), ComparisonMode.Syntactic);
+            Assert.That(stance.Silences.Count, Is.EqualTo(1));
         }
 
         [Test]

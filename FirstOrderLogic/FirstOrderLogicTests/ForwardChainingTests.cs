@@ -143,5 +143,26 @@ namespace FolTests {
                 () => ForwardChaining.Saturate(Set("P(a)", "P(x) => Q(y)")),
                 Throws.ArgumentException);
         }
+
+        // ── IsChainable: the queryable boundary of the fragment Saturate consumes ────────
+
+        [Test]
+        public void IsChainable_AcceptsFactsAndRules() {
+            Assert.That(Rule.IsChainable(S("Owns(mySelf, Workplacea)")), Is.True);
+            Assert.That(Rule.IsChainable(S("NOT Owns(mySelf, Workplacea)")), Is.True);
+            Assert.That(Rule.IsChainable(S("Owns(mySelf, y) => Role(mySelf, Owner)")), Is.True);
+            Assert.That(Rule.IsChainable(
+                S("(WorksAt(mySelf, y) AND NOT Owns(mySelf, y)) => Role(mySelf, Worker)")), Is.True);
+            Assert.That(Rule.IsChainable(S("FORALL x (Human(x) => Mortal(x))")), Is.True);
+        }
+
+        // Existential antecedents, disjunctions, and non-literal heads live outside the fragment —
+        // Saturate would silently drop them, so callers can validate up front instead.
+        [Test]
+        public void IsChainable_RejectsRicherForms() {
+            Assert.That(Rule.IsChainable(S("(EXISTS y (Owns(mySelf, y))) => Role(mySelf, Owner)")), Is.False);
+            Assert.That(Rule.IsChainable(S("Owns(mySelf, y) OR Role(mySelf, Owner)")), Is.False);
+            Assert.That(Rule.IsChainable(S("Human(x) => (Mortal(x) AND Alive(x))")), Is.False);
+        }
     }
 }
