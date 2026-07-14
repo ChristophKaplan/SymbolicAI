@@ -15,6 +15,14 @@ namespace FolTests {
         protected ISentence S(string s) => (ISentence)Logic.TryParse(s);
         protected List<ISentence> Set(params string[] sentences) => sentences.Select(S).ToList();
 
+        // Assert the same boolean in both modes: subsumption must never change the result, only speed.
+        protected void AssertResolves(string kb, string goal, bool expected) {
+            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: false),
+                Is.EqualTo(expected), $"[no subsumption] {kb}  =>  {goal}");
+            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: true),
+                Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
+        }
+
         // NUnit's [Timeout] cannot abort a hung test on .NET Core (no Thread.Abort), so
         // runaway-suspect calls run in a Task and must finish within a hard wait bound.
         protected static T RunWithin<T>(TimeSpan bound, string label, Func<T> call) {

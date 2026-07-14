@@ -5,8 +5,8 @@ using FirstOrderLogic;
 using NUnit.Framework;
 
 namespace FolTests {
-    // Repro tests for the open findings of the July 2026 whole-project reviews. Each test
-    // asserts the CORRECT behavior, so a failure confirms the bug is still present.
+    // Repro tests for the findings of the July 2026 whole-project reviews, all fixed since.
+    // Each test asserts the CORRECT behavior and now serves as a regression pin.
     [Category("OpenIssue")]
     public class OpenIssueTests : TestBase {
         private static readonly TimeSpan Bound = TimeSpan.FromSeconds(5);

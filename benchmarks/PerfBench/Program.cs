@@ -89,7 +89,14 @@ namespace PerfBench {
         static ISentence S(string text) =>
             (ISentence)new FirstOrderLogic.FirstOrderLogic().TryParse(text);
 
-        static void Main() {
+        // "dotnet run -- planning" runs the GraphPlan scaling sweeps ("planning stress" for
+        // the long 10-tree case); no arguments runs the FOL benchmarks.
+        static void Main(string[] args) {
+            if (args.Length > 0 && args[0] == "planning") {
+                PlanningBench.Run(args);
+                return;
+            }
+
             Console.WriteLine("Resolution saturation benchmark (full saturation, not entailed)");
             Console.WriteLine("===============================================================");
             Run("small",  10,  20,  0, 80);

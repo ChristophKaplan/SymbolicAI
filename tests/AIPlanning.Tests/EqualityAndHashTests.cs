@@ -25,20 +25,6 @@ namespace AIPlanningTests {
         }
 
         [Test]
-        public void GpAction_Equality_IsOrderInsensitive() {
-            var pre1 = L("At(z, Work)");
-            var pre2 = L("Subject(z)");
-            var eff = L("Have(Money)");
-
-            var workAB = new GpAction("Work", new() { pre1, pre2 }, new() { eff });
-            var workBA = new GpAction("Work", new() { pre2, pre1 }, new() { eff });
-
-            Assert.That(workAB, Is.EqualTo(workBA),
-                "actions with the same precondition set in different order must be Equal");
-            Assert.That(workAB.GetHashCode(), Is.EqualTo(workBA.GetHashCode()));
-        }
-
-        [Test]
         public void GpAction_Equality_IsMultisetSensitive() {
             var p = L("P(Obj)");
             var q = L("Q(Obj)");

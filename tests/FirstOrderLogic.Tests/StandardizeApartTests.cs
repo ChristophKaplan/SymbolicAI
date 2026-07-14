@@ -6,13 +6,6 @@ namespace FolTests {
     // These cases all failed (returned false or never terminated) before GetResolvents
     // standardized shared variable names apart.
     public class StandardizeApartTests : TestBase {
-        private void AssertResolves(string kb, string goal, bool expected) {
-            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: false),
-                Is.EqualTo(expected), $"[no subsumption] {kb}  =>  {goal}");
-            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: true),
-                Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
-        }
-
         // KB ∀x P(x,A) entails ∃x P(B,x) via P(B,A); the negated goal clause {¬P(B,x)} reuses
         // the name x, which without renaming binds x→B and then fails on A vs x.
         [TestCase("P(x, A)", "P(B, x)")]

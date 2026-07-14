@@ -3,9 +3,8 @@ using AIPlanning.Planning.GraphPlan;
 using NUnit.Framework;
 
 namespace AIPlanningTests {
-    // Repro tests for the open findings of the July 2026 whole-project reviews. Each test
-    // asserts the CORRECT behavior, so a failure here confirms the corresponding bug is
-    // real and still present. Once a bug is fixed its test doubles as a regression pin.
+    // Repro tests for the findings of the July 2026 whole-project reviews, all fixed since.
+    // Each test asserts the CORRECT behavior and now serves as a regression pin.
     [TestFixture]
     [Category("OpenIssue")]
     public class OpenIssueTests : PlanningTestBase {

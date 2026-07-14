@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
@@ -117,44 +115,6 @@ namespace AIPlanningTests {
                     $"step {step} must contain exactly one non-persistence action");
                 Assert.That(stepActions[0].Signifier, Is.EqualTo(expectedNames[step]),
                     $"step {step} should be {expectedNames[step]}");
-            }
-        }
-
-        // Game-side, tree count maps to how many trees SubjectsController.BuildIsStateStrings
-        // emits per replan; used to pick the cap (10 → frame freeze in Unity).
-        [Test, Explicit("Benchmark — run manually")]
-        public void ChopThenWork_ScalingByTreeCount() {
-            foreach (var treeCount in new[] { 1, 2, 5, 10, 20 }) {
-                var initial = new System.Collections.Generic.List<string> {
-                    "At(Bob, MyLocation)",
-                    "-At(Bob, Yarda)",
-                    "Workplace(Yarda)",
-                    "Subject(Bob)",
-                    "-Carries(Bob, Wood)"
-                };
-                for (var i = 0; i < treeCount; i++) {
-                    initial.Add($"Tree(Tree{i})");
-                    initial.Add($"-At(Bob, Tree{i})");
-                }
-                var initialState = Factory.StringToSentence(initial);
-                var goals = Factory.StringToSentence(new() { "Have(Bob, Wage)" });
-                var move = Factory.Create("Move",
-                    new() { "-At(z, x)", "At(z, y)", "Subject(z)" },
-                    new() { "At(z, x)", "-At(z, y)" });
-                var chop = Factory.Create("Chop",
-                    new() { "At(z, x)", "Subject(z)", "Tree(x)", "-Carries(z, Wood)" },
-                    new() { "Carries(z, Wood)" });
-                var work = Factory.Create("Work",
-                    new() { "At(z, y)", "Subject(z)", "Workplace(y)", "Carries(z, Wood)" },
-                    new() { "Have(z, Wage)", "-Carries(z, Wood)" });
-
-                var sw = Stopwatch.StartNew();
-                var problem = new GpProblem(initialState, goals, new() { move, chop, work });
-                var solution = problem.Solve();
-                sw.Stop();
-
-                Assert.That(solution.IsEmpty, Is.False, $"expected plan for {treeCount} trees");
-                TestContext.Progress.WriteLine($"trees={treeCount,3}  solve={sw.ElapsedMilliseconds,6} ms");
             }
         }
 

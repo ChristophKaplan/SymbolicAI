@@ -7,21 +7,11 @@ namespace FolTests
 {
     public class TheoryTests : TestBase
     {
+        // Entails delegates to Resolution.Resolve; the inference battery lives in
+        // ResolutionRegressionTests. This only smoke-tests the delegation.
         [Test]
         public void Entails_ModusPonens() =>
             Assert.That(new Theory(Set("A", "A => B")).Entails(S("B")), Is.True);
-
-        [Test]
-        public void Entails_PropositionalTransitivity() =>
-            Assert.That(new Theory(Set("A => B", "B => C", "A")).Entails(S("C")), Is.True);
-
-        [Test]
-        public void Entails_DisjunctiveSyllogism() =>
-            Assert.That(new Theory(Set("A OR B", "NOT A")).Entails(S("B")), Is.True);
-
-        [Test]
-        public void Entails_NotEntailed_False() =>
-            Assert.That(new Theory(Set("A")).Entails(S("B")), Is.False);
 
         [Test]
         public void Entails_EmptyTheory_EntailsTautology()
@@ -30,14 +20,6 @@ namespace FolTests
             Assert.That(empty.Entails(S("P(a) OR (NOT P(a))")), Is.True);
             Assert.That(empty.Entails(S("P(a)")), Is.False);
         }
-
-        [Test]
-        public void Entails_FirstOrderModusPonens() =>
-            Assert.That(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")).Entails(S("Mortal(Sokrates)")), Is.True);
-
-        [Test]
-        public void Entails_FirstOrderTransitivity() =>
-            Assert.That(new Theory(Set("P(x) => Q(x)", "Q(x) => R(x)", "P(a)")).Entails(S("R(a)")), Is.True);
 
         [Test]
         public void Equals_True_ForSameSentenceSequence()

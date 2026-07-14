@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
@@ -12,19 +10,10 @@ namespace AIPlanningTests {
     //
     //   - Joint planning is correct: grounded actions carry Subject(<agent>), enabling
     //     per-agent plan extraction; heterogeneous goals and shared resources work.
-    //   - Solve time grows roughly polynomially with agent/entity count. An earlier
-    //     exponential blowup was NOT the O(groundings²) mutex check but the eager
-    //     cartesian-product enumeration during extraction, since replaced by Blum & Furst
-    //     §3.2 incremental supporter selection (GpBeliefState.SelectSupporters): ~64 s →
-    //     ~0.5 s for the 8-tree case. Residual cost is exhaustive grounding plus the
-    //     O(groundings²) mutex check per layer.
-    //   - A lifted planner is NOT worth building. Instrumenting CheckMutexRelations showed
-    //     lifting could only remove pair-checks between independent agents (hit rate falls
-    //     17.75% → 7.62% as agents grow), while under contention the hit rate stays ~30% —
-    //     those conflicts must be grounded out anyway. Per-agent decomposition removes the
-    //     same waste for almost no effort.
-    //   - Conclusion: per-agent planning plus a coordination layer above the planner is the
-    //     right design; joint planning is not production-viable for N > 2.
+    //   - Joint planning does not scale (see PlanningBench in benchmarks/PerfBench for the
+    //     scaling sweeps, baselines, and optimization notes): per-agent planning plus a
+    //     coordination layer above the planner is the right design; joint planning is not
+    //     production-viable for N > 2.
     [TestFixture]
     public class MultiAgentPlanningTests : PlanningTestBase {
         private static GpAction MakeMove() => Factory.Create("Move",
@@ -82,7 +71,7 @@ namespace AIPlanningTests {
         }
 
         [Test]
-        public void TwoAgents_SameGoal_JointPlanFound() {
+        public void TwoAgents_SameGoal_JointPlanFound_AndAttributableBySubject() {
             var problem  = BuildJointWorkProblem(
                 agents:     new[] { "Alice", "Bob" },
                 trees:      new[] { "TreeA" },
@@ -99,19 +88,7 @@ namespace AIPlanningTests {
                 "chop+work for any agent needs at least 4 steps; two agents need at least the same");
 
             AssertPlanIsValid(problem, solution);
-        }
 
-        [Test]
-        public void TwoAgents_ActionsAttributableBySubjectPrecondition() {
-            var problem  = BuildJointWorkProblem(
-                agents:     new[] { "Alice", "Bob" },
-                trees:      new[] { "TreeA" },
-                workplaces: new[] { "YardA" });
-
-            var solution = problem.Solve();
-            Assert.That(solution.IsEmpty, Is.False);
-
-            var plan = solution.GetSolution(0);
             var allNodes = plan.Values
                 .SelectMany(actionSet => actionSet.GetActionNodes)
                 .Where(n => !n.IsPersistenceAction)
@@ -183,12 +160,6 @@ namespace AIPlanningTests {
             AssertPlanIsValid(problem, solution);
         }
 
-        // Baselines measured May 2026 (Debug, net8.0): single-agent trees 1/2/5/10/20 →
-        // ~15/4/26/204/2529 ms; joint 2-agent by agents 1/2/3/4 → ~15/12/27/85 ms; by trees
-        // 1/2/3/5 → ~7/21/107/2419 ms (10 trees → minutes). Cost is driven by grounded Move
-        // instances (subjects × locations²) and per-layer mutex work, not raw fact count.
-        // Re-baseline with the [Explicit] benchmarks after planner changes.
-
         [Test]
         public void MultiAgent_GameLikeTwoAgents_ThreeTrees_UnderBudget() {
             var trees = new[] { "TreeA", "TreeB", "TreeC" };
@@ -214,129 +185,6 @@ namespace AIPlanningTests {
             Assert.That(solution.IsEmpty, Is.False,
                 "4 agents in a small world must find a valid joint plan");
             AssertPlanIsValid(problem, solution);
-        }
-
-        [Test, Explicit("Benchmark — run manually to measure multi-agent scaling")]
-        public void MultiAgent_ScalingByAgentCount() {
-            var trees      = new[] { "TreeA" };
-            var workplaces = new[] { "YardA" };
-
-            TestContext.Progress.WriteLine(
-                $"{"agents",8}  {"state facts",12}  {"ms",10}  {"plan steps",12}");
-            TestContext.Progress.WriteLine(new string('-', 50));
-
-            foreach (var n in new[] { 1, 2, 3, 4 }) {
-                var agents = Enumerable.Range(0, n)
-                    .Select(i => new[] { "Alice", "Bob", "Carol", "David" }[i])
-                    .ToArray();
-
-                var problem  = BuildJointWorkProblem(agents, trees, workplaces);
-                var factCount = problem.InitialState.Count;
-
-                var sw = Stopwatch.StartNew();
-                var solution = problem.Solve();
-                sw.Stop();
-
-                var steps = solution.IsEmpty ? -1 : solution.GetSolution(0).Count;
-                TestContext.Progress.WriteLine(
-                    $"{n,8}  {factCount,12}  {sw.ElapsedMilliseconds,10}  {steps,12}");
-
-                Assert.That(solution.IsEmpty, Is.False, $"expected a plan for {n} agents");
-            }
-
-            TestContext.Progress.WriteLine(
-                "\nNote: each additional agent multiplies grounded-action count by ~(1 + entities/agent),\n" +
-                "and mutex checking is O(groundings²) per layer — hence super-linear growth.");
-        }
-
-        [Test, Explicit("Benchmark — run manually to measure entity-count impact for 2 agents")]
-        public void MultiAgent_ScalingByTreeCount() {
-            TestContext.Progress.WriteLine(
-                $"{"trees",8}  {"state facts",12}  {"ms",10}");
-            TestContext.Progress.WriteLine(new string('-', 35));
-
-            // 10 trees × 2 agents often takes tens of seconds; cap the sweep at 8.
-            foreach (var treeCount in new[] { 1, 2, 3, 5, 8 }) {
-                var trees      = Enumerable.Range(0, treeCount).Select(i => $"Tree{i}").ToArray();
-                var workplaces = new[] { "YardA" };
-                var agents     = new[] { "Alice", "Bob" };
-
-                var problem   = BuildJointWorkProblem(agents, trees, workplaces);
-                var factCount = problem.InitialState.Count;
-
-                var sw = Stopwatch.StartNew();
-                var solution = problem.Solve();
-                sw.Stop();
-
-                TestContext.Progress.WriteLine(
-                    $"{treeCount,8}  {factCount,12}  {sw.ElapsedMilliseconds,10}");
-
-                Assert.That(solution.IsEmpty, Is.False,
-                    $"expected a plan for 2 agents with {treeCount} trees");
-
-                if (treeCount >= 5)
-                    Assert.That(sw.ElapsedMilliseconds, Is.LessThan(120_000),
-                        $"2-agent solve with {treeCount} trees exceeded 120 s — see optimization notes in test header");
-            }
-        }
-
-        [Test, Explicit("Stress — 2 agents, 10 trees; can take minutes")]
-        public void MultiAgent_Stress_TwoAgents_TenTrees() {
-            var problem = BuildJointWorkProblem(
-                agents: new[] { "Alice", "Bob" },
-                trees: Enumerable.Range(0, 10).Select(i => $"Tree{i}").ToArray(),
-                workplaces: new[] { "YardA" });
-
-            var sw = Stopwatch.StartNew();
-            var solution = problem.Solve();
-            sw.Stop();
-
-            TestContext.Progress.WriteLine($"2 agents, 10 trees: {sw.ElapsedMilliseconds} ms, facts={problem.InitialState.Count}");
-            Assert.That(solution.IsEmpty, Is.False);
-        }
-
-        [Test, Explicit("Profile — split solve time into grounding (OperatorGraph) vs the rest")]
-        public void Profile_GroundingShare() {
-            var workplaces = new[] { "YardA" };
-            var agents     = new[] { "Alice", "Bob" };
-
-            // JIT warm-up so the first measured row is not penalised.
-            {
-                var warm = BuildJointWorkProblem(agents, new[] { "T0" }, workplaces);
-                _ = new OperatorGraph(warm);
-                _ = warm.Solve();
-            }
-
-            TestContext.Progress.WriteLine(
-                $"{"trees",6}  {"facts",6}  {"ground ms",10}  {"solve ms",10}  {"ground %",9}");
-            TestContext.Progress.WriteLine(new string('-', 52));
-
-            foreach (var treeCount in new[] { 3, 5, 8, 10 }) {
-                var trees = Enumerable.Range(0, treeCount).Select(i => $"Tree{i}").ToArray();
-                var facts = BuildJointWorkProblem(agents, trees, workplaces).InitialState.Count;
-
-                var groundMs = double.MaxValue;
-                for (var r = 0; r < 3; r++) {
-                    var p = BuildJointWorkProblem(agents, trees, workplaces);
-                    var sw = Stopwatch.StartNew();
-                    _ = new OperatorGraph(p);
-                    sw.Stop();
-                    if (sw.Elapsed.TotalMilliseconds < groundMs) groundMs = sw.Elapsed.TotalMilliseconds;
-                }
-
-                var solveMs = double.MaxValue;
-                for (var r = 0; r < 3; r++) {
-                    var p = BuildJointWorkProblem(agents, trees, workplaces);
-                    var sw = Stopwatch.StartNew();
-                    _ = p.Solve();
-                    sw.Stop();
-                    if (sw.Elapsed.TotalMilliseconds < solveMs) solveMs = sw.Elapsed.TotalMilliseconds;
-                }
-
-                var pct = solveMs > 0 ? 100.0 * groundMs / solveMs : 0;
-                TestContext.Progress.WriteLine(
-                    $"{treeCount,6}  {facts,6}  {groundMs,10:F2}  {solveMs,10:F2}  {pct,8:F1}%");
-            }
         }
     }
 }

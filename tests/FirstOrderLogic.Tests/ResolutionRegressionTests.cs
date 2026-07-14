@@ -6,14 +6,6 @@ namespace FolTests {
     // This exists to guard redundancy-elimination changes (tautology removal, subsumption,
     // factoring) — every case must keep the same boolean result before and after such changes.
     public class ResolutionRegressionTests : TestBase {
-        // Assert the same boolean in both modes: subsumption must never change the result, only speed.
-        private void AssertResolves(string kb, string goal, bool expected) {
-            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: false),
-                Is.EqualTo(expected), $"[no subsumption] {kb}  =>  {goal}");
-            Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: true),
-                Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
-        }
-
         [TestCase("A AND (A => B)", "B")]
         [TestCase("(A => B) AND (B => C) AND A", "C")]
         [TestCase("(A OR B) AND (NOT A)", "B")]

@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\FirstOrderLogic\FirstOrderLogic.csproj" />
+        <ProjectReference Include="..\..\src\AIPlanning\AIPlanning.csproj" />
     </ItemGroup>
 
 </Project>
