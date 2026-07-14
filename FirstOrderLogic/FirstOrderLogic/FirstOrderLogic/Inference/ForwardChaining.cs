@@ -11,13 +11,25 @@ namespace FirstOrderLogic
     // can no longer change.
     public class ForwardChaining
     {
-        public static List<ISentence> Saturate(IEnumerable<ISentence> kb)
+        public static List<ISentence> Saturate(IEnumerable<ISentence> kb) =>
+            Saturate(kb, Enumerable.Empty<Term>());
+
+        // `extraConstants` widens the grounding universe for the per-instance NAF fallback below;
+        // Entails passes the query's constants so instances only mentioning them are reachable.
+        private static List<ISentence> Saturate(IEnumerable<ISentence> kb, IEnumerable<Term> extraConstants)
         {
             var clauses = Rule.FromAll(kb);
             var rules = clauses.Where(c => !c.IsFact).ToList();
 
             var known = new HashSet<ISentence>();
             foreach (var fact in clauses.Where(c => c.IsFact)) known.Add(Canonical(fact.Head));
+
+            var constants = clauses
+                .SelectMany(c => c.Premises.Concat(c.NafPremises).Append(c.Head))
+                .SelectMany(ConstantsOf)
+                .Concat(extraConstants)
+                .Distinct()
+                .ToList();
 
             var rename = new BackwardChaining.Counter();
             foreach (var stratum in Stratify(rules))
@@ -35,9 +47,34 @@ namespace FirstOrderLogic
                         {
                             // NAF fails when any instance is derivable — Holds unifies, so a
                             // variable left free under NAF reads "no derivable instance".
-                            if (fresh.NafPremises.Any(naf => Holds(facts, theta.Apply(naf)))) continue;
-                            var head = Canonical(theta.Apply(fresh.Head));
-                            if (known.Add(head)) added = true;
+                            var nafs = fresh.NafPremises.Select(theta.Apply).ToList();
+                            var head = theta.Apply(fresh.Head);
+                            if (nafs.All(naf => !Holds(facts, naf)))
+                            {
+                                if (known.Add(Canonical(head))) added = true;
+                                continue;
+                            }
+
+                            // A derivable instance only defeats itself when the NAF variable is
+                            // shared with the rest of the rule instance (a universal fact bound
+                            // it): the other instances stay entailed, so re-test per ground
+                            // instance over the constant universe. Variables occurring only
+                            // under NAF keep the ∄ reading and stay free.
+                            var scope = fresh.Premises.Select(theta.Apply)
+                                .SelectMany(p => p.VariablesOf())
+                                .Concat(head.VariablesOf())
+                                .ToHashSet();
+                            var toGround = nafs.SelectMany(n => n.VariablesOf())
+                                .Where(scope.Contains)
+                                .Distinct()
+                                .ToList();
+                            if (toGround.Count == 0) continue;
+
+                            foreach (var grounding in Groundings(toGround, constants))
+                            {
+                                if (nafs.Any(naf => Holds(facts, grounding.Apply(naf)))) continue;
+                                if (known.Add(Canonical(grounding.Apply(head)))) added = true;
+                            }
                         }
                     }
                 }
@@ -45,6 +82,59 @@ namespace FirstOrderLogic
             }
 
             return known.ToList();
+        }
+
+        private static IEnumerable<Substitution> Groundings(
+            IReadOnlyList<Variable> variables, IReadOnlyList<Term> constants)
+        {
+            if (variables.Count == 0)
+            {
+                yield return Substitution.Empty;
+                yield break;
+            }
+
+            var rest = variables.Skip(1).ToList();
+            foreach (var constant in constants)
+            {
+                foreach (var grounding in Groundings(rest, constants))
+                {
+                    yield return grounding.Extend(
+                        new Dictionary<Variable, Term> { [variables[0]] = constant });
+                }
+            }
+        }
+
+        private static IEnumerable<Term> ConstantsOf(ISentence literal)
+        {
+            if (literal.AtomOf() is not IPredicate predicate) yield break;
+            foreach (var term in predicate.Terms)
+            {
+                foreach (var constant in ConstantsIn(term))
+                {
+                    yield return constant;
+                }
+            }
+        }
+
+        private static IEnumerable<Term> ConstantsIn(Term term)
+        {
+            switch (term)
+            {
+                case Variable:
+                    yield break;
+                case Function { Arity: > 0 } function:
+                    foreach (var arg in function.Terms)
+                    {
+                        foreach (var constant in ConstantsIn(arg))
+                        {
+                            yield return constant;
+                        }
+                    }
+                    yield break;
+                default:
+                    yield return term;
+                    yield break;
+            }
         }
 
         // Alpha-renames a fact's variables to first-occurrence order ($0, $1, …; '$' is
@@ -78,7 +168,7 @@ namespace FirstOrderLogic
         }
 
         public static bool Entails(IEnumerable<ISentence> kb, ISentence query) =>
-            query.IsLiteral && Holds(Saturate(kb), query);
+            query.IsLiteral && Holds(Saturate(kb, ConstantsOf(query)), query);
 
         public static bool Holds(IReadOnlyList<ISentence> facts, ISentence query)
         {

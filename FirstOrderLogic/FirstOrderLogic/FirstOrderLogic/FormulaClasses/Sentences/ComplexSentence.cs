@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace FirstOrderLogic {
     public interface IComplexSentence : ISentence{
@@ -17,13 +18,25 @@ namespace FirstOrderLogic {
         public bool IsConjunction => Connective == Connective.LogicSymbol.CONJUNCTION;
         public bool IsDisjunction => Connective == Connective.LogicSymbol.DISJUNCTION;
         public ComplexSentence(ISentence p, Connective.LogicSymbol logicSymbol, ISentence q) {
-            Connective = new Connective(logicSymbol);
+            Connective = new Connective(RequireNonQuantifier(logicSymbol));
             Children = new[] { p, q };
         }
 
         public ComplexSentence(Connective.LogicSymbol logicSymbol, ISentence p) {
-            Connective = new Connective(logicSymbol);
+            Connective = new Connective(RequireNonQuantifier(logicSymbol));
             Children = new[] { p };
+        }
+
+        // A quantifier node built from the bare symbol would carry a plain Connective, and every
+        // consumer downcasts IsQuantifier nodes to Quantifier for the bound variable.
+        private static Connective.LogicSymbol RequireNonQuantifier(Connective.LogicSymbol logicSymbol) {
+            if (logicSymbol == Connective.LogicSymbol.UNIVERSAL || logicSymbol == Connective.LogicSymbol.EXISTENTIAL) {
+                throw new ArgumentException(
+                    "Quantifier nodes need a Quantifier connective carrying the bound variable — use ComplexSentence(Quantifier, ISentence).",
+                    nameof(logicSymbol));
+            }
+
+            return logicSymbol;
         }
 
         public ComplexSentence(Connective connective, ISentence p) {
@@ -62,7 +75,23 @@ namespace FirstOrderLogic {
             return quantifiers.ToArray();
         }
 
+        // Capture-avoiding: occurrences of the bound variable are not free, so substituting it
+        // stops here, and a replacement that mentions the bound name renames the binder first.
         public override ISentence Substitute(Term target, Term replacement) {
+            if (IsQuantifier) {
+                var quantifier = (Quantifier)Connective;
+                if (quantifier.Variable.Equals(target)) {
+                    return this;
+                }
+
+                if (replacement.Occurs(quantifier.Variable)) {
+                    var fresh = new Variable($"r${Interlocked.Increment(ref _captureRenameCounter)}");
+                    var body = Children[0].Substitute(quantifier.Variable, fresh);
+                    return new ComplexSentence(new Quantifier(quantifier.Symbol, fresh), body)
+                        .Substitute(target, replacement);
+                }
+            }
+
             if (IsBinary) {
                 return new ComplexSentence(
                     Children[0].Substitute(target, replacement),
@@ -72,6 +101,9 @@ namespace FirstOrderLogic {
 
             return new ComplexSentence(Connective.Clone(), Children[0].Substitute(target, replacement));
         }
+
+        // '$' is unparseable, so a rename can never collide with a user symbol.
+        private static int _captureRenameCounter;
     
         public override ISentence Negated() =>
             IsNegation ? Children[0] : new ComplexSentence(Connective.LogicSymbol.NEGATION, this);

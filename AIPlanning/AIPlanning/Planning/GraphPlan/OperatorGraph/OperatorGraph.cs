@@ -176,14 +176,23 @@ namespace AIPlanning.Planning.GraphPlan {
 
             foreach (var preCon in curAction.GpAction.Preconditions)
             {
-                if (!TryGetMatchingLiteralNodes(preCon, out var literalNodes, out var unificators))
+                GetMatchingLiteralNodes(preCon, out var literalNodes, out var unificators);
+
+                // Non-ground literal nodes (e.g. Q(x)) are fine here: they act as unification
+                // anchors — GetActionsForLiteral matches ground runtime literals against them
+                // via Match, and InstantiateActions later drops any action INSTANCE that keeps
+                // an unbound variable, so no non-ground literal ever reaches a belief state.
+                //
+                // A merely unifying node is not enough: a more specific existing node (Q(Home))
+                // matches a general precondition (Q(y)) without covering it — effects that unify
+                // only with the general form would never enter the graph, making solvability
+                // depend on action declaration order. The precondition therefore always gets its
+                // own anchor node unless an equal one already exists.
+                if (literalNodes.All(node => !node.Literal.Equals(preCon)))
                 {
-                    // Non-ground literal nodes (e.g. Q(x)) are fine here: they act as unification
-                    // anchors — GetActionsForLiteral matches ground runtime literals against them
-                    // via Match, and InstantiateActions later drops any action INSTANCE that keeps
-                    // an unbound variable, so no non-ground literal ever reaches a belief state.
-                    literalNodes = new List<GpLiteralNode>() { new(preCon) };
-                    _literalNodes.AddRange(literalNodes);
+                    var anchor = new GpLiteralNode(preCon);
+                    literalNodes.Add(anchor);
+                    _literalNodes.Add(anchor);
                 }
 
                 curAction.GpAction.AddUnificators(unificators);
@@ -196,9 +205,8 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        private bool TryGetMatchingLiteralNodes(ISentence literal, out List<GpLiteralNode> preConNodes, out List<Unificator> unificators)
+        private void GetMatchingLiteralNodes(ISentence literal, out List<GpLiteralNode> preConNodes, out List<Unificator> unificators)
         {
-            var isMatch = false;
             unificators = new List<Unificator>();
             preConNodes = new List<GpLiteralNode>();
 
@@ -211,10 +219,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
                 preConNodes.Add(node);
                 unificators.Add(uni);
-                isMatch = true;
             }
-
-            return isMatch;
         }
 
         private void FindApplicableAction(GpLiteralNode curLiteral, Dictionary<GpAction, GpActionNode> operatorNodes)

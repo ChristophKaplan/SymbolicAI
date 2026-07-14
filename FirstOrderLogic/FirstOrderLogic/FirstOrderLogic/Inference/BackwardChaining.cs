@@ -20,16 +20,18 @@ namespace FirstOrderLogic
         {
             if (!query.IsLiteral) return false;
             return Prove(Rule.FromAll(kb), new List<ISentence> { query },
-                    Substitution.Empty, new List<ISentence>(),
+                    Substitution.Empty, new List<ISentence>(), new List<ISentence>(),
                     0, new Counter(), NoAbducibles, _maxDepth)
                 .Any();
         }
 
         // Every proof of `goals`, yielded as the literals assumed along the way; a ground goal over
-        // an abducible predicate may be assumed instead of proven.
+        // an abducible predicate may be assumed instead of proven. `denied` carries the NAF targets
+        // the path has committed to: assumptions and NAF failures must not defeat each other,
+        // whichever comes first, or the "proof" does not derive its goal.
         internal static IEnumerable<List<ISentence>> Prove(
             List<Rule> clauses, IReadOnlyList<ISentence> goals,
-            Substitution theta, List<ISentence> assumed,
+            Substitution theta, List<ISentence> assumed, List<ISentence> denied,
             int depth, Counter counter, HashSet<string> abducibles, int maxDepth)
         {
             if (goals.Count == 0)
@@ -52,9 +54,15 @@ namespace FirstOrderLogic
             if (goal.IsNaf)
             {
                 var target = goal.Children[0];
+
+                // An assumption already made on this path is derivable by fiat, so it defeats
+                // the failure test even though the KB-only sub-proof below cannot see it.
+                if (assumed.Any(a => Unificator.TryMatch(target, a, out _))) yield break;
+
                 var outerCutoff = counter.DepthCutoff;
                 counter.DepthCutoff = false;
-                var derivable = Prove(clauses, new List<ISentence> { target }, theta, new List<ISentence>(),
+                var derivable = Prove(clauses, new List<ISentence> { target }, theta,
+                    new List<ISentence>(), new List<ISentence>(),
                     depth + 1, counter, NoAbducibles, maxDepth).Any();
                 var truncated = counter.DepthCutoff;
                 counter.DepthCutoff = outerCutoff || truncated;
@@ -67,6 +75,7 @@ namespace FirstOrderLogic
                 if (truncated) yield break;
 
                 foreach (var solution in Prove(clauses, rest, theta, assumed,
+                             new List<ISentence>(denied) { target },
                              depth + 1, counter, abducibles, maxDepth))
                     yield return solution;
                 yield break;
@@ -85,18 +94,21 @@ namespace FirstOrderLogic
                 subgoals.AddRange(rest);
 
                 foreach (var solution in Prove(clauses, subgoals, theta.Extend(match.Substitutions),
-                             assumed, depth + 1, counter, abducibles, maxDepth))
+                             assumed, denied, depth + 1, counter, abducibles, maxDepth))
                     yield return solution;
             }
 
             if (!abducibles.Contains(goal.SymbolOf()) || !goal.IsGround()) yield break;
             if (assumed.Any(a => a.IsNegationOf(goal))) yield break;
+            // Assuming an instance of a literal an earlier NAF failed on would retroactively
+            // defeat that failure test.
+            if (denied.Any(d => Unificator.TryMatch(d, goal, out _))) yield break;
 
             var extended = assumed.Any(a => a.Equals(goal))
                 ? assumed
                 : new List<ISentence>(assumed) { goal };
 
-            foreach (var solution in Prove(clauses, rest, theta, extended,
+            foreach (var solution in Prove(clauses, rest, theta, extended, denied,
                          depth + 1, counter, abducibles, maxDepth))
                 yield return solution;
         }

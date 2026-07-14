@@ -183,6 +183,13 @@ namespace FirstOrderLogic {
         // useSubsumption is opt-in: it only pays off on larger, redundancy-heavy problems.
         // maxRounds (0 = unlimited) bounds the saturation loop (FOL entailment is only
         // semi-decidable) and throws when exceeded.
+        //
+        // Free-variable convention: in the KB free variables are implicitly universal (as
+        // everywhere in the library), but in `consequence` they are QUERY variables — Resolve
+        // asks whether some instance is entailed (AIMA ASK), so Q(x) and FORALL x (Q(x)) are
+        // different questions. The clausal form realizes this on its own: the negated goal's
+        // clause is standardized apart per resolution step, which reads its free variables as
+        // universal under the negation, i.e. existential in the goal.
         public static bool Resolve(ISentence knowledgeBase, ISentence consequence,
             bool useSubsumption = false, int maxRounds = 0) =>
             IsUnsatisfiable(new ComplexSentence(

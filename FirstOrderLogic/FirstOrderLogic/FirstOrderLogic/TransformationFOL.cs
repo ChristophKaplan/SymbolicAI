@@ -289,7 +289,7 @@ public static class TransformationFOL {
             // occurrence of the bound name there must be renamed away first.
             if (HasFreeOccurrence(sibling, quantifier.Variable)) {
                 var fresh = new Variable($"q${Interlocked.Increment(ref _captureRenameCounter)}");
-                body = SubstituteFree(body, quantifier.Variable, fresh);
+                body = body.Substitute(quantifier.Variable, fresh);
                 quantifier = new Quantifier(quantifier.Symbol, fresh);
             }
 
@@ -312,20 +312,6 @@ public static class TransformationFOL {
         }
 
         return sentence.Children.Any(child => HasFreeOccurrence(child, variable));
-    }
-
-    // Renames only the free occurrences of `variable`, stopping at same-named binders.
-    private static ISentence SubstituteFree(ISentence sentence, Variable variable, Variable replacement) {
-        if (sentence is IComplexSentence { IsQuantifier: true } quantified &&
-            ((Quantifier)quantified.Connective).Variable.Equals(variable)) {
-            return sentence;
-        }
-
-        if (sentence is IAtomicSentence) {
-            return sentence.Substitute(variable, replacement);
-        }
-
-        return sentence.WithChildren(sentence.Children.Select(c => SubstituteFree(c, variable, replacement)).ToList());
     }
 
     private static Quantifier FlipQuantifier(Quantifier quantifier) {

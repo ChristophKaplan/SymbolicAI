@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FirstOrderLogic;
 using NUnit.Framework;
 
@@ -267,6 +268,135 @@ namespace FolTests {
             Assert.That(() => model = new SatSolvers().WalkSAT(clauses, 1f, 100), Throws.Nothing,
                 "the empty clause is a legal Clause value and must not crash the walk");
             Assert.That(model, Is.Null, "no assignment satisfies the empty clause");
+        }
+
+        // ── Findings of the third July 2026 whole-project review ──────────────────────
+
+        // Finding 20 — resolved as a convention, not a defect: free variables in a GOAL are
+        // query variables (AIMA ASK) — Resolve asks whether some instance is entailed — while
+        // KB sentences keep the universal reading (Finding13). Q(x) and FORALL x (Q(x)) are
+        // therefore different questions; StandardizeApartTests pins the same reading. These
+        // tests keep the two conventions deliberate.
+        [Test]
+        public void Finding20_Resolution_FreeVariableGoal_IsAnExistentialQuery() {
+            var entails = RunWithin(Bound, "Resolve(Q(b) ⊨ Q(x))",
+                () => Resolution.Resolve(S("Q(b)"), S("Q(x)"), false, 200));
+            Assert.That(entails, Is.True,
+                "the query 'does Q hold for some x?' is answered by the instance Q(b)");
+        }
+
+        [Test]
+        public void Finding20_Resolution_ExplicitForallGoal_IsUniversal() {
+            var entails = RunWithin(Bound, "Resolve(Q(b) ⊨ FORALL x Q(x))",
+                () => Resolution.Resolve(S("Q(b)"), S("FORALL x (Q(x))"), false, 200));
+            Assert.That(entails, Is.False,
+                "one instance does not entail the universal claim");
+        }
+
+        // Finding 21 — the NAF sub-proof in backward chaining runs against the KB only,
+        // ignoring literals already abduced on the same proof path, so an abductive proof can
+        // simultaneously assume P(a) and rely on NAF P(a) — yielding an "explanation" that
+        // does not actually derive the observation.
+        [Test]
+        public void Finding21_Abduction_EveryExplanationDerivesTheObservation() {
+            var kb = Set("T(a)", "(P(x) AND Q(x)) => W(x)", "(T(x) AND (NAF P(x))) => Q(x)");
+            var observation = S("W(a)");
+
+            var explanations = new AbductiveChaining().Explain(kb, observation, new[] { "P" });
+
+            foreach (var explanation in explanations) {
+                var augmented = kb.Concat(explanation).ToList();
+                var derives = RunWithin(Bound, "Entails(W(a)) under explanation",
+                    () => ForwardChaining.Entails(augmented, observation));
+                Assert.That(derives, Is.True,
+                    $"explanation {{{string.Join(", ", explanation)}}} does not derive " +
+                    "W(a): assuming P(a) defeats the NAF P(a) premise the proof itself used");
+            }
+        }
+
+        // Finding 22 — when a rule premise matches a non-ground (universal) fact, the NAF
+        // check runs with the NAF variable still bound to the fact's variable, so one
+        // derivable instance vetoes the whole universal match instead of only its own
+        // instance, dropping entailed facts (and contradicting backward chaining).
+        [Test]
+        public void Finding22_ForwardChaining_NafOnUniversalMatch_ChecksPerInstance() {
+            var kb = Set("A(x)", "B(a)", "(A(w) AND (NAF B(w))) => C(w)");
+            var entails = RunWithin(Bound, "Entails(C(b))",
+                () => ForwardChaining.Entails(kb, S("C(b)")));
+            Assert.That(entails, Is.True,
+                "A(b) holds (A is universal) and B(b) is not derivable, so C(b) follows " +
+                "under NAF; a false result means the derivable instance B(a) vetoed the " +
+                "whole universal match — BackwardChaining answers true on the same KB");
+        }
+
+        // Finding 23 — Unificator.Substitute(Clause) writes substituted literals directly
+        // into Clause.Literals, bypassing AddLiteral's dedupe and violating the clause's
+        // documented set invariant.
+        [Test]
+        public void Finding23_UnificatorSubstituteClause_PreservesTheSetInvariant() {
+            var clause = new Clause(S("P(x)"), S("P(y)"));
+            var unificator = new Unificator(S("R(x,y)"), S("R(a,a)"));
+
+            unificator.Substitute(clause);
+
+            Assert.That(clause.Literals, Has.Count.EqualTo(1),
+                "both literals substitute to P(a) and a clause is a set, so in-place " +
+                "substitution must not leave duplicate literals behind");
+        }
+
+        // Finding 24 — the public ComplexSentence(LogicSymbol, ISentence) constructor accepts
+        // UNIVERSAL/EXISTENTIAL but builds a plain Connective, not a Quantifier; every
+        // consumer downcasts, so the node crashes with InvalidCastException on first use.
+        [Test]
+        public void Finding24_UnaryQuantifierConstructor_YieldsAUsableNodeOrRejects() {
+            ComplexSentence sentence;
+            try {
+                sentence = new ComplexSentence(Connective.LogicSymbol.UNIVERSAL, S("P(x)"));
+            } catch (Exception) {
+                return; // rejecting the quantifier symbol at construction is also acceptable
+            }
+            Assert.That(() => sentence.HasScopeConflict(), Throws.Nothing,
+                "a node the constructor accepted must be usable: IsQuantifier is true but " +
+                "the Connective is not a Quantifier, so consumers' downcasts crash");
+        }
+
+        // Finding 25 — Inconsistencies()/IsConsistent() feed the theory through forward
+        // chaining, whose Rule.FromAll silently drops every sentence outside the literal/rule
+        // fragment, so plainly inconsistent theories report consistent.
+        [Test]
+        public void Finding25_TheoryConsistency_SeesBeyondTheRuleFragment() {
+            var theory = new Theory(Set("P(a) AND (NOT P(a))"));
+            bool consistent;
+            try {
+                consistent = theory.IsConsistent();
+            } catch (Exception) {
+                return; // rejecting sentences the syntactic check cannot analyze is acceptable
+            }
+            Assert.That(consistent, Is.False,
+                "P(a) AND (NOT P(a)) is a contradiction; reporting consistent means the " +
+                "conjunction was silently dropped on the way into forward chaining");
+        }
+
+        // Finding 26 — the public ISentence.Substitute is raw (not capture-avoiding) under
+        // quantifiers, while the capture-safe variant is private to TransformationFOL.
+        [Test]
+        public void Finding26_PublicSubstitute_UnderAQuantifier_IsCaptureAvoiding() {
+            var result = S("FORALL x (P(x,y))").Substitute(new Variable("y"), new Variable("x"));
+            Assert.That(result, Is.Not.EqualTo(S("FORALL x (P(x,x))")),
+                "substituting x for the free y under FORALL x captures the variable and " +
+                "changes the meaning to the diagonal; the binder must be renamed first " +
+                "(or the call rejected)");
+        }
+
+        // Finding 27 — Element carries an Id but no Equals/GetHashCode, so two Element(1)
+        // instances are unequal and equality- or set-based relation definitions silently fail.
+        [Test]
+        public void Finding27_Element_EqualityIsById() {
+            var first = new Element(1);
+            var second = new Element(1);
+            Assert.That(first, Is.EqualTo(second),
+                "Element is defined by its Id, so equal Ids must denote the same individual; " +
+                "reference equality silently breaks equality-based relation definitions");
         }
     }
 }

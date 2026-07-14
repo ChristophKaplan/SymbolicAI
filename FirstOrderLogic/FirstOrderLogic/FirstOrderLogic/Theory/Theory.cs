@@ -30,11 +30,26 @@ namespace FirstOrderLogic
         public List<ISentence> Inconsistencies(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>
             mode switch
             {
-                ComparisonMode.Syntactic => ForwardChaining.Saturate(Union(other)).Conflicts(),
+                ComparisonMode.Syntactic => ForwardChaining.Saturate(RequireChainable(Union(other))).Conflicts(),
                 ComparisonMode.Semantic  => throw new NotImplementedException(
                     "Semantic inconsistency witnesses require unsat-core extraction."),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid comparison mode"),
             };
+
+        // Saturation silently ignores sentences outside the literal/rule fragment, so letting one
+        // through would report a plainly inconsistent theory as consistent.
+        private static List<ISentence> RequireChainable(List<ISentence> sentences)
+        {
+            var outside = sentences.FirstOrDefault(s => !Rule.IsChainable(s));
+            if (outside != null)
+            {
+                throw new NotSupportedException(
+                    $"Syntactic consistency covers only the literal/rule fragment; '{outside}' is outside it. " +
+                    "Use IsConsistentWith(other, ComparisonMode.Semantic) instead.");
+            }
+
+            return sentences;
+        }
 
         public bool IsConsistent() => Inconsistencies().Count == 0;
 

@@ -120,5 +120,46 @@ namespace AIPlanningTests {
                 "{P, P} and {P, Q} are different states even though the counts match and " +
                 "every element of the first occurs in the second");
         }
+
+        // ── Findings of the third July 2026 whole-project review ──────────────────────
+
+        // Finding 9 — MapPreConditionsToAction skips creating a literal node for a non-ground
+        // precondition whenever ANY existing node unifies with it, even a strictly more
+        // specific one; the general precondition then loses every grounding not covered by
+        // that node, and solvability depends on action declaration order.
+        [Test]
+        public void Finding09_GeneralPrecondition_AfterSpecificOne_KeepsItsOwnGroundings() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+
+            var specific = Factory.Create("ASpec", new() { "Q(Home)" }, new() { "G(K)" });
+            var general = Factory.Create("AGen", new() { "Q(y)" }, new() { "G(K)" });
+            var maker = Factory.Create("Maker", new() { "P(K)" }, new() { "Q(TreeA)" });
+
+            var problem = new GpProblem(initialState, goals, new() { specific, general, maker });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "Maker then AGen(y=TreeA) is a valid 2-step plan; an empty solution means " +
+                "AGen's precondition Q(y) was anchored onto the more specific existing node " +
+                "Q(Home) and the binding y=TreeA was never collected");
+        }
+
+        [Test]
+        public void Finding09_ControlCase_GeneralDeclaredFirst_IsSolvable() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+
+            var general = Factory.Create("AGen", new() { "Q(y)" }, new() { "G(K)" });
+            var specific = Factory.Create("ASpec", new() { "Q(Home)" }, new() { "G(K)" });
+            var maker = Factory.Create("Maker", new() { "P(K)" }, new() { "Q(TreeA)" });
+
+            var problem = new GpProblem(initialState, goals, new() { general, specific, maker });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "control: the same problem with AGen declared before ASpec — declaration " +
+                "order must not change solvability");
+        }
     }
 }

@@ -105,6 +105,10 @@ var goal = (ISentence)logic.TryParse("Mortal(Sokrates)");
 bool entailed = Resolution.Resolve(skolem, goal); // True
 ```
 
+Free variables in the *goal* are query variables — `Resolve` asks whether some instance is
+entailed (`Q(x)` asks "does Q hold for some x?"), so `Q(x)` and `FORALL x (Q(x))` are
+different questions. In KB sentences free variables stay implicitly universal.
+
 `Resolution.Resolve(kb, goal, useSubsumption: true)` enables clause subsumption (helps on
 large, redundant problems; off by default). `Resolution.Resolve(kb, goal, maxRounds: n)` bounds the
 saturation loop — FOL entailment is only semi-decidable, so a non-entailed KB with

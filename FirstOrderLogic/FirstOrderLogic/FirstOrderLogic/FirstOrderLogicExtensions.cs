@@ -196,11 +196,15 @@ namespace FirstOrderLogic {
                 }
             }
 
+            // Strip the prefix first: substitution is capture-avoiding and stops at a binder of
+            // the variable being replaced, so the witnesses only reach the matrix once its
+            // variables are free. Shadowed-binder occurrences all belong to the innermost binder
+            // (the only one that skolemizes), so substituting after removal is exact.
+            TransformationFOL.Transform(TransformationFOL.EquivType.RemoveQuantifier, ref clone);
+
             foreach (var variable in substitution.Keys) {
                 clone = clone.Substitute(variable, substitution[variable]);
             }
-
-            TransformationFOL.Transform(TransformationFOL.EquivType.RemoveQuantifier, ref clone);
 
             return clone;
         }

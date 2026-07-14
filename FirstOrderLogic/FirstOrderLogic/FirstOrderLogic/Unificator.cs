@@ -267,11 +267,20 @@ namespace FirstOrderLogic
             return sb.ToString();
         }
 
+        // Rebuilds through AddLiteral: substitution can collapse distinct literals into equal
+        // ones, and a clause is a set.
         public void Substitute(Clause clause)
         {
-            for (var i = 0; i < clause.Literals.Count; i++)
+            var substituted = new List<ISentence>(clause.Literals.Count);
+            foreach (var literal in clause.Literals)
             {
-                clause.Literals[i] = Apply(clause.Literals[i]);
+                substituted.Add(Apply(literal));
+            }
+
+            clause.Literals.Clear();
+            foreach (var literal in substituted)
+            {
+                clause.AddLiteral(literal);
             }
         }
 

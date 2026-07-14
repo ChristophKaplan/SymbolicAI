@@ -73,11 +73,44 @@ namespace AIPlanning.Planning.GraphPlan {
                 for (var i = 0; i < variables.Count; i++) {
                     possibility.Add(variables[i], comb[i]);
                 }
-            
+
+                // Each unifier is acyclic on its own (occurs check), but recombining bindings
+                // from different unifiers can close a cycle (x→y from one, y→x from another),
+                // which Substitution.Walk must never see. Such a combination grounds nothing —
+                // skip it.
+                if (!IsAcyclic(possibility)) {
+                    continue;
+                }
+
                 possibilities.Add(new Unificator(possibility));
             }
 
             return possibilities;
+        }
+
+        private static bool IsAcyclic(Dictionary<Variable, Term> substitution) {
+            foreach (var start in substitution.Keys) {
+                var seen = new HashSet<Variable>();
+                var frontier = new Stack<Variable>();
+                frontier.Push(start);
+                while (frontier.Count > 0) {
+                    if (!substitution.TryGetValue(frontier.Pop(), out var term)) {
+                        continue;
+                    }
+
+                    foreach (var variable in term.GetVariables()) {
+                        if (variable.Equals(start)) {
+                            return false;
+                        }
+
+                        if (seen.Add(variable)) {
+                            frontier.Push(variable);
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
 
         private Dictionary<Variable, List<Term>> ArrangeSubstitutionsAsTrees(HashSet<Unificator> unificators) {
