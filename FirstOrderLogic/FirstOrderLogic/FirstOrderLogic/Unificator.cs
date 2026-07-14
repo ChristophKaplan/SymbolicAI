@@ -42,11 +42,13 @@ namespace FirstOrderLogic
             return _hashcode;
         }
         
+        // Order-insensitive (XOR of pair hashes): content-equal unifiers built in different
+        // binding orders must hash alike, or Equals' hash shortcut splits them.
         private int CalcHashCode() {
-            var hash = 17;
+            var hash = Substitutions.Count;
             foreach (var (key, value) in Substitutions)
             {
-                hash = HashCode.Combine(hash, key, value);
+                hash ^= HashCode.Combine(key, value);
             }
             return hash;
         }
@@ -118,7 +120,7 @@ namespace FirstOrderLogic
 
             if (atom1 is IPredicate pred1 && atom2 is IPredicate pred2)
             {
-                if (pred1.Symbol != pred2.Symbol || pred1.Arity != pred2.Arity)
+                if (pred1.Symbol != pred2.Symbol || pred1.Arity != pred2.Arity || pred1.Time != pred2.Time)
                 {
                     return false;
                 }

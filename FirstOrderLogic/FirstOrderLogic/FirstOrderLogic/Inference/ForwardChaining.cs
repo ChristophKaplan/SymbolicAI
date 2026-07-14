@@ -17,9 +17,9 @@ namespace FirstOrderLogic
             var rules = clauses.Where(c => !c.IsFact).ToList();
 
             var known = new HashSet<ISentence>();
-            foreach (var fact in clauses.Where(c => c.IsFact)) known.Add(fact.Head);
+            foreach (var fact in clauses.Where(c => c.IsFact)) known.Add(Canonical(fact.Head));
 
-            var rename = 0;
+            var rename = new BackwardChaining.Counter();
             foreach (var stratum in Stratify(rules))
             {
                 bool added;
@@ -29,14 +29,14 @@ namespace FirstOrderLogic
                     var facts = known.ToList();
                     foreach (var rule in stratum)
                     {
-                        var fresh = rule.Renamed(rename++);
-                        var matches = Match(fresh.Premises, 0, Substitution.Empty, facts);
+                        var fresh = rule.Renamed(rename.Next++);
+                        var matches = Match(fresh.Premises, 0, Substitution.Empty, facts, rename);
                         foreach (var theta in matches)
                         {
                             // NAF fails when any instance is derivable — Holds unifies, so a
                             // variable left free under NAF reads "no derivable instance".
                             if (fresh.NafPremises.Any(naf => Holds(facts, theta.Apply(naf)))) continue;
-                            var head = theta.Apply(fresh.Head);
+                            var head = Canonical(theta.Apply(fresh.Head));
                             if (known.Add(head)) added = true;
                         }
                     }
@@ -45,6 +45,36 @@ namespace FirstOrderLogic
             }
 
             return known.ToList();
+        }
+
+        // Alpha-renames a fact's variables to first-occurrence order ($0, $1, …; '$' is
+        // unparseable, so user symbols cannot collide) so `known` deduplicates the variants
+        // that per-use renaming would otherwise mint forever.
+        private static ISentence Canonical(ISentence literal)
+        {
+            var next = 0;
+            var result = literal;
+            foreach (var variable in literal.VariablesOf().Distinct().ToList())
+            {
+                result = result.Substitute(variable, new Variable("$" + next++));
+            }
+
+            return result;
+        }
+
+        // Standardize apart per use, like BackwardChaining does per clause: a non-ground fact is
+        // universally quantified, so each match must see fresh variables — otherwise a later
+        // premise binds the same fact variable again and Extend's conflict-free contract breaks
+        // (unsound heads, lost entailments, cyclic substitutions).
+        private static ISentence RenamedApart(ISentence fact, int id)
+        {
+            var result = fact;
+            foreach (var variable in fact.VariablesOf().Distinct().ToList())
+            {
+                result = result.Substitute(variable, new Variable(variable.TermSymbol + "#" + id));
+            }
+
+            return result;
         }
 
         public static bool Entails(IEnumerable<ISentence> kb, ISentence query) =>
@@ -108,7 +138,7 @@ namespace FirstOrderLogic
 
         private static IEnumerable<Substitution> Match(
             IReadOnlyList<ISentence> premises, int index,
-            Substitution theta, List<ISentence> facts)
+            Substitution theta, List<ISentence> facts, BackwardChaining.Counter rename)
         {
             if (index == premises.Count)
             {
@@ -119,9 +149,9 @@ namespace FirstOrderLogic
             var goal = theta.Apply(premises[index]);
             foreach (var fact in facts)
             {
-                if (!Unificator.TryMatch(goal, fact, out var match)) continue;
+                if (!Unificator.TryMatch(goal, RenamedApart(fact, rename.Next++), out var match)) continue;
                 var extended = theta.Extend(match.Substitutions);
-                foreach (var solution in Match(premises, index + 1, extended, facts))
+                foreach (var solution in Match(premises, index + 1, extended, facts, rename))
                     yield return solution;
             }
         }

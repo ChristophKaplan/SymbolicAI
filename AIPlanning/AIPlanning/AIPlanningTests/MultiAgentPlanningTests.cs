@@ -153,12 +153,11 @@ namespace AIPlanningTests {
 
             var plan = solution.GetSolution(0);
             Assert.That(plan, Is.Not.Empty, "plan must have at least one action layer");
-
-            // Both goals must be achievable — if only one agent reaches Wage the planner
-            // would have stopped early, meaning the second goal was already in the initial
-            // state (it isn't) or the plan truly satisfies both.
             Assert.That(plan.Keys.Count, Is.GreaterThanOrEqualTo(4),
                 "chop+work for any agent needs at least 4 steps; two agents need at least the same");
+
+            // Simulate the plan: BOTH agents' Wage goals must actually hold at the end.
+            AssertPlanIsValid(problem, solution);
         }
 
         [Test]
@@ -221,6 +220,10 @@ namespace AIPlanningTests {
 
             Assert.That(solution.IsEmpty, Is.False,
                 "joint planner must satisfy heterogeneous goals (Wage for Alice, Energy for Bob)");
+
+            // Simulate the plan: a plan that only earns Alice's Wage (or only Bob's Energy)
+            // must fail here, not pass on non-emptiness alone.
+            AssertPlanIsValid(problem, solution);
         }
 
         [Test]
@@ -252,6 +255,7 @@ namespace AIPlanningTests {
 
             Assert.That(solution.IsEmpty, Is.False,
                 "two agents at the same tree must not cause a mutex deadlock in the planner");
+            AssertPlanIsValid(problem, solution);
         }
 
         // ── Performance regression (CI) ───────────────────────────────────────────────
@@ -284,7 +288,7 @@ namespace AIPlanningTests {
 
             var solution = SolveWithGuard(problem, "2-agent / 3-tree joint solve");
 
-            Assert.That(solution.IsEmpty, Is.False);
+            AssertPlanIsValid(problem, solution);
         }
 
         /// <summary>
@@ -305,6 +309,7 @@ namespace AIPlanningTests {
 
             Assert.That(solution.IsEmpty, Is.False,
                 "4 agents in a small world must find a valid joint plan");
+            AssertPlanIsValid(problem, solution);
         }
 
         // ── Performance benchmarks ────────────────────────────────────────────────────

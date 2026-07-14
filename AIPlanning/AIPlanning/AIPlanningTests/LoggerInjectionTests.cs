@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using LogHelper;
 
 namespace AIPlanningTests {
@@ -29,9 +31,12 @@ namespace AIPlanningTests {
             Logger.SetSink(captured.Add);
             Logger.ResetSink();
 
-            // After ResetSink the captured list must not grow when we log again.
-            Logger.Log("not captured");
-            Assert.That(captured, Is.Empty);
+            // "Restored" means the message actually reaches the default sink (Console.Out in
+            // non-Unity environments) again — a null sink dropping all output must fail here.
+            var console = CaptureConsoleOut(() => Logger.Log("back to default"));
+
+            Assert.That(captured, Is.Empty, "the custom sink must no longer receive messages");
+            Assert.That(console, Does.Contain("back to default"));
         }
 
         [Test]
@@ -40,10 +45,24 @@ namespace AIPlanningTests {
             Logger.SetSink(captured.Add);
             Logger.SetSink(null!);
 
-            // Since a null sink restores the default (Console.WriteLine in non-Unity
-            // environments), the previously-captured list must remain untouched.
-            Logger.Log("ignored by captured");
-            Assert.That(captured, Is.Empty);
+            var console = CaptureConsoleOut(() => Logger.Log("ignored by captured"));
+
+            Assert.That(captured, Is.Empty, "the custom sink must no longer receive messages");
+            Assert.That(console, Does.Contain("ignored by captured"));
+        }
+
+        private static string CaptureConsoleOut(Action action) {
+            var original = Console.Out;
+            var writer = new StringWriter();
+            Console.SetOut(writer);
+            try {
+                action();
+            }
+            finally {
+                Console.SetOut(original);
+            }
+
+            return writer.ToString();
         }
     }
 }

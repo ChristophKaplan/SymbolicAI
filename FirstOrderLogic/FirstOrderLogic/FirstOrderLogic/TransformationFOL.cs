@@ -124,7 +124,11 @@ public static class TransformationFOL {
             return new ComplexSentence(flipped, quantified.Children[0].Negated());
         }
 
-        if (negated.Children[0] is IComplexSentence { IsNegation: false, IsBinary: true } inner) {
+        // De Morgan only: ¬(A ⇒ B) and ¬(A ⇔ B) do not distribute this way, so implications
+        // and biconditionals stay untouched (the CNF pipeline dissolves them first anyway).
+        if (negated.Children[0] is IComplexSentence { IsNegation: false, IsBinary: true } inner &&
+            (inner.Connective == Connective.LogicSymbol.CONJUNCTION ||
+             inner.Connective == Connective.LogicSymbol.DISJUNCTION)) {
             return new ComplexSentence(
                 inner.Children[0].Negated(),
                 FlipBinary(inner.Connective.Symbol),
@@ -261,6 +265,14 @@ public static class TransformationFOL {
 
     private static ISentence PullQuantifier(ISentence sentence) {
         if (sentence is not IComplexSentence { IsBinary: true } connective) {
+            return sentence;
+        }
+
+        // Only ∧/∨ preserve the quantifier when its scope widens; pulling out of an implication
+        // antecedent would have to flip it (∀x P(x) ⇒ Q is ∃x (P(x) ⇒ Q)), so ⇒/⇔ stay
+        // untouched (the prenex pipeline dissolves them first anyway).
+        if (connective.Connective != Connective.LogicSymbol.CONJUNCTION &&
+            connective.Connective != Connective.LogicSymbol.DISJUNCTION) {
             return sentence;
         }
 

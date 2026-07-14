@@ -51,8 +51,12 @@ namespace AIPlanning.Planning.GraphPlan {
         }
     
         public bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpNode>? satisfied) {
-            satisfied = beliefState.GetSubSetOfNodesMatching(Preconditions);
-            return satisfied != null && satisfied.Count == Preconditions.Count;
+            // Duplicate precondition literals (user-written, or minted when distinct variables
+            // ground to the same object) map onto one node; comparing against the raw count
+            // would make the action permanently inapplicable.
+            var distinct = Preconditions.Distinct().ToList();
+            satisfied = beliefState.GetSubSetOfNodesMatching(distinct);
+            return satisfied != null && satisfied.Count == distinct.Count;
         }
 
         public HashSet<Unificator> GetConflictFreeUnificatorPossibilities(HashSet<Unificator> unificators) {

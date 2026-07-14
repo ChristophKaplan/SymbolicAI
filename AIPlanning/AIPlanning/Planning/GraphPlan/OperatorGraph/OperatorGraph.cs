@@ -219,7 +219,7 @@ namespace AIPlanning.Planning.GraphPlan {
         {
             foreach (var action in _actions)
             {
-                if (!IsEffectsApplicable(action, curLiteral.Literal))
+                if (!IsEffectsApplicable(action, curLiteral))
                 {
                     continue;
                 }
@@ -239,9 +239,11 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        private bool IsEffectsApplicable(GpAction action, ISentence literal)
+        private bool IsEffectsApplicable(GpAction action, GpLiteralNode literalNode)
         {
-            var uniList = new List<Unificator>();
+            var literal = literalNode.Literal;
+            var producerBindings = new List<Unificator>();
+            var consumerBindings = new List<Unificator>();
             var isMatch = false;
 
             foreach (var effect in action.Effects)
@@ -251,12 +253,41 @@ namespace AIPlanning.Planning.GraphPlan {
                     continue;
                 }
 
-                if (!uni.IsEmpty)
+                isMatch = true;
+                if (uni.IsEmpty)
                 {
-                    uniList.Add(uni);
+                    continue;
                 }
 
-                isMatch = true;
+                // The unifier mixes two owners: bindings for the effect's variables ground the
+                // PRODUCER, while bindings for the node literal's variables ground the CONSUMERS
+                // anchored on this node (e.g. effect Have(Bread) vs precondition anchor Have(x)
+                // binds the consumer's x). Routing everything to the producer would leave a
+                // precondition-only variable unbound forever, and every consumer instance would
+                // be dropped as non-ground.
+                var literalVariables = new HashSet<Variable>(LiteralVariables(literal));
+                var producer = new Dictionary<Variable, Term>();
+                var consumer = new Dictionary<Variable, Term>();
+                foreach (var (variable, term) in uni.Substitutions)
+                {
+                    if (literalVariables.Contains(variable))
+                    {
+                        consumer.Add(variable, term);
+                    }
+                    else
+                    {
+                        producer.Add(variable, term);
+                    }
+                }
+
+                if (producer.Count > 0)
+                {
+                    producerBindings.Add(new Unificator(producer));
+                }
+                if (consumer.Count > 0)
+                {
+                    consumerBindings.Add(new Unificator(consumer));
+                }
             }
 
             if (!isMatch)
@@ -264,8 +295,26 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            action.AddUnificators(uniList);
+            action.AddUnificators(producerBindings);
+
+            if (consumerBindings.Count > 0)
+            {
+                foreach (var outEdge in literalNode.OutEdges)
+                {
+                    if (outEdge is GpActionNode consumerNode)
+                    {
+                        consumerNode.GpAction.AddUnificators(consumerBindings);
+                    }
+                }
+            }
+
             return action.IsConsistent();
+        }
+
+        private static IEnumerable<Variable> LiteralVariables(ISentence literal)
+        {
+            var atom = literal is IComplexSentence complex ? complex.Children[0] : literal;
+            return atom is IPredicate predicate ? predicate.GetVariables() : Enumerable.Empty<Variable>();
         }
 
         public override string ToString()

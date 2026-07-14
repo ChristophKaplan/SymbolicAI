@@ -200,6 +200,14 @@ namespace FirstOrderLogic {
                 sentence = Logic.SkolemForm(Logic.ToPrenexForm(sentence));
             }
 
+            // TRUE/FALSE are truth values, not resolvable atoms; fold them away so already-CNF
+            // input cannot smuggle them into the clause set (a clause holding ⊤ is satisfied,
+            // {⊥} is the empty clause — the loop below knows neither). After folding, a constant
+            // can only survive as the whole sentence, decided right here.
+            TransformationFOL.Transform(TransformationFOL.EquivType.SimplifyConstants, ref sentence);
+            if (sentence is IAtomicSentence { Contradiction: true }) return true;
+            if (sentence is IAtomicSentence { Tautology: true }) return false;
+
             if (!sentence.IsCNF())
             {
                 sentence = Logic.ToConjunctiveNormalForm(sentence);

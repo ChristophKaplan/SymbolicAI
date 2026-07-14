@@ -5,14 +5,16 @@ namespace FolTests {
     public class TermTests : TestBase {
         [Test]
         public void Variable_EqualsBySymbol() {
-            Assert.That(new Variable("x"), Is.EqualTo(new Variable("x")));
-            Assert.That(new Variable("x"), Is.Not.EqualTo(new Variable("y")));
+            var x = new Variable("x");
+            Assert.That(new Variable("x"), Is.EqualTo(x));
+            Assert.That(new Variable("y"), Is.Not.EqualTo(x));
         }
 
         [Test]
         public void Constant_EqualsBySymbol() {
-            Assert.That(new Constant("a"), Is.EqualTo(new Constant("a")));
-            Assert.That(new Constant("a"), Is.Not.EqualTo(new Constant("b")));
+            var a = new Constant("a");
+            Assert.That(new Constant("a"), Is.EqualTo(a));
+            Assert.That(new Constant("b"), Is.Not.EqualTo(a));
         }
 
         // A variable and a constant are different kinds of term even if they share a name,

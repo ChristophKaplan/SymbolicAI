@@ -37,7 +37,11 @@ namespace FirstOrderLogic
                 yield return assumed;
                 yield break;
             }
-            if (depth > maxDepth) yield break;
+            if (depth > maxDepth)
+            {
+                counter.DepthCutoff = true;
+                yield break;
+            }
 
             var goal = theta.Apply(goals[0]);
             var rest = goals.Skip(1).ToList();
@@ -48,9 +52,19 @@ namespace FirstOrderLogic
             if (goal.IsNaf)
             {
                 var target = goal.Children[0];
-                if (Prove(clauses, new List<ISentence> { target }, theta, new List<ISentence>(),
-                        depth + 1, counter, NoAbducibles, maxDepth).Any())
-                    yield break;
+                var outerCutoff = counter.DepthCutoff;
+                counter.DepthCutoff = false;
+                var derivable = Prove(clauses, new List<ISentence> { target }, theta, new List<ISentence>(),
+                    depth + 1, counter, NoAbducibles, maxDepth).Any();
+                var truncated = counter.DepthCutoff;
+                counter.DepthCutoff = outerCutoff || truncated;
+
+                if (derivable) yield break;
+
+                // A sub-proof cut off by the depth bound is unfinished, not failed: reading it
+                // as failure would turn the bound's conservative "not entailed" into a wrong
+                // positive answer, so NAF only succeeds on an exhaustive failure.
+                if (truncated) yield break;
 
                 foreach (var solution in Prove(clauses, rest, theta, assumed,
                              depth + 1, counter, abducibles, maxDepth))
@@ -88,9 +102,12 @@ namespace FirstOrderLogic
         }
 
         // A holder rather than a ref int because iterator methods cannot take by-reference parameters.
+        // DepthCutoff records whether any branch was abandoned at maxDepth, so NAF can tell an
+        // exhaustive failure from a truncated search.
         internal sealed class Counter
         {
             public int Next;
+            public bool DepthCutoff;
         }
     }
 }

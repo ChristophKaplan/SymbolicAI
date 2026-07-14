@@ -1,3 +1,4 @@
+using System.Linq;
 using FirstOrderLogic;
 using NUnit.Framework;
 
@@ -43,27 +44,38 @@ namespace FolTests {
         [SetUp]
         public void ResetSkolemNames() => FirstOrderLogicExtensions.ResetSkolemCounter();
 
+        // Witness names ("sk$1", …) are unparseable by design, so expected sentences are built
+        // by substituting placeholder constants in a parsed template.
+        private static Function Sk(int n, params string[] universals) =>
+            new($"sk${n}", universals.Select(u => (Term)new Variable(u)).ToArray());
+
         [Test]
         public void Skolem_ExistentialBeforeUniversal_UsesConstant() {
-            Assert.That(Logic.SkolemForm(S("EXISTS x (FORALL y P(x,y))")), Is.EqualTo(S("P(sk1,y)")));
+            Assert.That(Logic.SkolemForm(S("EXISTS x (FORALL y P(x,y))")),
+                Is.EqualTo(S("P(k1,y)").Substitute(new Constant("k1"), Sk(1))));
         }
 
         [Test]
         public void Skolem_UniversalBeforeExistential_UsesFunction() {
-            Assert.That(Logic.SkolemForm(S("FORALL x (EXISTS y P(x,y))")), Is.EqualTo(S("P(x,sk1(x))")));
+            Assert.That(Logic.SkolemForm(S("FORALL x (EXISTS y P(x,y))")),
+                Is.EqualTo(S("P(x,k1)").Substitute(new Constant("k1"), Sk(1, "x"))));
         }
 
         [Test]
         public void Skolem_DistinctExistentialsGetDistinctSymbols() {
             Assert.That(Logic.SkolemForm(S("EXISTS x (EXISTS y (P(x) AND Q(y)))")),
-                Is.EqualTo(S("(P(sk1) AND Q(sk2))")));
+                Is.EqualTo(S("(P(k1) AND Q(k2))")
+                    .Substitute(new Constant("k1"), Sk(1))
+                    .Substitute(new Constant("k2"), Sk(2))));
         }
 
         // Mixed prefix ∀x ∃y ∀z ∃w: y depends on x, w depends on x and z.
         [Test]
         public void Skolem_MixedPrefixTracksScope() {
             Assert.That(Logic.SkolemForm(S("FORALL x (EXISTS y (FORALL z (EXISTS w R(x,y,z,w))))")),
-                Is.EqualTo(S("R(x,sk1(x),z,sk2(x,z))")));
+                Is.EqualTo(S("R(x,k1,z,k2)")
+                    .Substitute(new Constant("k1"), Sk(1, "x"))
+                    .Substitute(new Constant("k2"), Sk(2, "x", "z"))));
         }
 
         // ── Clause sets ──────────────────────────────────────────────────────────

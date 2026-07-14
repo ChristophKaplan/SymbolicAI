@@ -149,13 +149,32 @@ namespace FirstOrderLogic {
             var clone = sentence;
 
             // Expects PNF. Each existential becomes a Skolem term over the universals enclosing
-            // it: sk1 if none, sk1(u, …) otherwise.
-            var substitution = new Dictionary<Variable, Function>();
-            var universalsInScope = new List<Variable>();
-
+            // it: sk$1 if none, sk$1(u, …) otherwise ('$' is unparseable, so a witness can never
+            // resolve against a user constant that happens to share its name).
+            var prefix = new List<Quantifier>();
             var current = clone;
             while (current is IComplexSentence { IsQuantifier: true } quantified) {
-                var quantifier = (Quantifier)quantified.Connective;
+                prefix.Add((Quantifier)quantified.Connective);
+                current = quantified.Children[0];
+            }
+
+            // A binder shadowed by an inner same-named one binds nothing (every matrix
+            // occurrence belongs to the innermost binder): it neither skolemizes nor may its
+            // name appear as a witness argument, where it would capture the inner binder's
+            // occurrences. Nothing can depend on a vacuous universal, so dropping it is exact.
+            var lastBinderOf = new Dictionary<string, int>();
+            for (var i = 0; i < prefix.Count; i++) {
+                lastBinderOf[prefix[i].Variable.TermSymbol] = i;
+            }
+
+            var substitution = new Dictionary<Variable, Function>();
+            var universalsInScope = new List<Variable>();
+            for (var i = 0; i < prefix.Count; i++) {
+                var quantifier = prefix[i];
+                if (lastBinderOf[quantifier.Variable.TermSymbol] != i) {
+                    continue;
+                }
+
                 if (quantifier.Symbol == Connective.LogicSymbol.UNIVERSAL) {
                     universalsInScope.Add(quantifier.Variable);
                 }
@@ -164,10 +183,8 @@ namespace FirstOrderLogic {
                         .Select(v => (Term)new Variable(v.TermSymbol))
                         .ToArray();
                     substitution.Add(quantifier.Variable,
-                        new Function($"sk{System.Threading.Interlocked.Increment(ref _skolemCounter)}", args));
+                        new Function($"sk${System.Threading.Interlocked.Increment(ref _skolemCounter)}", args));
                 }
-
-                current = quantified.Children[0];
             }
 
             foreach (var variable in substitution.Keys) {

@@ -85,7 +85,9 @@ the propositional fragment.
 - Constants — `TRUE`, `FALSE`
 - Time index — `P(x)^1`
 
-Identifiers starting with `x`, `y`, `z`, `w` are variables; all others are constants.
+Exactly the identifiers `x`, `y`, `z`, `w` are free variables; every other identifier
+(including e.g. `x1` or `yPos`) is a constant unless it is bound by an enclosing
+quantifier, which makes it a variable within that scope.
 
 Operator precedence, tightest first: `NOT` / `NAF` / quantifiers, then `AND`, then `OR`,
 then `IMPLIES`, then `IFF`. `AND` and `OR` are left-associative; `IMPLIES` and `IFF` are
