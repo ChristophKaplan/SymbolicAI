@@ -7,11 +7,11 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpBeliefState() {
         }
 
-        public GpBeliefState(IEnumerable<GpNode> nodes) : base(nodes) {
+        public GpBeliefState(IEnumerable<GpLiteralNode> nodes) : base(nodes) {
         }
 
-        public List<GpNode>? GetSubSetOfNodesMatching(List<ISentence> literals) {
-            var subset = new List<GpNode>();
+        public List<GpLiteralNode>? GetSubSetOfNodesMatching(List<ISentence> literals) {
+            var subset = new List<GpLiteralNode>();
 
             foreach (var literal in literals) {
                 var applicableNode = Nodes.FirstOrDefault(node => node.Literal.Equals(literal));
@@ -76,34 +76,34 @@ namespace AIPlanning.Planning.GraphPlan {
         // selections as it goes; materialising the full cartesian product of every goal's
         // supporters first blows up exponentially.
         public IEnumerable<GpActionSet> GetPossibleConflictFreeActionSets() {
-            return SelectSupporters(0, new List<GpNode>());
+            return SelectSupporters(0, new List<GpActionNode>());
         }
 
-        private IEnumerable<GpActionSet> SelectSupporters(int goalIndex, List<GpNode> chosen) {
+        private IEnumerable<GpActionSet> SelectSupporters(int goalIndex, List<GpActionNode> chosen) {
             if (goalIndex == Nodes.Count) {
                 if (chosen.Count > 0) {
-                    yield return new GpActionSet(new List<GpNode>(chosen));
+                    yield return new GpActionSet(new List<GpActionNode>(chosen));
                 }
                 yield break;
             }
 
-            var goalSupporters = Nodes[goalIndex].InEdges;
+            var goalNode = Nodes[goalIndex];
 
             // Minimality: reuse an already-selected supporter rather than branching on every one;
             // this stops redundant supersets (a real action plus the same literal's Persist).
-            if (chosen.Any(goalSupporters.Contains)) {
+            if (chosen.Any(c => c.HasOutEdge(goalNode))) {
                 foreach (var set in SelectSupporters(goalIndex + 1, chosen)) {
                     yield return set;
                 }
                 yield break;
             }
 
-            foreach (var supporter in goalSupporters) {
+            foreach (var supporter in goalNode.InEdges) {
                 if (chosen.Any(c => c.IsMutexWith(supporter))) {
                     continue;
                 }
 
-                chosen.Add(supporter);
+                chosen.Add((GpActionNode)supporter);
                 foreach (var set in SelectSupporters(goalIndex + 1, chosen)) {
                     yield return set;
                 }

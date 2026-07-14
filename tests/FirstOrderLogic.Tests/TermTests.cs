@@ -43,7 +43,7 @@ namespace FolTests {
 
         [Test]
         public void GetVariables_CollectsNestedVariables() {
-            var pred = (Predicate)Logic.TryParse("P(f(x),y,a)");
+            var pred = (Predicate)Logic.Parse("P(f(x),y,a)");
             var vars = pred.GetVariables();
             Assert.That(vars.Length, Is.EqualTo(2));
         }

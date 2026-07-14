@@ -143,9 +143,9 @@ namespace AIPlanningTests {
             var unificator = new Unificator(pattern, target);
             Assert.That(unificator.IsUnifiable, Is.True, "sanity: the two literals must unify");
 
-            action.SpecifyAction(unificator);
+            var grounded = action.SpecifyAction(unificator);
 
-            var nonGround = action.Preconditions.Concat(action.Effects)
+            var nonGround = grounded.Preconditions.Concat(grounded.Effects)
                 .Where(literal => !literal.IsGround())
                 .ToList();
             Assert.That(nonGround, Is.Empty,

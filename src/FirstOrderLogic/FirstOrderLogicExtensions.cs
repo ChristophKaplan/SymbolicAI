@@ -3,6 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace FirstOrderLogic {
+    // Raised where an existential quantifier would have to be skolemized to proceed, but the
+    // operation promises equivalence and skolemization only preserves satisfiability.
+    public class ExistentialQuantifierException : NotSupportedException
+    {
+        public ExistentialQuantifierException(string message) : base(message) { }
+    }
+
     public static class FirstOrderLogicExtensions
     {
         public static ISentence ConnectSentences(this IReadOnlyList<ISentence> sentences, Connective.LogicSymbol connective = Connective.LogicSymbol.CONJUNCTION) {
@@ -65,11 +72,33 @@ namespace FirstOrderLogic {
         private static ISentence ToConjunctiveNormalFormCore(ISentence sentence, List<ISentence>? steps) {
             RequireClassical(sentence);
 
-            var clone = ToPrenexFormCore(sentence, steps);
+            var clone = DropUniversalPrefix(ToPrenexFormCore(sentence, steps), sentence);
+            steps?.Add(clone);
             ApplyUntilStable(ref clone, CnfPipeline, steps);
 
-            if(!clone.IsCNF()) { throw new Exception("Sentence is not in CNF"); }
+            if(!clone.IsCNF()) { throw new InvalidOperationException($"'{clone}' is not in CNF"); }
             return clone;
+        }
+
+        // CNF is an equivalence, so the prefix may only be dropped where dropping it preserves
+        // meaning: a universal prefix does, because this library reads free variables as
+        // implicitly universal at widest scope — ∀x P(x) and P(x) are the same sentence here.
+        // An existential has no such reading; only skolemization removes it, and that preserves
+        // satisfiability alone, so the caller must ask for it explicitly.
+        private static ISentence DropUniversalPrefix(ISentence prenex, ISentence original) {
+            var current = prenex;
+            while (current is IComplexSentence { IsQuantifier: true } quantified) {
+                if (quantified.Connective.Symbol == Connective.LogicSymbol.EXISTENTIAL) {
+                    throw new ExistentialQuantifierException(
+                        $"'{original}' has an existential quantifier in prenex form ('{current}'), and eliminating it " +
+                        "changes the sentence into a merely equisatisfiable one. Call " +
+                        "sentence.SkolemForm().ToConjunctiveNormalForm() if that is what you want.");
+                }
+
+                current = quantified.Children[0];
+            }
+
+            return current;
         }
 
         // Process-wide so that independently skolemized sentences never share a witness name:
@@ -80,6 +109,8 @@ namespace FirstOrderLogic {
         public static void ResetSkolemCounter() => System.Threading.Interlocked.Exchange(ref _skolemCounter, 0);
 
         public static ISentence SkolemForm(this ISentence sentence) {
+            RequireClassical(sentence);
+
             var clone = sentence;
 
             // Each existential becomes a Skolem term over the universals enclosing it ('$' is
@@ -107,8 +138,7 @@ namespace FirstOrderLogic {
             }
 
             var substitution = new Dictionary<Variable, Function>();
-            var universalsInScope = current.GetLiterals()
-                .SelectMany(l => l.VariablesOf())
+            var universalsInScope = VariablesIn(current)
                 .Where(v => !lastBinderOf.ContainsKey(v.TermSymbol))
                 .Distinct()
                 .ToList();
@@ -143,9 +173,17 @@ namespace FirstOrderLogic {
             return clone;
         }
 
+        // Every variable of the matrix, in first-occurrence order. Deliberately not GetLiterals:
+        // a prenex matrix need not be a conjunction/disjunction of literals, and only the names
+        // matter here, not the polarity that makes something a literal.
+        private static IEnumerable<Variable> VariablesIn(ISentence sentence) =>
+            sentence is IPredicate predicate
+                ? predicate.GetVariables()
+                : sentence.Children.SelectMany(VariablesIn);
+
         public static List<Clause> GetClauseSet(this ISentence sentence, List<Clause>? clauseSet = null) {
             RequireClassical(sentence);
-            if (!sentence.IsCNF()) { throw new Exception("Sentence is not in CNF"); }
+            if (!sentence.IsCNF()) { throw new ArgumentException($"'{sentence}' is not in CNF", nameof(sentence)); }
         
             clauseSet ??= new List<Clause>();
 
@@ -180,7 +218,17 @@ namespace FirstOrderLogic {
         public static List<ISentence> Conflicts(this IReadOnlyList<ISentence> literals) {
             var claims = new List<ISentence>();
             for (var i = 0; i < literals.Count; i++) {
+                // NAF is "not derivable", not "asserted false": it contradicts nothing
+                // classically, and its node is not a literal the unifier can take.
+                if (!literals[i].IsLiteral) {
+                    continue;
+                }
+
                 for (var j = i + 1; j < literals.Count; j++) {
+                    if (!literals[j].IsLiteral) {
+                        continue;
+                    }
+
                     if (literals[i].IsNegation == literals[j].IsNegation) {
                         continue;
                     }

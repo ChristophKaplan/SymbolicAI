@@ -113,7 +113,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public void ExpandGraph() {
-            var curLayer = _layers.Last().Value;
+            var curLayer = _layers[_layers.Count - 1];
 
             var usableActions = curLayer.GetUsableActions(_operatorGraph);
 

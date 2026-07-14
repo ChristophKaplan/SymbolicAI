@@ -6,7 +6,6 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <RootNamespace>AIPlanningTests</RootNamespace>
-        <LangVersion>10</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

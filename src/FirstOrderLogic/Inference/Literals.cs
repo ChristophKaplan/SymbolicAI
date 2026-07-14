@@ -7,7 +7,11 @@ namespace FirstOrderLogic
     {
         public static IEnumerable<Variable> VariablesOf(this ISentence literal)
         {
-            if (literal.AtomOf() is not IPredicate predicate) return Enumerable.Empty<Variable>();
+            if (literal.AtomOf() is not IPredicate predicate)
+            {
+                return Enumerable.Empty<Variable>();
+            }
+
             return predicate.GetVariables().Distinct();
         }
 
@@ -28,7 +32,7 @@ namespace FirstOrderLogic
         }
 
         public static ISentence AtomOf(this ISentence literal) =>
-            literal.IsNegation ? literal.Children[0] : literal;
+            literal.IsNegation || literal.IsNaf ? literal.Children[0].AtomOf() : literal;
 
         // Applies `fresh` to each distinct variable in first-occurrence order; a null result
         // leaves that variable untouched.

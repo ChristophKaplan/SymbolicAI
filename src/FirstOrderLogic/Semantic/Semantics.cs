@@ -8,7 +8,7 @@ namespace FirstOrderLogic
     public abstract class Semantics
     {
         protected readonly Dictionary<string, Func<IElementOfDiscourse[], bool>> Relations = new();
-        protected readonly Dictionary<string, Func<Term[], IElementOfDiscourse>> Functions = new();
+        protected readonly Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>> Functions = new();
         protected readonly Dictionary<string, IElementOfDiscourse> VariableAssignments = new();
         protected readonly Dictionary<IProposition, bool> PropositionalAssignments = new();
 
@@ -31,27 +31,43 @@ namespace FirstOrderLogic
         }
 
         // Functions may exceed the signature (domains supply individuals dynamically), so only
-        // coverage of declared constants is checked, not strays.
+        // coverage of the declared ones is checked, not strays.
         private void Validate()
         {
             var problems = new List<string>();
 
             foreach (var predicate in Signature.Predicates.Keys)
+            {
                 if (!Relations.ContainsKey(predicate))
+                {
                     problems.Add($"no relation for declared predicate '{predicate}'");
+                }
+            }
 
             foreach (var relation in Relations.Keys)
+            {
                 if (!Signature.HasPredicate(relation))
+                {
                     problems.Add($"relation '{relation}' is not declared in the signature");
+                }
+            }
 
-            foreach (var constant in Signature.Constants)
-                if (!Functions.ContainsKey(constant))
-                    problems.Add($"no function for declared constant '{constant}'");
+            foreach (var (symbol, arity) in Signature.Functions)
+            {
+                if (!Functions.ContainsKey(symbol))
+                {
+                    problems.Add(arity == 0
+                        ? $"no function for declared constant '{symbol}'"
+                        : $"no function for declared function '{symbol}/{arity}'");
+                }
+            }
 
             if (problems.Count > 0)
-                throw new Exception(
+            {
+                throw new InvalidOperationException(
                     $"{GetType().Name} does not satisfy its signature:\n  - " +
                     string.Join("\n  - ", problems));
+            }
         }
     }
 }

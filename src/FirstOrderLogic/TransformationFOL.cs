@@ -265,9 +265,12 @@ namespace FirstOrderLogic {
                 var sibling = connective.GetSiblingOf(quantified);
                 var body = quantified.Children[0];
 
-                // Capture avoidance: pulling widens the quantifier's scope over the sibling, so a free
-                // occurrence of the bound name there must be renamed away first.
-                if (HasFreeOccurrence(sibling, quantifier.Variable)) {
+                // Capture avoidance: pulling widens the quantifier's scope over the sibling, so the
+                // bound name must be renamed away if the sibling uses it at all. A free occurrence
+                // there would be captured; a sibling BINDER of the same name would instead leave the
+                // prenex prefix shadowed (∀v ∃v …) — still equivalent, since one of the two binders
+                // is then vacuous, but rejected by Interpretation.Evaluate as a scope conflict.
+                if (OccursIn(sibling, quantifier.Variable)) {
                     var fresh = new Variable($"q${Interlocked.Increment(ref _captureRenameCounter)}");
                     body = body.Substitute(quantifier.Variable, fresh);
                     quantifier = new Quantifier(quantifier.Symbol, fresh);
@@ -280,17 +283,19 @@ namespace FirstOrderLogic {
             return sentence;
         }
 
-        private static bool HasFreeOccurrence(ISentence sentence, Variable variable) {
+        // Any occurrence counts, free or bound: renaming a binder to a fresh name is always
+        // equivalence-preserving, so over-renaming only costs an uglier name.
+        private static bool OccursIn(ISentence sentence, Variable variable) {
             if (sentence is IComplexSentence { IsQuantifier: true } quantified &&
                 ((Quantifier)quantified.Connective).Variable.Equals(variable)) {
-                return false;
+                return true;
             }
 
             if (sentence is IPredicate predicate) {
                 return predicate.GetVariables().Contains(variable);
             }
 
-            return sentence.Children.Any(child => HasFreeOccurrence(child, variable));
+            return sentence.Children.Any(child => OccursIn(child, variable));
         }
 
         private static Quantifier FlipQuantifier(Quantifier quantifier) {

@@ -32,7 +32,10 @@ namespace FirstOrderLogic
             }
             
             foreach (var (key, value) in Substitutions) {
-                if (!unificator.Substitutions.TryGetValue(key, out var otherValue) || !value.Equals(otherValue)) return false;
+                if (!unificator.Substitutions.TryGetValue(key, out var otherValue) || !value.Equals(otherValue))
+                {
+                    return false;
+                }
             }
             
             return true;
@@ -57,7 +60,7 @@ namespace FirstOrderLogic
         {
             if (substitutions.Count == 0)
             {
-                throw new Exception("Unificator: missing substitutions");
+                throw new ArgumentException("Unificator: missing substitutions", nameof(substitutions));
             }
             
             Substitutions = substitutions;
@@ -109,7 +112,7 @@ namespace FirstOrderLogic
         {
             if (!lit1.IsLiteral || !lit2.IsLiteral)
             {
-                throw new Exception("Both sentences must be literals");
+                throw new ArgumentException($"Both sentences must be literals, got '{lit1}' and '{lit2}'");
             }
 
             var atom1 = (IAtomicSentence)lit1.AtomOf();
@@ -173,7 +176,7 @@ namespace FirstOrderLogic
                 return false;
             }
 
-            for (var i = 0; i < func1.Terms.Length; i++)
+            for (var i = 0; i < func1.Terms.Count; i++)
             {
                 if (!UnifyTerm(func1.Terms[i], func2.Terms[i]))
                 {
@@ -256,30 +259,13 @@ namespace FirstOrderLogic
             return sb.ToString();
         }
 
-        // Rebuilds through AddLiteral: substitution can collapse distinct literals into equal
-        // ones, and a clause is a set.
-        public void Substitute(Clause clause)
-        {
-            var substituted = new List<ISentence>(clause.Literals.Count);
-            foreach (var literal in clause.Literals)
-            {
-                substituted.Add(Apply(literal));
-            }
-
-            clause.Literals.Clear();
-            foreach (var literal in substituted)
-            {
-                clause.AddLiteral(literal);
-            }
-        }
-
         // Delegates to Substitution so triangular bindings like {x/a, z/f(x)} resolve their
         // chains (z -> f(a)) instead of depending on dictionary iteration order.
         public ISentence Apply(ISentence sentence)
         {
             if (!IsUnifiable)
             {
-                throw new Exception("Unificator is not usable!");
+                throw new InvalidOperationException("Unificator is not usable!");
             }
 
             return new Substitution(Substitutions).Apply(sentence);

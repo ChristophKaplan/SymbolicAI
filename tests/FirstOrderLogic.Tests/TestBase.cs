@@ -12,7 +12,7 @@ namespace FolTests {
         [SetUp]
         public void BaseSetup() => Logic = new FirstOrderLogic.FirstOrderLogic();
 
-        protected ISentence S(string s) => (ISentence)Logic.TryParse(s);
+        protected ISentence S(string s) => (ISentence)Logic.Parse(s);
         protected List<ISentence> Set(params string[] sentences) => sentences.Select(S).ToList();
 
         // Assert the same boolean in both modes: subsumption must never change the result, only speed.

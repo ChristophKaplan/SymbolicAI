@@ -38,7 +38,7 @@ namespace AIPlanning.Planning.GraphPlan {
         public bool IsCompetingNeeds(GpActionNode other) {
             foreach (var inNode in InEdges) {
                 foreach (var mutex in inNode.MutexRelation) {
-                    if (other.InEdges.Contains(mutex.ToNode)) {
+                    if (other.HasInEdge(mutex.ToNode)) {
                         return true;
                     }
                 }

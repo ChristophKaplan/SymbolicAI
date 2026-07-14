@@ -6,10 +6,10 @@ namespace FirstOrderLogicExample {
         static void Main(string[] args) {
             var logic = new FirstOrderLogic.FirstOrderLogic();
 
-            var sentence = (ISentence)logic.TryParse("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))");
+            var sentence = (ISentence)logic.Parse("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))");
             var prenexForm = sentence.ToPrenexForm(out var steps);
             var skolemForm = prenexForm.SkolemForm();
-            var consequence = (ISentence)logic.TryParse("Mortal(Sokrates)");
+            var consequence = (ISentence)logic.Parse("Mortal(Sokrates)");
 
             var result = Resolution.Resolve(skolemForm, consequence);
 

@@ -24,8 +24,16 @@ namespace FirstOrderLogic {
 
         public override ISentence Negated()
         {
-            if (Tautology) return Constant(Connective.LogicSymbol.FALSE);
-            if (Contradiction) return Constant(Connective.LogicSymbol.TRUE);
+            if (Tautology)
+            {
+                return Constant(Connective.LogicSymbol.FALSE);
+            }
+
+            if (Contradiction)
+            {
+                return Constant(Connective.LogicSymbol.TRUE);
+            }
+
             return new ComplexSentence(Connective.LogicSymbol.NEGATION, this);
         }
 
@@ -36,16 +44,11 @@ namespace FirstOrderLogic {
 
         public override ISentence WithChildren(IReadOnlyList<ISentence> children) => this;
 
-        public override bool Equals(object? obj) {
-            if (obj == null || GetType() != obj.GetType()) {
-                return false;
-            }
-
-            var other = (AtomicSentence)obj;
-            return Symbol.Equals(other.Symbol);
+        protected override bool EqualsCore(Sentence other) {
+            return Symbol.Equals(((AtomicSentence)other).Symbol);
         }
 
-        public override int GetHashCode() {
+        protected override int ComputeHashCode() {
             return Symbol.GetHashCode();
         }
 

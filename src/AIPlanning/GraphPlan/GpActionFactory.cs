@@ -17,7 +17,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public List<ISentence> StringToSentence(List<string> strings) {
-            return strings.Select(s => (ISentence)_logic.TryParse(s)).ToList();
+            return strings.Select(s => (ISentence)_logic.Parse(s)).ToList();
         }
     }
 }

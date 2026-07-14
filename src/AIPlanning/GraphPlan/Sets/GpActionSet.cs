@@ -6,7 +6,7 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpActionSet() {
         }
 
-        public GpActionSet(IEnumerable<GpNode> actionNodes) : base(actionNodes) {
+        public GpActionSet(IEnumerable<GpActionNode> actionNodes) : base(actionNodes) {
         }
 
         public List<GpAction> GetActions(bool ignorePersistence = true) => Nodes
@@ -17,7 +17,7 @@ namespace AIPlanning.Planning.GraphPlan {
         // is infeasible at this layer, and the caller MUST try another set. Filtering the mutex
         // literals out instead would let extraction recurse with an under-constrained sub-goal.
         public GpBeliefState? GetJointPreconditionsIfConflictFree() {
-            var incomingLitNodes = Nodes.SelectMany(node => node.InEdges).Distinct().ToList();
+            var incomingLitNodes = Nodes.SelectMany(node => node.InEdges).Cast<GpLiteralNode>().Distinct().ToList();
             if (!incomingLitNodes.IsConflictFree()) {
                 return null;
             }

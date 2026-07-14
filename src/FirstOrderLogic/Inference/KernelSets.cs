@@ -7,10 +7,27 @@ namespace FirstOrderLogic
     // load-bearing premises of each independent proof path. Entailment delegates to Resolution.
     public class KernelSets
     {
+        public const int DefaultMaxRounds = 200;
+
+        private readonly int _maxRounds;
+
+        // Shrinking asks many deliberately non-entailed questions, and resolution only
+        // semi-decides those: a term-generating belief (P(x) => P(f(x))) would otherwise
+        // saturate forever. The finite default trades completeness for a loud
+        // InvalidOperationException from Resolution when the bound is exceeded.
+        public KernelSets(int maxRounds = DefaultMaxRounds)
+        {
+            _maxRounds = maxRounds;
+        }
+
         // One minimal X ⊆ B with X ⊨ α, or null if B ⊭ α.
         public List<ISentence>? FindKernel(IList<ISentence> B, ISentence α)
         {
-            if (!Entails(B, α)) return null;
+            if (!Entails(B, α))
+            {
+                return null;
+            }
+
             return Shrink(new List<ISentence>(B), α);
         }
 
@@ -24,8 +41,8 @@ namespace FirstOrderLogic
             return results;
         }
 
-        private static bool Entails(IList<ISentence> sentences, ISentence target) =>
-            new Theory(sentences as List<ISentence> ?? new List<ISentence>(sentences)).Entails(target);
+        private bool Entails(IList<ISentence> sentences, ISentence target) =>
+            new Theory(sentences as List<ISentence> ?? new List<ISentence>(sentences)).Entails(target, _maxRounds);
 
         // Precondition: Entails(sentences, α) == true. Standard single downward-deletion pass:
         // when index i is tested, the set is a superset of the final result, so by monotonicity
@@ -36,7 +53,10 @@ namespace FirstOrderLogic
             {
                 var candidate = new List<ISentence>(sentences);
                 candidate.RemoveAt(i);
-                if (Entails(candidate, α)) sentences = candidate;
+                if (Entails(candidate, α))
+                {
+                    sentences = candidate;
+                }
             }
             return sentences;
         }
@@ -46,11 +66,21 @@ namespace FirstOrderLogic
         private void FindAllKernelsRec(List<ISentence> sentences, ISentence α,
             List<List<ISentence>> results, HashSet<string> explored, HashSet<string> emitted)
         {
-            if (!explored.Add(Key(sentences))) return;
-            if (!Entails(sentences, α)) return;
+            if (!explored.Add(Key(sentences)))
+            {
+                return;
+            }
+
+            if (!Entails(sentences, α))
+            {
+                return;
+            }
 
             var kernel = Shrink(sentences, α);
-            if (emitted.Add(Key(kernel))) results.Add(kernel);
+            if (emitted.Add(Key(kernel)))
+            {
+                results.Add(kernel);
+            }
 
             foreach (var e in kernel)
             {

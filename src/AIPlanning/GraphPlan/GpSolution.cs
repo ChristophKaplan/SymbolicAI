@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,12 +21,6 @@ namespace AIPlanning.Planning.GraphPlan {
         // A plan is an ordered sequence of steps; the graph's absolute layer indices are an
         // extraction detail (a branch can complete above layer 0) and are not exposed.
         public IReadOnlyList<GpActionSet> GetSolution(int index) {
-            if (index < 0 || index >= _solutions.Count)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index), index,
-                    $"Solution index must be in [0, {_solutions.Count - 1}]");
-            }
-
             return _solutions[index]
                 .OrderBy(layer => layer.Key)
                 .Select(layer => layer.Value.ActionSet)
@@ -35,7 +28,9 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public override string ToString() {
-            if (IsEmpty) return "No solutions found!";
+            if (IsEmpty) {
+                return "No solutions found!";
+            }
 
             var result = "";
 

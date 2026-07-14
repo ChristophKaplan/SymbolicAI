@@ -42,10 +42,17 @@ namespace AIPlanningTests {
             yield return $"-HasItem({name}, Wood)";
             yield return $"HasItem({name}, Axe)";
 
-            foreach (var t in trees)     yield return $"-At({name}, {t})";
-            foreach (var w in workplaces) yield return $"-At({name}, {w})";
-            foreach (var h in houses ?? Enumerable.Empty<string>())
+            foreach (var t in trees) {
+                yield return $"-At({name}, {t})";
+            }
+
+            foreach (var w in workplaces) {
+                yield return $"-At({name}, {w})";
+            }
+
+            foreach (var h in houses ?? Enumerable.Empty<string>()) {
                 yield return $"-At({name}, {h})";
+            }
         }
 
         private static GpProblem BuildJointWorkProblem(
@@ -55,12 +62,19 @@ namespace AIPlanningTests {
 
             var state = new HashSet<string>();
 
-            foreach (var t in trees)      state.Add($"Tree({t})");
-            foreach (var w in workplaces) state.Add($"Workplace({w})");
+            foreach (var t in trees) {
+                state.Add($"Tree({t})");
+            }
 
-            foreach (var a in agents)
-                foreach (var f in AgentFacts(a, trees, workplaces))
+            foreach (var w in workplaces) {
+                state.Add($"Workplace({w})");
+            }
+
+            foreach (var a in agents) {
+                foreach (var f in AgentFacts(a, trees, workplaces)) {
                     state.Add(f);
+                }
+            }
 
             var initialState = Factory.StringToSentence(state.ToList());
             var goals        = agents.Select(a => $"Have({a}, Wage)").ToList();

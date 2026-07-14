@@ -22,15 +22,14 @@ SymbolicAI/
 
 ## Dependencies
 
-Both projects reference two shared libraries that live in **sibling repos** (not part
-of this repo). Clone them next to `SymbolicAI/` so the relative project references
-resolve:
+Two shared libraries live in **sibling repos** (not part of this repo). Clone them next
+to `SymbolicAI/` so the relative project references resolve:
 
 ```
 Development/
   SymbolicAI/   (this repo)
-  LRParser/     parser used by FirstOrderLogic
-  Logger/       logging
+  LRParser/     parser — referenced by FirstOrderLogic; AIPlanning gets it transitively
+  Logger/       logging — used by LRParser, so both libraries pull it in transitively
 ```
 
 ## Building
@@ -39,8 +38,9 @@ Development/
 dotnet build SymbolicAI.sln
 ```
 
-Targets `netstandard2.1` / `net8.0`, C# 9. The `AIPlanning` library stays
-`netstandard2.1` so it can be dropped into Unity as a managed plugin.
+C# 10. The `FirstOrderLogic` library targets `netstandard2.1` only; `AIPlanning`
+multi-targets `netstandard2.1;net8.0`, so its `netstandard2.1` build can be dropped into
+Unity as a managed plugin. Tests, examples, and benchmarks target `net8.0`.
 
 ---
 
@@ -101,9 +101,9 @@ using FirstOrderLogic;
 
 var logic = new FirstOrderLogic.FirstOrderLogic();
 
-var kb = (ISentence)logic.TryParse("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))");
+var kb = (ISentence)logic.Parse("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))");
 var skolem = kb.ToPrenexForm(out _).SkolemForm();
-var goal = (ISentence)logic.TryParse("Mortal(Sokrates)");
+var goal = (ISentence)logic.Parse("Mortal(Sokrates)");
 
 bool entailed = Resolution.Resolve(skolem, goal); // True
 ```
@@ -127,11 +127,11 @@ expose independent proof paths. Entailment delegates to `Resolution`.
 ```csharp
 var ks = new KernelSets();
 var K = new List<ISentence> {
-    (ISentence)logic.TryParse("P(a)"),
-    (ISentence)logic.TryParse("P(x) => Q(x)"),
-    (ISentence)logic.TryParse("R(b)"),   // irrelevant to Q(a)
+    (ISentence)logic.Parse("P(a)"),
+    (ISentence)logic.Parse("P(x) => Q(x)"),
+    (ISentence)logic.Parse("R(b)"),   // irrelevant to Q(a)
 };
-var α = (ISentence)logic.TryParse("Q(a)");
+var α = (ISentence)logic.Parse("Q(a)");
 
 var kernel = ks.FindKernel(K, α);        // { P(a), P(x) => Q(x) }  (null if K does not entail α)
 var all    = ks.FindAllKernels(K, α);    // every independent proof path

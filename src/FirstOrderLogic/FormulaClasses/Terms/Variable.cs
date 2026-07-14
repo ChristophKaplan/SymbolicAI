@@ -5,8 +5,8 @@ namespace FirstOrderLogic {
         public Variable(Variable other) : base(other.TermSymbol) {
         }
 
-        public override bool Equals(object? obj) => obj is Variable other && TermSymbol == other.TermSymbol;
+        protected override bool EqualsCore(Term other) => other is Variable variable && TermSymbol == variable.TermSymbol;
 
-        public override int GetHashCode() => TermSymbol.GetHashCode();
+        protected override int ComputeHashCode() => TermSymbol.GetHashCode();
     }
 }

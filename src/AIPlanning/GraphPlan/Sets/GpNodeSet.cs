@@ -4,13 +4,16 @@ using System.Linq;
 namespace AIPlanning.Planning.GraphPlan {
     public abstract class GpNodeSet<TNode> where TNode : GpNode {
         private readonly List<TNode> _nodes;
+        private readonly HashSet<TNode> _index;
 
         protected GpNodeSet() {
             _nodes = new List<TNode>();
+            _index = new HashSet<TNode>();
         }
 
-        protected GpNodeSet(IEnumerable<GpNode> nodes) {
-            _nodes = nodes.Cast<TNode>().ToList();
+        protected GpNodeSet(IEnumerable<TNode> nodes) {
+            _nodes = nodes.ToList();
+            _index = new HashSet<TNode>(_nodes);
         }
 
         public IReadOnlyList<TNode> Nodes => _nodes;
@@ -18,12 +21,12 @@ namespace AIPlanning.Planning.GraphPlan {
         // Returns the canonical node stored in the set; callers MUST connect edges to the
         // returned instance, not to their input.
         public TNode Add(TNode node) {
-            var contained = _nodes.FirstOrDefault(node.Equals);
-            if (contained != null) {
+            if (_index.TryGetValue(node, out var contained)) {
                 return contained;
             }
 
             _nodes.Add(node);
+            _index.Add(node);
             return node;
         }
 

@@ -17,7 +17,10 @@ namespace FirstOrderLogic
         public List<List<ISentence>> Explain(
             IEnumerable<ISentence> kb, ISentence observation, IEnumerable<string> abduciblePredicates)
         {
-            if (!observation.IsLiteral) return new List<List<ISentence>>();
+            if (!observation.IsLiteral)
+            {
+                return new List<List<ISentence>>();
+            }
 
             var sentences = kb.ToList();
             var candidates = BackwardChaining.Prove(
@@ -28,7 +31,11 @@ namespace FirstOrderLogic
             HashSet<string>? baseline = null;
             var consistent = candidates.Where(h =>
             {
-                if (h.Count == 0) return true;
+                if (h.Count == 0)
+                {
+                    return true;
+                }
+
                 baseline ??= ConflictKeys(sentences);
                 return !ConflictKeys(sentences.Concat(h)).Except(baseline).Any();
             }).ToList();
@@ -51,7 +58,11 @@ namespace FirstOrderLogic
             var emitted = new List<HashSet<string>>();
             foreach (var (set, key) in keyed.OrderBy(p => p.key.Count))
             {
-                if (emitted.Any(e => e.IsSubsetOf(key))) continue;
+                if (emitted.Any(e => e.IsSubsetOf(key)))
+                {
+                    continue;
+                }
+
                 emitted.Add(key);
                 result.Add(set);
             }

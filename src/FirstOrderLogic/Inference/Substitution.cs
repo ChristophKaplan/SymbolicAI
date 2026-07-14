@@ -19,8 +19,12 @@ namespace FirstOrderLogic
                 case Variable v:
                     return _map.TryGetValue(v, out var bound) ? Walk(bound) : v;
                 case Function f when f.Arity > 0:
-                    var args = new Term[f.Terms.Length];
-                    for (var i = 0; i < args.Length; i++) args[i] = Walk(f.Terms[i]);
+                    var args = new Term[f.Terms.Count];
+                    for (var i = 0; i < args.Length; i++)
+                    {
+                        args[i] = Walk(f.Terms[i]);
+                    }
+
                     return new Function(f.TermSymbol, args);
                 default:
                     return term;
@@ -33,7 +37,10 @@ namespace FirstOrderLogic
             foreach (var v in literal.VariablesOf())
             {
                 var resolved = Walk(v);
-                if (!resolved.Equals(v)) result = result.Substitute(v, resolved);
+                if (!resolved.Equals(v))
+                {
+                    result = result.Substitute(v, resolved);
+                }
             }
 
             return result;
@@ -44,8 +51,16 @@ namespace FirstOrderLogic
         public Substitution Extend(IReadOnlyDictionary<Variable, Term> more)
         {
             var merged = new Dictionary<Variable, Term>(_map.Count + more.Count);
-            foreach (var pair in _map) merged[pair.Key] = pair.Value;
-            foreach (var pair in more) merged[pair.Key] = pair.Value;
+            foreach (var pair in _map)
+            {
+                merged[pair.Key] = pair.Value;
+            }
+
+            foreach (var pair in more)
+            {
+                merged[pair.Key] = pair.Value;
+            }
+
             return new Substitution(merged);
         }
     }

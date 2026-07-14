@@ -39,13 +39,27 @@ namespace FirstOrderLogic {
         }
 
         public ComplexSentence(Connective connective, ISentence p) {
-            Connective = connective;
+            Connective = RequireQuantifierCarriesVariable(connective);
             Children = new[] { p };
+        }
+
+        // Same invariant as RequireNonQuantifier, from the other direction: a quantifier symbol
+        // is only usable when the connective is a Quantifier carrying the bound variable.
+        private static Connective RequireQuantifierCarriesVariable(Connective connective) {
+            if (connective is not Quantifier &&
+                (connective.Symbol == Connective.LogicSymbol.UNIVERSAL ||
+                 connective.Symbol == Connective.LogicSymbol.EXISTENTIAL)) {
+                throw new ArgumentException(
+                    "Quantifier nodes need a Quantifier connective carrying the bound variable — use ComplexSentence(Quantifier, ISentence).",
+                    nameof(connective));
+            }
+
+            return connective;
         }
 
         public ISentence GetSiblingOf(ISentence sentence) {
             if (Children.Count != 2) {
-                throw new Exception("Error: ComplexSentence must have two children.");
+                throw new InvalidOperationException("Error: ComplexSentence must have two children.");
             }
 
             if (Children[0].Equals(sentence)) {
@@ -56,15 +70,16 @@ namespace FirstOrderLogic {
                 return Children[0];
             }
 
-            throw new Exception("Error: Sentence not found in ComplexSentence.");
+            throw new ArgumentException("Error: Sentence not found in ComplexSentence.", nameof(sentence));
         }
 
-        // Capture-avoiding: occurrences of the bound variable are not free, so substituting it
-        // stops here, and a replacement that mentions the bound name renames the binder first.
+        // Capture-avoiding: a target mentioning the bound variable — the variable itself, or a
+        // compound like f(x) — has no free occurrence in this scope, so substituting it stops
+        // here; a replacement that mentions the bound name renames the binder first.
         public override ISentence Substitute(Term target, Term replacement) {
             if (IsQuantifier) {
                 var quantifier = (Quantifier)Connective;
-                if (quantifier.Variable.Equals(target)) {
+                if (target.Occurs(quantifier.Variable)) {
                     return this;
                 }
 
@@ -97,17 +112,12 @@ namespace FirstOrderLogic {
                 ? new ComplexSentence(Connective.Clone(), children[0])
                 : new ComplexSentence(children[0], Connective.Symbol, children[1]);
 
-        public override int GetHashCode() {
-            return HashCode.Combine(Connective.GetHashCode(), base.GetHashCode());
+        protected override int ComputeHashCode() {
+            return HashCode.Combine(Connective.GetHashCode(), base.ComputeHashCode());
         }
     
-        public override bool Equals(object? obj) {
-            if (obj == null || GetType() != obj.GetType()) {
-                return false;
-            }
-
-            var other = (ComplexSentence)obj;
-            return Connective.Equals(other.Connective) && base.Equals(other);
+        protected override bool EqualsCore(Sentence other) {
+            return Connective.Equals(((ComplexSentence)other).Connective) && base.EqualsCore(other);
         }
 
         public override string ToString() {

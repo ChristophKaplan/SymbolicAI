@@ -5,45 +5,54 @@ using LRParser.Language;
 using LRParser.Lexer;
 
 namespace FirstOrderLogic {
-    public enum Terminal
+    public class FirstOrderLogic : Language<FirstOrderLogic.Terminal, FirstOrderLogic.NonTerminal>
     {
-        Open,
-        Comma,
-        Close,
-        Identifier,
-        Conjunction,
-        Disjunction,
-        Implication,
-        Negation,
-        Boolean,
-        Quantifier,
-        Biconditional,
-        Naf
-    }
+        // Parser plumbing: nested so that names as generic as Open/Comma/Term stay out of the
+        // root namespace. The base class is public and takes them as type arguments, so they
+        // cannot be made internal.
+        public enum Terminal
+        {
+            Open,
+            Comma,
+            Close,
+            Identifier,
+            Conjunction,
+            Disjunction,
+            Implication,
+            Negation,
+            Boolean,
+            Quantifier,
+            Biconditional,
+            Naf
+        }
 
-    public enum NonTerminal
-    {
-        LangObject,
-        AtomicSentence,
-        Term,
-        TermList,
-        Sentence,
-        IffSentence,
-        ImpliesSentence,
-        OrSentence,
-        AndSentence,
-        UnarySentence,
-        PrimarySentence
-    }
+        public enum NonTerminal
+        {
+            LangObject,
+            AtomicSentence,
+            Term,
+            TermList,
+            Sentence,
+            IffSentence,
+            ImpliesSentence,
+            OrSentence,
+            AndSentence,
+            UnarySentence,
+            PrimarySentence
+        }
 
-    public class FirstOrderLogic : Language<Terminal, NonTerminal>
-    {
         // Variable-ness is decided by TWO cooperating mechanisms: these names are always
         // variables (so unquantified rules like "P(x) => Q(x)" work), and any other
         // identifier becomes a variable when an enclosing quantifier binds it (see
         // BindConstantsToVariable). Quantified whitelist names work only because the term
         // rule already made them Variables and the rewrite skips Variables.
         private static readonly string[] FreeVariableNames = { "x", "y", "z", "w" };
+
+        // The single place a bare identifier becomes a term. Signature.Symbol.Ground builds atoms
+        // that must be Equals-identical to their parsed counterparts, so it classifies through
+        // this too rather than assuming every argument is a constant.
+        internal static Term TermFor(string symbol) =>
+            FreeVariableNames.Contains(symbol) ? new Variable(symbol) : (Term)new Constant(symbol);
 
         protected override TokenDefinition<Terminal>[] SetUpTokenDefinitions()
         {
@@ -107,7 +116,7 @@ namespace FirstOrderLogic {
                     return Connective.LogicSymbol.EXISTENTIAL;
 
                 default:
-                    throw new Exception($"Unknown Logic Symbol: {lexValue}");
+                    throw new ArgumentException($"Unknown Logic Symbol: {lexValue}", nameof(lexValue));
             }
         }
 
@@ -178,13 +187,7 @@ namespace FirstOrderLogic {
                 return list;
             }, NonTerminal.TermList, NonTerminal.TermList, Terminal.Comma, NonTerminal.Term);
 
-            AddRule(rhs =>
-            {
-                var symbol = ((LexValue)rhs[0].Attribute).Value;
-                return FreeVariableNames.Contains(symbol)
-                    ? (ILanguageObject)new Variable(symbol)
-                    : new Constant(symbol);
-            }, NonTerminal.Term, Terminal.Identifier);
+            AddRule(rhs => TermFor(((LexValue)rhs[0].Attribute).Value), NonTerminal.Term, Terminal.Identifier);
 
             AddRule(rhs =>
             {
@@ -233,10 +236,5 @@ namespace FirstOrderLogic {
                 _ => term
             };
         }
-
-        // Throws on invalid input — plain alias for the inherited Parse, kept only because the
-        // name is baked into many call sites. The inherited TryParse(string, out …) overload
-        // has real try-semantics.
-        public ILanguageObject TryParse(string input) => base.Parse(input);
     }
 }

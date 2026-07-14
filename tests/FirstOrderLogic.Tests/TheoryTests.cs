@@ -152,11 +152,16 @@ namespace FolTests
             Assert.That(a.IsConsistentWith(c, ComparisonMode.Semantic), Is.False);
         }
 
+        // Compare(null) used to throw although the parameter is declared nullable; null now means
+        // the empty theory, which is what IsConsistentWith(null) has always meant.
         [Test]
-        public void Compare_NullOther_ThrowsArgumentNullException() =>
-            Assert.That(
-                () => new Theory(Set("P(a)")).Compare(null),
-                Throws.TypeOf<System.ArgumentNullException>());
+        public void Compare_NullOther_IsTheEmptyTheory()
+        {
+            var stance = new Theory(Set("P(a)")).Compare(null);
+            Assert.That(stance.Silences.Count, Is.EqualTo(1));
+            Assert.That(stance.Agreements, Is.Empty);
+            Assert.That(stance.Disagreements, Is.Empty);
+        }
 
         [Test]
         public void Chaining_NonLiterals_AgreeWhenPremiseOrderPermuted()

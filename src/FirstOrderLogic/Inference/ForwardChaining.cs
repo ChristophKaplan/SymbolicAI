@@ -22,7 +22,10 @@ namespace FirstOrderLogic
             var rules = clauses.Where(c => !c.IsFact).ToList();
 
             var known = new HashSet<ISentence>();
-            foreach (var fact in clauses.Where(c => c.IsFact)) known.Add(Canonical(fact.Head));
+            foreach (var fact in clauses.Where(c => c.IsFact))
+            {
+                known.Add(Canonical(fact.Head));
+            }
 
             var constants = clauses
                 .SelectMany(c => c.Premises.Concat(c.NafPremises).Append(c.Head))
@@ -32,13 +35,20 @@ namespace FirstOrderLogic
                 .ToList();
 
             var rename = new BackwardChaining.Counter();
+
+            // A round reads a snapshot frozen at its start: `known` grows while Match lazily walks
+            // `facts`, and a round-stable view is what gives the NAF tests below a fixed world to
+            // fail against. `known` only ever grows, so carrying the new facts over at the end of a
+            // round reconstructs the next round's snapshot without re-copying the whole set.
+            var facts = known.ToList();
+            var derived = new List<ISentence>();
             foreach (var stratum in Stratify(rules))
             {
                 bool added;
                 do
                 {
                     added = false;
-                    var facts = known.ToList();
+                    derived.Clear();
                     foreach (var rule in stratum)
                     {
                         var fresh = rule.Renamed(rename.Next++);
@@ -51,7 +61,12 @@ namespace FirstOrderLogic
                             var head = theta.Apply(fresh.Head);
                             if (nafs.All(naf => !Holds(facts, naf)))
                             {
-                                if (known.Add(Canonical(head))) added = true;
+                                var canonical = Canonical(head);
+                                if (known.Add(canonical))
+                                {
+                                    derived.Add(canonical);
+                                    added = true;
+                                }
                                 continue;
                             }
 
@@ -68,15 +83,28 @@ namespace FirstOrderLogic
                                 .Where(scope.Contains)
                                 .Distinct()
                                 .ToList();
-                            if (toGround.Count == 0) continue;
+                            if (toGround.Count == 0)
+                            {
+                                continue;
+                            }
 
                             foreach (var grounding in Groundings(toGround, constants))
                             {
-                                if (nafs.Any(naf => Holds(facts, grounding.Apply(naf)))) continue;
-                                if (known.Add(Canonical(grounding.Apply(head)))) added = true;
+                                if (nafs.Any(naf => Holds(facts, grounding.Apply(naf))))
+                                {
+                                    continue;
+                                }
+
+                                var canonical = Canonical(grounding.Apply(head));
+                                if (known.Add(canonical))
+                                {
+                                    derived.Add(canonical);
+                                    added = true;
+                                }
                             }
                         }
                     }
+                    facts.AddRange(derived);
                 }
                 while (added);
             }
@@ -104,9 +132,13 @@ namespace FirstOrderLogic
             }
         }
 
-        private static IEnumerable<Term> ConstantsOf(ISentence literal)
+        internal static IEnumerable<Term> ConstantsOf(ISentence literal)
         {
-            if (literal.AtomOf() is not IPredicate predicate) yield break;
+            if (literal.AtomOf() is not IPredicate predicate)
+            {
+                yield break;
+            }
+
             foreach (var term in predicate.Terms)
             {
                 foreach (var constant in ConstantsIn(term))
@@ -166,11 +198,12 @@ namespace FirstOrderLogic
             }
 
             var sig = query.Signature();
-            return facts.Any(f => f.Signature() == sig && Unificator.TryUnify(query, f, out _));
+            return facts.Any(f => f.Signature() == sig &&
+                                  Unificator.TryUnify(query, StandardizedApart(f, query), out _));
         }
 
-        // Holds' enumerating sibling: one binding set per fact the query unifies with.
-        // A ground query yields one empty binding set per matching fact.
+        // Holds' enumerating sibling: one binding set per fact the query unifies with, keyed on
+        // the query's variables. A ground query yields one empty binding set per matching fact.
         public static List<Dictionary<Variable, Term>> Answers(IReadOnlyList<ISentence> facts, ISentence query)
         {
             if (!query.IsLiteral)
@@ -179,15 +212,42 @@ namespace FirstOrderLogic
             }
 
             var sig = query.Signature();
+            var queryVariables = query.VariablesOf().ToList();
             var answers = new List<Dictionary<Variable, Term>>();
             foreach (var fact in facts)
             {
-                if (fact.Signature() == sig && Unificator.TryUnify(query, fact, out var mgu))
+                if (fact.Signature() != sig)
                 {
-                    answers.Add(mgu);
+                    continue;
                 }
+
+                if (!Unificator.TryUnify(query, StandardizedApart(fact, query), out var mgu))
+                {
+                    continue;
+                }
+
+                var substitution = new Substitution(mgu);
+                var bindings = new Dictionary<Variable, Term>();
+                foreach (var variable in queryVariables)
+                {
+                    var resolved = substitution.Walk(variable);
+                    if (!resolved.Equals(variable))
+                    {
+                        bindings.Add(variable, resolved);
+                    }
+                }
+                answers.Add(bindings);
             }
             return answers;
+        }
+
+        // A fact is universally quantified, so a variable name it shares with the query is a
+        // coincidence, not a constraint — rename the collision away before unifying.
+        private static ISentence StandardizedApart(ISentence fact, ISentence query)
+        {
+            var taken = query.VariablesOf().Select(v => v.TermSymbol).ToHashSet();
+            var next = 0;
+            return fact.Renamed(v => taken.Contains(v.TermSymbol) ? new Variable("$q" + next++) : null);
         }
 
         // Stratified evaluation: a rule runs strictly after every literal it reads through NAF is
@@ -212,8 +272,16 @@ namespace FirstOrderLogic
                 foreach (var rule in rules)
                 {
                     var required = 0;
-                    foreach (var p in rule.Premises) required = Math.Max(required, StratumOf(p));
-                    foreach (var n in rule.NafPremises) required = Math.Max(required, StratumOf(n) + 1);
+                    foreach (var p in rule.Premises)
+                    {
+                        required = Math.Max(required, StratumOf(p));
+                    }
+
+                    foreach (var n in rule.NafPremises)
+                    {
+                        required = Math.Max(required, StratumOf(n) + 1);
+                    }
+
                     var key = rule.Head.Signature();
                     if (required > strata.GetValueOrDefault(key, 0))
                     {
@@ -248,10 +316,16 @@ namespace FirstOrderLogic
             var goal = theta.Apply(premises[index]);
             foreach (var fact in facts)
             {
-                if (!Unificator.TryMatch(goal, RenamedApart(fact, rename.Next++), out var match)) continue;
+                if (!Unificator.TryMatch(goal, RenamedApart(fact, rename.Next++), out var match))
+                {
+                    continue;
+                }
+
                 var extended = theta.Extend(match.Substitutions);
                 foreach (var solution in Match(premises, index + 1, extended, facts, rename))
+                {
                     yield return solution;
+                }
             }
         }
     }

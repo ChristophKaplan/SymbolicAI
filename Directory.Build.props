@@ -2,6 +2,12 @@
 
     <PropertyGroup>
         <Nullable>enable</Nullable>
+        <LangVersion>10</LangVersion>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <!-- Pinned rather than `latest`: with TreatWarningsAsErrors, a floating level lets an SDK
+             upgrade introduce new rules that break the build with no source change. -->
+        <AnalysisLevel>8.0</AnalysisLevel>
     </PropertyGroup>
 
 </Project>

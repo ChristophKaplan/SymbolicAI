@@ -28,7 +28,7 @@ namespace FirstOrderLogic {
             return sentence switch {
                 AtomicSentence atomicSentence => Evaluate(atomicSentence),
                 ComplexSentence complexSentence => Evaluate(complexSentence),
-                _ => throw new Exception($"Error: subtype of {this} not found.")
+                _ => throw new NotSupportedException($"Error: subtype of {sentence} not found.")
             };
         }
     
@@ -55,8 +55,15 @@ namespace FirstOrderLogic {
         }
 
         private bool Evaluate(IProposition proposition) {
-            if (proposition.Tautology) return true;
-            if (proposition.Contradiction) return false;
+            if (proposition.Tautology)
+            {
+                return true;
+            }
+
+            if (proposition.Contradiction)
+            {
+                return false;
+            }
 
             if (_propositionalAssignment.TryGetValue(proposition, out var value)) {
                 return value;
@@ -90,20 +97,20 @@ namespace FirstOrderLogic {
 
     public class Interpretation : PossibleWorld {
         private IDomainOfDiscourse Domain { get; }
-        private readonly Dictionary<string, Func<IElementOfDiscourse[], bool>> _relations = new();
-        private readonly Dictionary<string, Func<Term[], IElementOfDiscourse>> _functions = new();
-        private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment = new();
-    
+        private readonly Dictionary<string, Func<IElementOfDiscourse[], bool>> _relations;
+        private readonly Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>> _functions;
+        private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment;
+
         // Tables are copied for the same reason as in the base ctor.
         public Interpretation(IDomainOfDiscourse domain,
             Dictionary<string, Func<IElementOfDiscourse[], bool>> relations,
-            Dictionary<string, Func<Term[], IElementOfDiscourse>> functions,
+            Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>> functions,
             Dictionary<string, IElementOfDiscourse> variableAssigment,
             Dictionary<IProposition, bool> propositionalAssignment) : base(propositionalAssignment) {
 
             Domain = domain;
             _relations = new Dictionary<string, Func<IElementOfDiscourse[], bool>>(relations);
-            _functions = new Dictionary<string, Func<Term[], IElementOfDiscourse>>(functions);
+            _functions = new Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>>(functions);
             _variableAssigment = new Dictionary<string, IElementOfDiscourse>(variableAssigment);
         }
     
@@ -111,7 +118,7 @@ namespace FirstOrderLogic {
         
         public override bool Evaluate(ISentence sentence) {
             if(sentence.HasScopeConflict()) {
-                throw new Exception("Error: Sentence has scope conflict.");
+                throw new ArgumentException("Error: Sentence has scope conflict.", nameof(sentence));
             }
         
             return base.Evaluate(sentence);
@@ -145,10 +152,18 @@ namespace FirstOrderLogic {
         }
     
         protected override bool Evaluate(IAtomicSentence atomicSentence) {
-            return atomicSentence switch {
-                Predicate predicate => Evaluate(predicate),
-                _ => base.Evaluate(atomicSentence)
-            };
+            if (atomicSentence is Predicate predicate) {
+                return Evaluate(predicate);
+            }
+
+            // A 0-ary predicate parses as a Proposition, so the only way its declared relation is
+            // ever reachable is from the propositional path — applied to no arguments.
+            if (atomicSentence is IProposition { IsNullaryConstant: false } proposition &&
+                _relations.TryGetValue(proposition.Symbol, out var relation)) {
+                return relation(Array.Empty<IElementOfDiscourse>());
+            }
+
+            return base.Evaluate(atomicSentence);
         }
     
         private bool Evaluate(IPredicate predicate) {
@@ -156,13 +171,15 @@ namespace FirstOrderLogic {
                 throw new InterpretationException($"Error: {predicate} not found in interpretation.");
             }
 
-            return relation(Array.ConvertAll(predicate.Terms, Evaluate));
+            return relation(predicate.Terms.Select(Evaluate).ToArray());
         }
     
         private IElementOfDiscourse Evaluate(Term term) {
             return term switch {
+                // Compositional, like relations: arguments are evaluated to domain elements first,
+                // so an interpreted function never has to resolve a variable binding itself.
                 // Constants are arity-0 functions: function.Terms is empty for them.
-                Function function =>  _functions.TryGetValue(function.TermSymbol, out var func) ? func(function.Terms) : throw new InterpretationException("Error: function not found in interpretation."),
+                Function function =>  _functions.TryGetValue(function.TermSymbol, out var func) ? func(function.Terms.Select(Evaluate).ToArray()) : throw new InterpretationException("Error: function not found in interpretation."),
                 Variable variable => _variableAssigment.TryGetValue(variable.TermSymbol, out var domain) ? domain : throw new InterpretationException("Error: variable not found in interpretation."),
                 _ => throw new InterpretationException($"Error: {term} not found in interpretation.")
             };

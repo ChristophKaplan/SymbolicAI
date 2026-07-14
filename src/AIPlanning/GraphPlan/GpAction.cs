@@ -6,21 +6,16 @@ using FirstOrderLogic;
 
 namespace AIPlanning.Planning.GraphPlan {
     public class GpAction : IEquatable<GpAction> {
-        private int _hashcode;
+        private readonly int _hashcode;
+        private readonly HashSet<Unificator> _unificators = new();
         public string Signifier { get; }
-        public List<ISentence> Preconditions { get; }
-        public List<ISentence> Effects { get; }
-        public HashSet<Unificator> Unificators { get; private set; } = new();
+        public IReadOnlyList<ISentence> Preconditions { get; }
+        public IReadOnlyList<ISentence> Effects { get; }
+        public IReadOnlyCollection<Unificator> Unificators => _unificators;
 
         // Marks the injected Start/Finish actions, which must never surface at runtime.
         // A flag rather than reference identity, which a Clone would silently lose.
         public bool IsSynthetic { get; }
-
-        private GpAction(GpAction action) : this(action.Signifier,
-            action.Preconditions.ToList(),
-            action.Effects.ToList(),
-            action.IsSynthetic) {
-        }
 
         public GpAction(string name, List<ISentence> preconditions, List<ISentence> effects, bool isSynthetic = false)
         {
@@ -28,20 +23,26 @@ namespace AIPlanning.Planning.GraphPlan {
             Preconditions = preconditions;
             Effects = effects;
             IsSynthetic = isSynthetic;
-            UpdateHashCode();
+            _hashcode = ComputeHashCode();
         }
 
-        public GpAction Clone() => new GpAction(this);
+        public GpAction Clone() => new GpAction(Signifier, Preconditions.ToList(), Effects.ToList(), IsSynthetic);
 
         // Belief-state matching is exact over ground literals, so only a fully ground action can fire.
         public bool IsGround() => Preconditions.All(p => p.IsGround()) && Effects.All(e => e.IsGround());
 
-        public void AddUnificators(IEnumerable<Unificator> unificators)
+        public bool AddUnificators(IEnumerable<Unificator> unificators)
         {
-            Unificators.UnionWith(unificators);
+            var added = false;
+            foreach (var unificator in unificators)
+            {
+                added |= _unificators.Add(unificator);
+            }
+
+            return added;
         }
-    
-        public bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpNode>? satisfied) {
+
+        public bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpLiteralNode>? satisfied) {
             // Duplicate precondition literals map onto one node; comparing against the raw count
             // would make the action permanently inapplicable.
             var distinct = Preconditions.Distinct().ToList();
@@ -50,7 +51,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public HashSet<Unificator> GetConflictFreeUnificatorPossibilities() {
-            var substitutions = ArrangeSubstitutionsAsTrees(Unificators);
+            var substitutions = ArrangeSubstitutionsAsTrees(_unificators);
 
             var variables = substitutions.Keys.ToList();
             var termLists = substitutions.Values.ToList();
@@ -123,10 +124,13 @@ namespace AIPlanning.Planning.GraphPlan {
             return collectPossibilities;
         }
 
-        public void SpecifyAction(Unificator unificator) {
-            for (var i = 0; i < Preconditions.Count; i++) Preconditions[i] = unificator.Apply(Preconditions[i]);
-            for (var i = 0; i < Effects.Count; i++) Effects[i] = unificator.Apply(Effects[i]);
-            UpdateHashCode();
+        // Returns a new instance: the hash covers the literals, and actions live in hash-keyed
+        // collections — substituting in place would corrupt those.
+        public GpAction SpecifyAction(Unificator unificator) {
+            return new GpAction(Signifier,
+                Preconditions.Select(unificator.Apply).ToList(),
+                Effects.Select(unificator.Apply).ToList(),
+                IsSynthetic);
         }
 
         public bool IsConsistent() {
@@ -142,9 +146,9 @@ namespace AIPlanning.Planning.GraphPlan {
 
         // Summing element hashes keeps duplicates visible ({P,P,Q} vs {P,Q,Q} differ);
         // XOR would let duplicate pairs cancel out.
-        private void UpdateHashCode()
+        private int ComputeHashCode()
         {
-            static int SumHashes(List<ISentence> sentences) {
+            static int SumHashes(IReadOnlyList<ISentence> sentences) {
                 var hash = 0;
                 unchecked {
                     foreach (var sentence in sentences) {
@@ -155,7 +159,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 return hash;
             }
 
-            _hashcode = HashCode.Combine(Signifier, Preconditions.Count, Effects.Count, SumHashes(Preconditions), SumHashes(Effects));
+            return HashCode.Combine(Signifier, Preconditions.Count, Effects.Count, SumHashes(Preconditions), SumHashes(Effects));
         }
 
         public bool Equals(GpAction? other)

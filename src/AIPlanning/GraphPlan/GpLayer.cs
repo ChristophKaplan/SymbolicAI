@@ -38,7 +38,10 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public void ExpandActions(List<GpAction> actions, Dictionary<ISentence, GpAction> persistCache) {
             foreach (var action in actions) {
-                if (!action.IsApplicableToPreconditions(BeliefState, out var satisfiedPreCons)) {
+                // Blum & Furst insertion condition: the preconditions must be present AND pairwise
+                // non-mutex in the previous literal layer.
+                if (!action.IsApplicableToPreconditions(BeliefState, out var satisfiedPreCons) ||
+                    !satisfiedPreCons.IsConflictFree()) {
                     continue;
                 }
 

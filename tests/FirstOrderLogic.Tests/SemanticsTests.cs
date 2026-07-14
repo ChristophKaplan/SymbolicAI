@@ -13,32 +13,32 @@ namespace FolTests {
                 ["Mortal"] = terms => terms[0] is Element e && (e.Id == 1 || e.Id == 2),
             };
             return new Interpretation(domain, relations,
-                new Dictionary<string, Func<Term[], IElementOfDiscourse>>(),
+                new Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>>(),
                 new Dictionary<string, IElementOfDiscourse>(),
                 new Dictionary<IProposition, bool>());
         }
 
         [Test]
         public void Evaluate_UniversalImplication_True() {
-            var s = (Sentence)Logic.TryParse("FORALL x (Human(x) => Mortal(x))");
+            var s = (Sentence)Logic.Parse("FORALL x (Human(x) => Mortal(x))");
             Assert.That(BuildInterpretation().Evaluate(s), Is.True);
         }
 
         [Test]
         public void Evaluate_UniversalAtom_FalseWhenNotAllSatisfy() {
-            var s = (Sentence)Logic.TryParse("FORALL x Human(x)");
+            var s = (Sentence)Logic.Parse("FORALL x Human(x)");
             Assert.That(BuildInterpretation().Evaluate(s), Is.False);
         }
 
         [Test]
         public void Evaluate_Existential_TrueWhenSomeSatisfy() {
-            var s = (Sentence)Logic.TryParse("EXISTS x Human(x)");
+            var s = (Sentence)Logic.Parse("EXISTS x Human(x)");
             Assert.That(BuildInterpretation().Evaluate(s), Is.True);
         }
 
         [Test]
         public void Evaluate_Existential_FalseWhenNoneSatisfy() {
-            var s = (Sentence)Logic.TryParse("EXISTS x (Human(x) AND (NOT Mortal(x)))");
+            var s = (Sentence)Logic.Parse("EXISTS x (Human(x) AND (NOT Mortal(x)))");
             Assert.That(BuildInterpretation().Evaluate(s), Is.False);
         }
 
@@ -82,13 +82,12 @@ namespace FolTests {
             {
                 ["IsTwo"] = terms => terms[0] is Element e && e.Id == 2,
             };
-            Interpretation interpretation = null!;
-            var functions = new Dictionary<string, Func<Term[], IElementOfDiscourse>>
+            var functions = new Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>>
             {
                 ["one"] = _ => new Element(1),
+                ["succ"] = args => new Element(((Element)args[0]).Id + 1),
             };
-            functions["succ"] = terms => new Element(((Element)interpretation.EvaluateTerm(terms[0])).Id + 1);
-            interpretation = new Interpretation(domain, relations, functions,
+            var interpretation = new Interpretation(domain, relations, functions,
                 new Dictionary<string, IElementOfDiscourse>(),
                 new Dictionary<IProposition, bool>());
 
@@ -116,7 +115,7 @@ namespace FolTests {
             {
                 ["Human"] = terms => terms[0] is Element e && e.Id == 1,
             };
-            var functions = new Dictionary<string, Func<Term[], IElementOfDiscourse>>
+            var functions = new Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>>
             {
                 ["Sokrates"] = _ => new Element(1),
             };

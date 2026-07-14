@@ -4,7 +4,7 @@ using System.Linq;
 using FirstOrderLogic;
 
 namespace AIPlanning.Planning.GraphPlan {
-    public static class HelperExtensions {
+    internal static class HelperExtensions {
         public static bool Match(this ISentence sentence, ISentence other, [NotNullWhen(true)] out Unificator? unificator) {
             // Argument order is deliberate: the returned unifier must bind in the direction
             // callers (e.g. SpecifyAction) rely on.
@@ -33,15 +33,17 @@ namespace AIPlanning.Planning.GraphPlan {
             return true;
         }
 
-        public static List<GpNode> GetConflictFreeSubset(this IReadOnlyList<GpNode> nodes) {
-            return nodes.Where(node => !node.HasConflictIn(nodes)).ToList();
+        public static List<T> GetConflictFreeSubset<T>(this IReadOnlyList<T> nodes) where T : GpNode {
+            var nodeSet = new HashSet<GpNode>(nodes);
+            return nodes.Where(node => !node.HasConflictIn(nodeSet)).ToList();
         }
 
         public static bool IsConflictFree(this IReadOnlyList<GpNode> nodes) {
-            return !nodes.Any(node => node.HasConflictIn(nodes));
+            var nodeSet = new HashSet<GpNode>(nodes);
+            return !nodes.Any(node => node.HasConflictIn(nodeSet));
         }
 
-        private static bool HasConflictIn(this GpNode node, IReadOnlyList<GpNode> nodes) {
+        private static bool HasConflictIn(this GpNode node, HashSet<GpNode> nodes) {
             return node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode));
         }
 

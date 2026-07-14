@@ -26,10 +26,13 @@ namespace FirstOrderLogic
                 return args.Length == 0 ? Name : $"{Name}({string.Join(", ", args)})";
             }
 
+            // Classifies each argument exactly as the parser does, so Ground-built atoms stay
+            // Equals-identical to their parsed counterparts even for the x/y/z/w names the
+            // grammar always reads as variables.
             public Predicate Ground(params string[] args)
             {
                 RequireArity(args);
-                return new Predicate(Name, args.Select(a => (Term)new Constant(a)).ToArray());
+                return new Predicate(Name, args.Select(FirstOrderLogic.TermFor).ToArray());
             }
 
             // Ground's open sibling: builds a predicate over arbitrary terms, so queries
@@ -37,16 +40,21 @@ namespace FirstOrderLogic
             public Predicate Applied(params Term[] args)
             {
                 if (args.Length != Arity)
+                {
                     throw new ArgumentException(
                         $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
+                }
+
                 return new Predicate(Name, args);
             }
 
             private void RequireArity(string[] args)
             {
                 if (args.Length != Arity)
+                {
                     throw new ArgumentException(
                         $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
+                }
             }
         }
 
@@ -87,18 +95,31 @@ namespace FirstOrderLogic
 
         public bool Covers(ISentence sentence) => UndeclaredPredicates(sentence).Count == 0;
 
+        // A bare identifier parses to a Proposition, i.e. a 0-ary predicate — the very shape a
+        // misspelling takes, so it has to be checked like any other atom. TRUE/FALSE are logical
+        // constants rather than symbols of the signature.
         private void Collect(ISentence sentence, List<string> missing)
         {
             if (sentence.IsLiteral)
             {
-                var atom = sentence.AtomOf();
-                if (atom is IPredicate predicate && !HasPredicate(predicate.Symbol, predicate.Arity))
-                    missing.Add($"{predicate.Symbol}/{predicate.Arity}");
+                switch (sentence.AtomOf())
+                {
+                    case IPredicate predicate when !HasPredicate(predicate.Symbol, predicate.Arity):
+                        missing.Add($"{predicate.Symbol}/{predicate.Arity}");
+                        break;
+                    case IProposition { IsNullaryConstant: false } proposition
+                        when !HasPredicate(proposition.Symbol, 0):
+                        missing.Add($"{proposition.Symbol}/0");
+                        break;
+                }
+
                 return;
             }
 
             foreach (var child in sentence.Children)
+            {
                 Collect(child, missing);
+            }
         }
 
         public sealed class Builder

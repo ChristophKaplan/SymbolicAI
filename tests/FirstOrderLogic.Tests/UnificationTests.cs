@@ -50,15 +50,5 @@ namespace FolTests {
         public void Unify_PredicateAndPropositionDoNotUnify() {
             Assert.That(new Unificator(S("P(a)"), S("P")).IsUnifiable, Is.False);
         }
-
-        [Test]
-        public void Substitute_AppliesBindingsToClause() {
-            var clause = new Clause(S("P(x)"), S("Q(y)"));
-            var notPy = S("NOT P(y)");
-            var unify = new Unificator(clause.Literals[0], notPy);
-            Assert.That(unify.IsUnifiable, Is.True);
-            unify.Substitute(clause);
-            Assert.That(clause.Literals[0].GetPredicate().Terms[0].TermSymbol, Is.EqualTo("y"));
-        }
     }
 }

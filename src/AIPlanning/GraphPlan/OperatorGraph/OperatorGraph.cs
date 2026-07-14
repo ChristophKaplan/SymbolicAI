@@ -98,7 +98,7 @@ namespace AIPlanning.Planning.GraphPlan {
                         allInstances.AddRange(instances);
                     }
 
-                    literalNode.OutEdges.Remove(actionNode);
+                    literalNode.DisconnectFrom(actionNode);
                 }
 
                 foreach (var instance in allInstances)
@@ -113,37 +113,92 @@ namespace AIPlanning.Planning.GraphPlan {
             var mapping = new Dictionary<GpAction, List<GpAction>>();
             foreach (var action in _actions)
             {
-                var possibleInstances = new List<GpAction>();
-
-                var noMultipleInstancesNeeded = action.Unificators.All(u => u.IsEmpty);
-                if (noMultipleInstancesNeeded)
-                {
-                    var clone = action.Clone();
-                    // Non-ground instances can never fire (belief states hold only ground
-                    // literals, matched exactly) — dead weight in every layer's scans.
-                    if (clone.IsGround() || action.IsSynthetic)
-                    {
-                        possibleInstances.Add(clone);
-                    }
-                    mapping.Add(action, possibleInstances);
-                    continue;
-                }
-
-                var conflictFreeUnificators = action.GetConflictFreeUnificatorPossibilities();
-                foreach (var unificator in conflictFreeUnificators)
-                {
-                    var clone = action.Clone();
-                    clone.SpecifyAction(unificator);
-                    if (clone.IsConsistent() && clone.IsGround())
-                    {
-                        possibleInstances.Add(clone);
-                    }
-                }
-
-                mapping.Add(action, possibleInstances);
+                mapping.Add(action, InstantiateAction(action));
             }
 
+            PropagateGroundEffectBindings(mapping);
             return mapping;
+        }
+
+        private static List<GpAction> InstantiateAction(GpAction action)
+        {
+            var possibleInstances = new List<GpAction>();
+
+            var noMultipleInstancesNeeded = action.Unificators.All(u => u.IsEmpty);
+            if (noMultipleInstancesNeeded)
+            {
+                var clone = action.Clone();
+                // Non-ground instances can never fire (belief states hold only ground
+                // literals, matched exactly) — dead weight in every layer's scans.
+                if (action.IsSynthetic || (clone.IsGround() && clone.IsConsistent()))
+                {
+                    possibleInstances.Add(clone);
+                }
+                return possibleInstances;
+            }
+
+            foreach (var unificator in action.GetConflictFreeUnificatorPossibilities())
+            {
+                var instance = action.SpecifyAction(unificator);
+                if (instance.IsConsistent() && instance.IsGround())
+                {
+                    possibleInstances.Add(instance);
+                }
+            }
+
+            return possibleInstances;
+        }
+
+        // Variable-to-variable producer/consumer matches (effect Q(w) vs anchor Q(y)) yield no
+        // constant binding during construction; only once the producer is GROUND-instantiated does
+        // its effect Q(K) reveal the consumer binding y→K. Re-matching ground effects against the
+        // non-ground anchor nodes and re-instantiating the consumers repeats until no new binding
+        // appears — each round can unlock the next link of a producer chain.
+        private void PropagateGroundEffectBindings(Dictionary<GpAction, List<GpAction>> mapping)
+        {
+            bool learnedNewBinding;
+            do
+            {
+                learnedNewBinding = false;
+
+                foreach (var literalNode in _literalNodes)
+                {
+                    if (literalNode.Literal.IsGround())
+                    {
+                        continue;
+                    }
+
+                    var bindings = new List<Unificator>();
+                    foreach (var instances in mapping.Values)
+                    {
+                        foreach (var instance in instances)
+                        {
+                            foreach (var effect in instance.Effects)
+                            {
+                                if (effect.Match(literalNode.Literal, out var uni) && !uni.IsEmpty)
+                                {
+                                    bindings.Add(uni);
+                                }
+                            }
+                        }
+                    }
+
+                    if (bindings.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    foreach (var outEdge in literalNode.OutEdges)
+                    {
+                        var consumer = ((GpActionNode)outEdge).GpAction;
+                        if (consumer.AddUnificators(bindings))
+                        {
+                            mapping[consumer] = InstantiateAction(consumer);
+                            learnedNewBinding = true;
+                        }
+                    }
+                }
+            } while (learnedNewBinding);
         }
 
         private void MapPreConditionsToAction(GpActionNode curAction, Dictionary<GpAction, GpActionNode> operatorNodes)

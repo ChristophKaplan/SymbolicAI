@@ -6,16 +6,25 @@ namespace FirstOrderLogic {
     public class SatSolvers {
         readonly Random _random = new();
         public PossibleWorld? WalkSAT(List<Clause> clauses, float p, int maxFlips) {
-            if(!IsPropositional(clauses)) throw new Exception("WalkSAT only works with propositional logic");
+            if(!IsPropositional(clauses))
+            {
+                throw new ArgumentException("WalkSAT only works with propositional logic", nameof(clauses));
+            }
 
-            if (clauses.Any(clause => clause.Literals.Count == 0)) return null;
+            if (clauses.Any(clause => clause.Literals.Count == 0))
+            {
+                return null;
+            }
 
             var model = new PossibleWorld(GetRandomAssigmentFor(clauses));
 
             for (var i = 0; i < maxFlips; i++) {
                 var eval = model.Evaluate(clauses);
-                if (eval) return model;
-            
+                if (eval)
+                {
+                    return model;
+                }
+
                 var clause = GetRandomUnsatisfiedClause(clauses, model);
          
                 if (_random.NextDouble() < p) {

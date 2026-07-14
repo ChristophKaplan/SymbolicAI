@@ -244,7 +244,7 @@ namespace FolTests {
                 ["Human"] = terms => terms[0] is Element e && e.Id == 1,
             };
             var interpretation = new Interpretation(domain, relations,
-                new Dictionary<string, Func<Term[], IElementOfDiscourse>>(),
+                new Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>>(),
                 new Dictionary<string, IElementOfDiscourse>(),
                 new Dictionary<IProposition, bool>());
 
@@ -322,20 +322,9 @@ namespace FolTests {
                 "whole universal match — BackwardChaining answers true on the same KB");
         }
 
-        // Finding 23 — Unificator.Substitute(Clause) writes substituted literals directly
-        // into Clause.Literals, bypassing AddLiteral's dedupe and violating the clause's
-        // documented set invariant.
-        [Test]
-        public void Finding23_UnificatorSubstituteClause_PreservesTheSetInvariant() {
-            var clause = new Clause(S("P(x)"), S("P(y)"));
-            var unificator = new Unificator(S("R(x,y)"), S("R(a,a)"));
-
-            unificator.Substitute(clause);
-
-            Assert.That(clause.Literals, Has.Count.EqualTo(1),
-                "both literals substitute to P(a) and a clause is a set, so in-place " +
-                "substitution must not leave duplicate literals behind");
-        }
+        // Finding 23 — Unificator.Substitute(Clause) mutated a hash-relevant Clause in place,
+        // bypassing AddLiteral's dedupe. The method had no production caller and was deleted;
+        // Clause is immutable since Finding 33, so the invariant it broke is now structural.
 
         // Finding 24 — the public ComplexSentence(LogicSymbol, ISentence) constructor accepts
         // UNIVERSAL/EXISTENTIAL but builds a plain Connective, not a Quantifier; every
@@ -351,6 +340,30 @@ namespace FolTests {
             Assert.That(() => sentence.HasScopeConflict(), Throws.Nothing,
                 "a node the constructor accepted must be usable: IsQuantifier is true but " +
                 "the Connective is not a Quantifier, so consumers' downcasts crash");
+        }
+
+        // Finding 24 (Connective overload) — the same corrupt node, built the other way: a plain
+        // Connective carrying a quantifier symbol bypassed the guard on the LogicSymbol overload.
+        [Test]
+        public void Finding24_ConnectiveQuantifierConstructor_YieldsAUsableNodeOrRejects() {
+            ComplexSentence sentence;
+            try {
+                sentence = new ComplexSentence(new Connective(Connective.LogicSymbol.UNIVERSAL), S("P(x)"));
+            } catch (ArgumentException) {
+                return; // rejecting a quantifier symbol without its bound variable is the fix
+            }
+            Assert.That(() => sentence.HasScopeConflict(), Throws.Nothing,
+                "IsQuantifier is true, so HasScopeConflict downcasts the Connective to Quantifier");
+            Assert.That(() => sentence.Substitute(new Variable("x"), new Constant("a")), Throws.Nothing,
+                "Substitute performs the same downcast");
+        }
+
+        // A Quantifier connective carries the bound variable and must keep working.
+        [Test]
+        public void Finding24_ConnectiveConstructor_AcceptsARealQuantifier() {
+            var sentence = new ComplexSentence(
+                new Quantifier(Connective.LogicSymbol.UNIVERSAL, new Variable("x")), S("P(x)"));
+            Assert.That(sentence, Is.EqualTo(S("FORALL x (P(x))")));
         }
 
         // Finding 25 — Inconsistencies()/IsConsistent() feed the theory through forward
@@ -390,6 +403,369 @@ namespace FolTests {
             Assert.That(first, Is.EqualTo(second),
                 "Element is defined by its Id, so equal Ids must denote the same individual; " +
                 "reference equality silently breaks equality-based relation definitions");
+        }
+
+        // Finding 28 — BackwardChaining's NAF commits to the "no instance derivable" reading
+        // for any variable still free at NAF time, including genuine existential query
+        // variables, so one derivable instance vetoes every instance instead of only its own
+        // (ForwardChaining fixed the same defect as Finding 22).
+        [Test]
+        public void Finding28_BackwardChaining_NafFreeQueryVariable_SomeInstanceReading() {
+            var kb = Set("A(z)", "B(e)", "F(d)", "(A(x) AND (NAF B(x))) => C(x)");
+            var entailsGround = RunWithin(Bound, "Entails(C(d))",
+                () => new BackwardChaining().Entails(kb, S("C(d)")));
+            Assert.That(entailsGround, Is.True,
+                "sanity: A(d) holds (A is universal) and B(d) is not derivable, so C(d) follows");
+            var entailsFree = RunWithin(Bound, "Entails(C(w))",
+                () => new BackwardChaining().Entails(kb, S("C(w)")));
+            Assert.That(entailsFree, Is.True,
+                "a free query variable asks for SOME instance and C(d) is a witness; a false " +
+                "result means the derivable instance B(e) vetoed the whole NAF instead of " +
+                "only its own instance");
+        }
+
+        [Test]
+        public void Finding28_BackwardChaining_NafThroughSecondRule_AgreesWithForwardChaining() {
+            var kb = Set("A(z)", "D(d)", "B(e)",
+                "(A(x) AND (NAF B(x))) => C(x)", "(C(y) AND D(y)) => E(y)");
+            var fc = RunWithin(Bound, "FC.Entails(E(w))",
+                () => ForwardChaining.Entails(kb, S("E(w)")));
+            Assert.That(fc, Is.True, "sanity: forward chaining derives E(d) via C(d)");
+            var bc = RunWithin(Bound, "BC.Entails(E(w))",
+                () => new BackwardChaining().Entails(kb, S("E(w)")));
+            Assert.That(bc, Is.True,
+                "C(d) holds under per-instance NAF and D(d) is a fact, so E(d) witnesses E(w)");
+        }
+
+        [Test]
+        public void Finding28_BackwardChaining_PremiseOrder_MustNotChangeTheAnswer() {
+            var kb = Set("A(z)", "D(d)", "B(e)",
+                "(A(x) AND (NAF B(x))) => C(x)", "(D(y) AND C(y)) => E(y)");
+            var bc = RunWithin(Bound, "BC.Entails(E(w)) with swapped premises",
+                () => new BackwardChaining().Entails(kb, S("E(w)")));
+            Assert.That(bc, Is.True,
+                "premise order carries no logical meaning: (D(y) AND C(y)) must answer like " +
+                "(C(y) AND D(y))");
+        }
+
+        // Finding 29 — Substitution.Apply is a silent no-op on NAF-wrapped goals (AtomOf
+        // returned the NAF wrapper itself, hiding the variables), so backward chaining matched
+        // assumptions against, and recorded into `denied`, the UNsubstituted NAF target, whose
+        // free variable over-matches every assumption and kills valid abductive explanations.
+        [Test]
+        public void Finding29_Abduction_NafTargetIsSubstituted_ValidExplanationSurvives() {
+            var kb = Set("T(b)", "(P(a) AND Q(b)) => W(a)", "(T(x) AND (NAF P(x))) => Q(x)");
+            var explanations = new AbductiveChaining().Explain(kb, S("W(a)"), new[] { "P" });
+            Assert.That(explanations, Has.Count.EqualTo(1),
+                "assuming P(a) proves W(a): Q(b) follows from T(b) and NAF P(b), and P(b) is " +
+                "neither derivable nor assumed — an empty result means the unsubstituted NAF " +
+                "target P(x) over-matched the assumption P(a)");
+            Assert.That(explanations[0].Single().ToString(), Is.EqualTo(S("P(a)").ToString()));
+        }
+
+        [Test]
+        public void Finding29_Abduction_PremiseOrder_MustNotChangeTheExplanation() {
+            var kb = Set("T(b)", "(Q(b) AND P(a)) => W(a)", "(T(x) AND (NAF P(x))) => Q(x)");
+            var explanations = new AbductiveChaining().Explain(kb, S("W(a)"), new[] { "P" });
+            Assert.That(explanations, Has.Count.EqualTo(1),
+                "with Q(b) proven first, P(b) enters `denied`; assuming P(a) afterwards must " +
+                "still be allowed — only P(b) itself would defeat the recorded NAF failure");
+            Assert.That(explanations[0].Single().ToString(), Is.EqualTo(S("P(a)").ToString()));
+        }
+
+        [Test]
+        public void Finding29_Abduction_GroundNafControlCase() {
+            var kb = Set("T(b)", "(P(a) AND Q(b)) => W(a)", "(T(b) AND (NAF P(b))) => Q(b)");
+            var explanations = new AbductiveChaining().Explain(kb, S("W(a)"), new[] { "P" });
+            Assert.That(explanations, Has.Count.EqualTo(1));
+            Assert.That(explanations[0].Single().ToString(), Is.EqualTo(S("P(a)").ToString()));
+        }
+
+        // Finding 30 — KernelSets and Theory ran Resolution with maxRounds = 0 (unlimited);
+        // kernel shrinking inherently asks non-entailed questions, so a term-generating rule
+        // (P(x) => P(f(x))) made FindKernel hang forever. With the finite default it must
+        // terminate: either with the kernel or with Resolution's InvalidOperationException.
+        [Test]
+        public void Finding30_KernelSets_TermGeneratingRule_MustNotHang() {
+            var beliefs = Set("P(a)", "P(x) => P(f(x))", "Q(c)");
+            List<ISentence>? kernel = null;
+            var undecided = false;
+            RunWithin(Bound, "FindKernel", () => {
+                try {
+                    kernel = new KernelSets().FindKernel(beliefs, S("Q(c)"));
+                } catch (InvalidOperationException) {
+                    undecided = true;
+                }
+            });
+            if (!undecided) {
+                Assert.That(kernel, Is.Not.Null, "sanity: the belief base entails Q(c)");
+                Assert.That(kernel, Is.EqualTo(new List<ISentence> { S("Q(c)") }),
+                    "Q(c) is the only load-bearing belief for Q(c)");
+            }
+        }
+
+        [Test]
+        public void Finding30_TheoryEntails_MaxRounds_FailsLoudlyInsteadOfHanging() {
+            var theory = new Theory(Set("P(a)", "P(x) => P(f(x))"));
+            RunWithin(Bound, "Entails(Q(c), maxRounds: 50)", () => {
+                Assert.That(() => theory.Entails(S("Q(c)"), maxRounds: 50),
+                    Throws.InvalidOperationException,
+                    "the rule mints P(f(a)), P(f(f(a))), … forever, so a bounded run can only " +
+                    "end in the loud undecided exception");
+            });
+        }
+
+        // Finding 31 — Holds/Answers unify the query directly against facts without
+        // standardizing apart, so a variable name shared between query and a non-ground fact
+        // wrongly fails unification; Answers additionally returned bindings keyed on the
+        // fact's internal variable instead of projecting onto the query's variables.
+        [Test]
+        public void Finding31_ForwardChainingHolds_SharedVariableName_StillUnifies() {
+            var facts = Set("Parent(Anna, x)");
+            Assert.That(ForwardChaining.Holds(facts, S("Parent(x, Bob)")), Is.True,
+                "the fact's x and the query's x are different variables (the fact is " +
+                "universally quantified); renaming the fact variable to y makes this true, " +
+                "so the shared name must not block unification");
+        }
+
+        [Test]
+        public void Finding31_ForwardChainingAnswers_ProjectsOntoQueryVariables() {
+            var facts = ForwardChaining.Saturate(Set("P(x)"));
+            var answers = ForwardChaining.Answers(facts, S("P(c)"));
+            Assert.That(answers, Has.Count.EqualTo(1), "the universal fact P(x) covers P(c)");
+            Assert.That(answers[0], Is.Empty,
+                "a ground query has no variables to bind; a non-empty binding set means the " +
+                "fact's internal variable leaked out instead of being projected away");
+        }
+
+        // Finding 32 — the head check rejected ANY compound term including ground ones, but a
+        // ground head like Q(f(a)) mints no fresh terms (saturation terminates) and ground
+        // compound facts are already accepted, so the rejection was inconsistent.
+        [Test]
+        public void Finding32_ForwardChaining_GroundCompoundHead_IsAccepted() {
+            var closure = RunWithin(Bound, "Saturate",
+                () => ForwardChaining.Saturate(Set("R(a)", "R(x) => Q(f(a))")));
+            Assert.That(closure, Is.EquivalentTo(Set("R(a)", "Q(f(a))")),
+                "a ground compound head derives exactly one new fact");
+        }
+
+        [Test]
+        public void Finding32_ForwardChaining_VariableCompoundHead_IsStillRejected() {
+            Assert.That(() => ForwardChaining.Saturate(Set("P(a)", "P(x) => P(f(x))")),
+                Throws.ArgumentException,
+                "a head function term over variables mints fresh terms every round and must " +
+                "keep being rejected");
+        }
+
+        // Finding 33 — Clause was mutable while serving as a hash-set key in Resolution's `seen`
+        // set: AddLiteral (and the exposed List) let a stored clause change, stranding it in its
+        // old bucket, and Equals compared containment one way only, so a duplicate smuggled past
+        // the constructor's dedupe made c1.Equals(c2) true while c2.Equals(c1) was false.
+        [Test]
+        public void Finding33_Clause_IsNotMutatedWhileStoredInAHashSet() {
+            var clause = new Clause(S("P(a)"));
+            var seen = new HashSet<Clause> { clause };
+
+            var extended = clause.With(S("Q(a)"));
+
+            Assert.That(seen.Contains(clause), Is.True,
+                "extending a clause must not change the one already used as a key");
+            Assert.That(clause.Literals, Has.Count.EqualTo(1), "the original is untouched");
+            Assert.That(extended.Literals, Has.Count.EqualTo(2), "the extension is a new clause");
+        }
+
+        [Test]
+        public void Finding33_Clause_EqualityIsSymmetricAndOrderInsensitive() {
+            var pq = new Clause(S("P(a)"), S("Q(a)"));
+            var qp = new Clause(S("Q(a)"), S("P(a)"));
+            var p = new Clause(S("P(a)"));
+
+            Assert.That(pq, Is.EqualTo(qp), "a clause is a set, so literal order cannot matter");
+            Assert.That(qp, Is.EqualTo(pq));
+            Assert.That(pq.GetHashCode(), Is.EqualTo(qp.GetHashCode()));
+            Assert.That(new HashSet<Clause> { pq, qp }, Has.Count.EqualTo(1));
+
+            Assert.That(p.Equals(pq), Is.EqualTo(pq.Equals(p)), "equality must be symmetric");
+            Assert.That(p.Equals(pq), Is.False, "{P(a)} and {P(a), Q(a)} are different clauses");
+        }
+
+        // Finding 34 — ToConjunctiveNormalForm prenexed but never stripped the quantifier prefix,
+        // and IsCNF() is false for any quantifier node, so EVERY quantified sentence did the full
+        // prenex work and then died on a misleading "Sentence is not in CNF".
+        [Test]
+        public void Finding34_Cnf_UniversallyQuantifiedInput_Converts() {
+            var cnf = S("FORALL x (P(x) OR (Q(x) AND R(x)))").ToConjunctiveNormalForm();
+            Assert.That(cnf.IsCNF(), Is.True);
+            Assert.That(cnf, Is.EqualTo(S("(P(x) OR Q(x)) AND (P(x) OR R(x))")),
+                "free variables are implicitly universal in this library, so dropping a " +
+                "universal prefix is equivalence-preserving");
+        }
+
+        [Test]
+        public void Finding34_Cnf_PlainUniversal_Converts() =>
+            Assert.That(S("FORALL x (P(x))").ToConjunctiveNormalForm(), Is.EqualTo(S("P(x)")));
+
+        [Test]
+        public void Finding34_Cnf_ExistentialInput_ThrowsAndNamesSkolemForm() =>
+            Assert.That(() => S("EXISTS x (P(x))").ToConjunctiveNormalForm(),
+                Throws.TypeOf<ExistentialQuantifierException>().And.Message.Contains("SkolemForm"),
+                "eliminating an existential only preserves satisfiability, so an " +
+                "equivalence-preserving CNF must refuse and point at the explicit pre-step");
+
+        [Test]
+        public void Finding34_Cnf_SkolemFormFirst_IsTheDocumentedRoute() {
+            var cnf = S("EXISTS x (P(x) OR (Q(x) AND R(x)))").SkolemForm().ToConjunctiveNormalForm();
+            Assert.That(cnf.IsCNF(), Is.True);
+        }
+
+        [Test]
+        public void Finding34_Cnf_QuantifierFreeInput_IsUnchanged() =>
+            Assert.That(S("A OR (B AND C)").ToConjunctiveNormalForm(),
+                Is.EqualTo(S("(A OR B) AND (A OR C)")),
+                "the previously working quantifier-free path must keep its behaviour");
+
+        // Finding 35 — Substitute's capture handling special-cased only a target EQUAL to the
+        // bound variable, so a compound target merely containing it consumed bound occurrences:
+        // (FORALL x P(f(x))).Substitute(f(x), a) silently returned the different sentence ∀x P(a).
+        [Test]
+        public void Finding35_Substitute_CompoundTargetContainingABoundVariable_IsNotApplied() {
+            var sentence = S("FORALL x (P(f(x)))");
+            var fx = new Function("f", new Term[] { new Variable("x") });
+
+            Assert.That(sentence.Substitute(fx, new Constant("a")), Is.EqualTo(sentence),
+                "f(x)'s x is bound here, so the scope holds no free occurrence of f(x) to replace");
+        }
+
+        [Test]
+        public void Finding35_Substitute_CompoundTargetOverAFreeVariable_StillApplies() {
+            var fy = new Function("f", new Term[] { new Variable("y") });
+
+            Assert.That(S("FORALL x (P(f(y)))").Substitute(fy, new Constant("a")),
+                Is.EqualTo(S("FORALL x (P(a))")),
+                "y is free under the binder, so compound-target substitution must still work");
+        }
+
+        // Finding 36 — GetLiterals recursed through negations of complex children and NAF nodes
+        // and handed back their atoms stripped of the polarity that gives them their meaning:
+        // NOT (P(a) OR Q(a)) yielded [P(a), Q(a)], as did (NAF P(a)) AND Q(a).
+        [Test]
+        public void Finding36_GetLiterals_RejectsInputItCannotAnswerFor() {
+            Assert.That(() => S("NOT (P(a) OR Q(a))").GetLiterals(),
+                Throws.InvalidOperationException,
+                "returning [P(a), Q(a)] here inverts the polarity of both literals");
+            Assert.That(() => S("(NAF P(a)) AND Q(a)").GetLiterals(),
+                Throws.InvalidOperationException,
+                "returning P(a) drops the NAF wrapper, which is the whole meaning of the node");
+        }
+
+        [Test]
+        public void Finding36_GetLiterals_ClauseInput_StillWorks() =>
+            Assert.That(S("A OR (NOT B) OR C").GetLiterals(), Has.Count.EqualTo(3),
+                "a disjunction of literals is exactly what GetLiterals is for");
+
+        // Finding 37 — IsNegationOf(other, onlyPredSignature: true) called GetPredicate() on
+        // whichever side was not a proposition, and GetAtom throws for a complex sentence, so the
+        // boolean predicate threw over half its input space instead of answering false.
+        [Test]
+        public void Finding37_IsNegationOf_PredSignature_NonLiteralComparand_IsFalse() {
+            Assert.That(S("NOT P(a)").IsNegationOf(S("Q(b) AND R(c)"), onlyPredSignature: true),
+                Is.False, "a conjunction is not the negation of a literal — and asking must not throw");
+            Assert.That(S("NOT (P(a) AND Q(a))").IsNegationOf(S("P(a)"), onlyPredSignature: true),
+                Is.False, "the negated side is complex, so there is no predicate signature to compare");
+        }
+
+        // Finding 38 — Signature.Collect only flagged IPredicate atoms, so a bare proposition
+        // sailed through validation on an EMPTY signature; since the parser turns any identifier
+        // without parentheses into a Proposition, that is exactly the misspelling class Covers
+        // exists to catch. Ground, meanwhile, always built Constants although the parser reads
+        // x/y/z/w as Variables, so Ground-built atoms were not Equals-identical to parsed ones
+        // and Theory.Holds silently answered false.
+        [Test]
+        public void Finding38_Signature_BarePropositionsAreValidated() {
+            Assert.That(new Signature.Builder().Build().Covers(S("A")), Is.False,
+                "an empty signature declares no symbol at all, so it cannot cover A/0");
+            Assert.That(new Signature.Builder().Build().UndeclaredPredicates(S("A")),
+                Does.Contain("A/0"));
+            Assert.That(new Signature.Builder().Predicate("A", 0).Build().Covers(S("A")), Is.True,
+                "a declared 0-ary predicate covers the proposition A");
+        }
+
+        [Test]
+        public void Finding38_Signature_LogicalConstantsAreNotSignatureSymbols() =>
+            Assert.That(new Signature.Builder().Build().Covers(S("TRUE")), Is.True,
+                "TRUE/FALSE are truth values, not symbols a signature could declare");
+
+        [Test]
+        public void Finding38_SignatureGround_MatchesTheParsersVariableWhitelist() {
+            Assert.That((ISentence)new Signature.Symbol("P", 1).Ground("x"), Is.EqualTo(S("P(x)")),
+                "the parser reads x as a Variable, and Ground must agree or structural " +
+                "equality between the two construction paths breaks");
+            Assert.That((ISentence)new Signature.Symbol("P", 1).Ground("a"), Is.EqualTo(S("P(a)")),
+                "non-whitelisted names stay Constants");
+        }
+
+        // Finding 39 — the NAF guard was applied inconsistently: SkolemForm happily skolemized
+        // under an operator the library declares classically meaningless, and Conflicts picked a
+        // NAF node as the "positive" partner of a negation and fed it to the unifier, which
+        // rejects non-literals with a bare Exception.
+        [Test]
+        public void Finding39_SkolemForm_RejectsNaf_LikeItsSiblings() =>
+            Assert.That(() => S("EXISTS x (NAF P(x))").SkolemForm(), Throws.ArgumentException,
+                "CNF and GetClauseSet reject NAF as having no classical semantics; skolemizing " +
+                "under it must not be the one way in");
+
+        [Test]
+        public void Finding39_Conflicts_NafMixedWithANegation_DoesNotCrash() {
+            var literals = Set("NAF P(a)", "NOT P(a)");
+            List<ISentence>? conflicts = null;
+
+            Assert.That(() => conflicts = literals.Conflicts(), Throws.Nothing,
+                "NAF P(a) is not a classical literal, so it cannot be the positive partner of " +
+                "NOT P(a) — selecting it fed a non-literal to the unifier");
+            Assert.That(conflicts, Is.Empty,
+                "'not derivable' contradicts nothing classically, so there is no conflict here");
+        }
+
+        // Finding 45 — Predicate and Function retained the caller's Term[] and handed it straight
+        // back out, while Equals/GetHashCode read it: mutating the array behind a constructed atom
+        // changed a sentence a hash set had already bucketed, stranding it in the wrong bucket.
+        [Test]
+        public void Finding45_Predicate_CallerMutatingItsTermArray_CannotAffectTheAtom() {
+            var terms = new Term[] { new Constant("a") };
+            var p = new Predicate("P", terms);
+            var set = new HashSet<ISentence> { p };
+
+            terms[0] = new Constant("b");
+
+            Assert.That(p.ToString(), Is.EqualTo("P(a)"),
+                "the atom was built over a, so it must still read P(a)");
+            Assert.That(set.Contains(p), Is.True,
+                "a constructed atom must not be able to change identity underneath its hash set");
+            Assert.That((ISentence)p, Is.EqualTo(S("P(a)")));
+        }
+
+        [Test]
+        public void Finding45_Function_CallerMutatingItsTermArray_CannotAffectTheTerm() {
+            var terms = new Term[] { new Constant("a") };
+            var f = new Function("f", terms);
+            var hashBefore = f.GetHashCode();
+
+            terms[0] = new Constant("b");
+
+            Assert.That(f.ToString(), Is.EqualTo("f(a)"));
+            Assert.That(f.GetHashCode(), Is.EqualTo(hashBefore));
+            Assert.That(f, Is.EqualTo(new Function("f", new Term[] { new Constant("a") })));
+        }
+
+        // Signature.Symbol.Applied forwarded the caller's array straight into that trap.
+        [Test]
+        public void Finding45_SignatureApplied_DoesNotAliasTheCallersArray() {
+            var terms = new Term[] { new Constant("a") };
+            var p = new Signature.Symbol("P", 1).Applied(terms);
+
+            terms[0] = new Constant("b");
+
+            Assert.That((ISentence)p, Is.EqualTo(S("P(a)")));
         }
     }
 }

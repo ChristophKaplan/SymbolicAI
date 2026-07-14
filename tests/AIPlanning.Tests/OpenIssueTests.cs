@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using AIPlanning.Planning.GraphPlan;
+using FirstOrderLogic;
 using NUnit.Framework;
 
 namespace AIPlanningTests {
@@ -110,8 +112,8 @@ namespace AIPlanningTests {
             var p = new GpLiteralNode(L("P(Obj)"));
             var q = new GpLiteralNode(L("Q(Obj)"));
 
-            var pp = new GpBeliefState(new List<GpNode> { p, p });
-            var pq = new GpBeliefState(new List<GpNode> { p, q });
+            var pp = new GpBeliefState(new List<GpLiteralNode> { p, p });
+            var pq = new GpBeliefState(new List<GpLiteralNode> { p, q });
 
             Assert.That(pp.Equals(pq), Is.False,
                 "{P, P} and {P, Q} are different states even though the counts match and " +
@@ -155,6 +157,166 @@ namespace AIPlanningTests {
             Assert.That(solution.IsEmpty, Is.False,
                 "control: the same problem with AGen declared before ASpec — declaration " +
                 "order must not change solvability");
+        }
+
+        // Finding 10 — when a producer's non-ground effect Q(w) unifies with a consumer's
+        // non-ground anchor node Q(y), the unifier is variable-to-variable; the consumer's
+        // instantiation combos substitute a variable and every instance is dropped as
+        // non-ground. Ground producer instances' effects were never re-matched against the
+        // anchor, so the constant binding y→K was never learned.
+        [Test]
+        public void Finding10_VariableToVariableProducerBinding_ResolvedViaGroundInstances() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+
+            var maker = Factory.Create("Maker", new() { "P(w)" }, new() { "Q(w)" });
+            var user = Factory.Create("User", new() { "Q(y)" }, new() { "G(K)" });
+
+            var problem = new GpProblem(initialState, goals, new() { maker, user });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "Maker grounds to P(K)->Q(K), so User with y=K yields G(K) — a valid 2-step " +
+                "plan; an empty solution means the ground effect Q(K) was never re-matched " +
+                "against User's anchor Q(y)");
+            AssertPlanIsValid(problem, solution);
+        }
+
+        // Finding 10 (chained variant) — each fixpoint round unlocks the next link: only the
+        // ground M1 instance reveals v=K for M2, and only the ground M2 instance reveals y=K.
+        [Test]
+        public void Finding10_ChainedVariableToVariableBindings_ResolvedAcrossTwoLinks() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+
+            var m1 = Factory.Create("M1", new() { "P(w)" }, new() { "Q(w)" });
+            var m2 = Factory.Create("M2", new() { "Q(z)" }, new() { "R(z)" });
+            var user = Factory.Create("User", new() { "R(y)" }, new() { "G(K)" });
+
+            var problem = new GpProblem(initialState, goals, new() { m1, m2, user });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "M1;M2;User is a valid 3-step plan reachable only if grounding iterates to a " +
+                "fixpoint across the whole producer chain");
+            AssertPlanIsValid(problem, solution);
+        }
+
+        [Test]
+        public void Finding10_ControlCase_GroundProducerEffect_StillSolvable() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+
+            var maker = Factory.Create("Maker", new() { "P(w)" }, new() { "Q(K)" });
+            var user = Factory.Create("User", new() { "Q(y)" }, new() { "G(K)" });
+
+            var problem = new GpProblem(initialState, goals, new() { maker, user });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "control: with a ground producer effect the binding y=K is learned during " +
+                "construction and must keep working");
+            AssertPlanIsValid(problem, solution);
+        }
+
+        [Test]
+        public void Finding10_ControlCase_ConsumerVariableFlowsIntoEffect_StillSolvable() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+
+            var maker = Factory.Create("Maker", new() { "P(w)" }, new() { "Q(w)" });
+            var user = Factory.Create("User", new() { "Q(y)" }, new() { "G(y)" });
+
+            var problem = new GpProblem(initialState, goals, new() { maker, user });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "control: y also occurs in User's effect, so the goal literal G(K) binds it " +
+                "as a producer binding — this path must keep working");
+            AssertPlanIsValid(problem, solution);
+        }
+
+        // Finding 11 — action insertion only checked that the precondition literals are PRESENT
+        // in the previous literal layer, not that they are pairwise non-mutex there (Blum & Furst
+        // require both); mutex-supported actions caused wasted extraction work.
+        [Test]
+        public void Finding11_ActionWithMutexPreconditions_IsNotInsertedIntoLayer() {
+            var layer = new GpLayer(0);
+            var p = layer.BeliefState.Add(new GpLiteralNode(L("P(Obj)")));
+            var q = layer.BeliefState.Add(new GpLiteralNode(L("Q(Obj)")));
+            p.TryAddMutexRelations(q, MutexType.InconsistentSupport);
+
+            var needsBoth = new GpAction("NeedsBoth",
+                new() { L("P(Obj)"), L("Q(Obj)") },
+                new() { L("G(Obj)") });
+            layer.ExpandActions(new List<GpAction> { needsBoth }, new Dictionary<ISentence, GpAction>());
+
+            Assert.That(layer.ActionSet.GetActions(ignorePersistence: true), Is.Empty,
+                "P(Obj) and Q(Obj) are mutex in this layer, so an action needing both " +
+                "cannot fire here and must not enter the action layer");
+        }
+
+        // Finding 12 — the no-unificator instantiation path skipped the IsConsistent() filter
+        // that the unified path applies, letting a directly-ground action with
+        // self-contradictory effects into the operator graph.
+        [Test]
+        public void Finding12_GroundActionWithContradictoryEffects_IsFilteredFromGraph() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "Q(K)" });
+            var broken = Factory.Create("Broken", new() { "P(K)" }, new() { "Q(K)", "-Q(K)" });
+
+            var graph = new OperatorGraph(new GpProblem(initialState, goals, new() { broken }));
+
+            var actions = graph.GetActionsForLiteral(L("P(K)"));
+            Assert.That(actions.Select(a => a.Signifier), Does.Not.Contain("Broken"),
+                "an action whose effects contain Q(K) and -Q(K) is inconsistent and must be " +
+                "filtered on the direct (no-unificator) instantiation path too");
+        }
+
+        // Finding 13 — a non-ground goal like Have(x) silently yielded "no plan"; the design is
+        // ground-literals-only, so the GpProblem boundary must reject it loudly.
+        [Test]
+        public void Finding13_NonGroundGoal_ThrowsAtProblemBoundary() {
+            var initialState = Factory.StringToSentence(new() { "Have(Cake)" });
+            var goals = Factory.StringToSentence(new() { "Have(x)" });
+
+            Assert.That(() => new GpProblem(initialState, goals, new List<GpAction>()),
+                Throws.ArgumentException,
+                "GraphPlan states are ground-literal sets; a non-ground goal can never match " +
+                "and must fail loudly instead of yielding an empty solution");
+        }
+
+        [Test]
+        public void Finding13_NonGroundInitialStateLiteral_ThrowsAtProblemBoundary() {
+            var initialState = Factory.StringToSentence(new() { "Have(x)" });
+            var goals = Factory.StringToSentence(new() { "Have(Cake)" });
+
+            Assert.That(() => new GpProblem(initialState, goals, new List<GpAction>()),
+                Throws.ArgumentException,
+                "a non-ground initial-state literal is equally unrepresentable and must be " +
+                "rejected at the boundary");
+        }
+
+        // Finding 14 — SpecifyAction mutated the instance and recomputed its hash while GpAction
+        // is used as a Dictionary/HashSet key; it must return a new instance and leave the
+        // original (and its hash) untouched.
+        [Test]
+        public void Finding14_SpecifyAction_ReturnsNewInstance_AndLeavesOriginalUntouched() {
+            var action = Factory.Create("Act", new() { "P(x)" }, new() { "Q(x)" });
+            var originalHash = action.GetHashCode();
+
+            var unificator = new Unificator(L("P(x)"), L("P(K)"));
+            Assert.That(unificator.IsUnifiable, Is.True, "sanity: P(x) and P(K) must unify");
+
+            var grounded = action.SpecifyAction(unificator);
+
+            Assert.That(grounded, Is.Not.SameAs(action),
+                "specifying must produce a new instance, not mutate a potential hash-set key");
+            Assert.That(grounded.IsGround(), Is.True);
+            Assert.That(action.GetHashCode(), Is.EqualTo(originalHash),
+                "the original action's hash must not change");
+            Assert.That(action.Preconditions.Single().IsGround(), Is.False,
+                "the original action's literals must stay non-ground");
         }
     }
 }

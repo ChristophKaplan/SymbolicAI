@@ -44,31 +44,47 @@ namespace FirstOrderLogic
             var s = StripUniversals(sentence);
 
             if (s.IsLiteral)
+            {
                 return new Rule(s, Array.Empty<ISentence>());
+            }
 
-            if (!s.IsImplication) return null;
+            if (!s.IsImplication)
+            {
+                return null;
+            }
 
             var head = s.Children[1];
-            if (!head.IsLiteral) return null;
+            if (!head.IsLiteral)
+            {
+                return null;
+            }
 
             var premises = new List<ISentence>();
             var nafPremises = new List<ISentence>();
-            if (!CollectConjuncts(s.Children[0], premises, nafPremises)) return null;
+            if (!CollectConjuncts(s.Children[0], premises, nafPremises))
+            {
+                return null;
+            }
 
             var bound = new HashSet<Variable>(premises.SelectMany(p => p.VariablesOf()));
             var unbound = head.VariablesOf().Where(v => !bound.Contains(v)).ToList();
             if (unbound.Count > 0)
+            {
                 throw new ArgumentException(
                     $"Unsafe rule '{new Rule(head, premises, nafPremises)}': head variable(s) " +
                     $"{string.Join(", ", unbound.Select(v => v.TermSymbol))} not bound by the body.");
+            }
 
-            // A function symbol in the head mints a fresh term on every saturation round
-            // (P(x) ⇒ P(f(x)) derives P(f(a)), P(f(f(a))), …), so chaining only admits the
-            // function-free fragment its completeness contract promises.
-            if (HasCompoundTerm(head))
+            // A head function term over variables mints a fresh term on every saturation round
+            // (P(x) ⇒ P(f(x)) derives P(f(a)), P(f(f(a))), …). A ground compound like f(a) is a
+            // fixed term — no different from a constant — so only variable-carrying compounds
+            // threaten termination.
+            if (HasNonGroundCompoundTerm(head))
+            {
                 throw new ArgumentException(
-                    $"Rule '{new Rule(head, premises, nafPremises)}': function symbol in the head " +
-                    "makes saturation non-terminating; chaining is restricted to the function-free fragment.");
+                    $"Rule '{new Rule(head, premises, nafPremises)}': function term over variables in the " +
+                    "head makes saturation non-terminating; chaining heads must be function-free or ground.");
+            }
 
             return new Rule(head, premises, nafPremises);
         }
@@ -81,39 +97,57 @@ namespace FirstOrderLogic
             return new Rule(Fresh(Head), Premises.Select(Fresh).ToList(), NafPremises.Select(Fresh).ToList());
         }
 
-        private static bool HasCompoundTerm(ISentence literal)
+        private static bool HasNonGroundCompoundTerm(ISentence literal)
         {
             // Constants are arity-0 Functions; only terms with arguments are compound.
             return literal.AtomOf() is IPredicate predicate &&
-                   predicate.Terms.Any(t => t is Function f && f.Terms.Length > 0);
+                   predicate.Terms.Any(t => t is Function f && f.Terms.Count > 0 && f.GetVariables().Length > 0);
         }
 
         private static ISentence StripUniversals(ISentence s)
         {
             while (s is IComplexSentence { IsQuantifier: true } q &&
                    q.Connective == Connective.LogicSymbol.UNIVERSAL)
+            {
                 s = q.Children[0];
+            }
+
             return s;
         }
 
         private static bool CollectConjuncts(ISentence s, List<ISentence> acc, List<ISentence> nafAcc)
         {
             if (s is IComplexSentence c && c.IsConjunction)
+            {
                 return CollectConjuncts(c.Children[0], acc, nafAcc) && CollectConjuncts(c.Children[1], acc, nafAcc);
+            }
+
             if (s.IsNaf)
             {
-                if (!s.Children[0].IsLiteral) return false;
+                if (!s.Children[0].IsLiteral)
+                {
+                    return false;
+                }
+
                 nafAcc.Add(s.Children[0]);
                 return true;
             }
-            if (!s.IsLiteral) return false;
+            if (!s.IsLiteral)
+            {
+                return false;
+            }
+
             acc.Add(s);
             return true;
         }
 
         public override string ToString()
         {
-            if (IsFact) return Head.ToString();
+            if (IsFact)
+            {
+                return Head.ToString();
+            }
+
             var body = Premises.Select(p => p.ToString())
                 .Concat(NafPremises.Select(n => "NAF " + n));
             return string.Join(" ∧ ", body) + " ⇒ " + Head;

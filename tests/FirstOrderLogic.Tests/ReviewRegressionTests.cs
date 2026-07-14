@@ -52,7 +52,7 @@ namespace FolTests {
         // "FORALL p (Person(p))" the quantifier binds nothing: the term p becomes a Constant.
         [Test]
         public void Issue05_Quantifier_BindsNonWhitelistedVariableName() {
-            var s = (IComplexSentence)Logic.TryParse("FORALL p (Person(p))");
+            var s = (IComplexSentence)Logic.Parse("FORALL p (Person(p))");
             var body = (Predicate)s.Children[0];
             Assert.That(body.Terms[0], Is.InstanceOf<Variable>(),
                 $"term 'p' under FORALL p parsed as {body.Terms[0].GetType().Name}");
@@ -71,14 +71,14 @@ namespace FolTests {
         // accepted as a unary node instead of being rejected.
         [Test]
         public void Issue07_MalformedInput_LeadingBinaryConnective_Throws() {
-            Assert.That(() => Logic.TryParse("AND P"), Throws.Exception);
+            Assert.That(() => Logic.Parse("AND P"), Throws.Exception);
         }
 
         // Fixed defect: unary/binary conflation in the grammar — NOT is accepted in a binary position,
         // producing a corrupt two-child negation node instead of a parse error.
         [Test]
         public void Issue07_MalformedInput_BinaryNot_Throws() {
-            Assert.That(() => Logic.TryParse("P NOT Q"), Throws.Exception);
+            Assert.That(() => Logic.Parse("P NOT Q"), Throws.Exception);
         }
 
         // Fixed defect: FirstOrderLogicExtensions.cs — skolemCounter is local to each SkolemForm
