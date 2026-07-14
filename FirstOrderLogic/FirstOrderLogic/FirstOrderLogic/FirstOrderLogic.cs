@@ -20,7 +20,6 @@ namespace FirstOrderLogic {
         Boolean,
         Quantifier,
         Biconditional,
-        TimeAttribute,
         Naf
     }
 
@@ -63,7 +62,6 @@ namespace FirstOrderLogic {
                 new TokenDefinition<Terminal>(Terminal.Boolean, "TRUE|FALSE|\u22a4|\u22a5"),
                 new TokenDefinition<Terminal>(Terminal.Quantifier, "FORALL|EXISTS|\u2200|\u2203"),
                 new TokenDefinition<Terminal>(Terminal.Naf, "NAF"),
-                new TokenDefinition<Terminal>(Terminal.TimeAttribute, "\\^[0-9]+"),
                 // Unicode letters/digits, not just ASCII, so non-English symbol names (Wählt, Citté,
                 // 本) are valid identifiers. Keyword tokens above are matched first, and logical
                 // operator glyphs (∧ ¬ ∀ …) are Symbol-category, so neither collides with this.
@@ -127,24 +125,9 @@ namespace FirstOrderLogic {
             AddRule(rhs =>
             {
                 var symbol = ((LexValue)rhs[0].Attribute).Value;
-                var timeValue = int.Parse(((LexValue)rhs[1].Attribute).Value[1..]);
-                return new Proposition(symbol, timeValue);
-            }, NonTerminal.AtomicSentence, Terminal.Identifier, Terminal.TimeAttribute);
-
-            AddRule(rhs =>
-            {
-                var symbol = ((LexValue)rhs[0].Attribute).Value;
                 var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(lo => (Term)lo).ToArray();
                 return new Predicate(symbol, terms);
             }, NonTerminal.AtomicSentence, Terminal.Identifier, Terminal.Open, NonTerminal.TermList, Terminal.Close);
-
-            AddRule(rhs =>
-            {
-                var symbol = ((LexValue)rhs[0].Attribute).Value;
-                var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(lo => (Term)lo).ToArray();
-                var timeValue = int.Parse(((LexValue)rhs[4].Attribute).Value[1..]);
-                return new Predicate(symbol, terms, timeValue);
-            }, NonTerminal.AtomicSentence, Terminal.Identifier, Terminal.Open, NonTerminal.TermList, Terminal.Close, Terminal.TimeAttribute);
 
             AddRule(rhs => new ArrayValue(rhs[0].Attribute), NonTerminal.TermList, NonTerminal.Term);
             AddRule(rhs =>
@@ -189,9 +172,7 @@ namespace FirstOrderLogic {
                 case Predicate predicate:
                 {
                     var terms = predicate.Terms.Select(term => BindTerm(term, variable)).ToArray();
-                    return predicate.Time.HasValue
-                        ? new Predicate(predicate.Symbol, terms, predicate.Time.Value)
-                        : new Predicate(predicate.Symbol, terms);
+                    return new Predicate(predicate.Symbol, terms);
                 }
                 case ComplexSentence complex:
                     return complex.WithChildren(complex.Children

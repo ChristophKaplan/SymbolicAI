@@ -22,7 +22,9 @@ namespace AIPlanning.Planning.GraphPlan {
             // Work on clones: graph construction accumulates grounding state on the actions
             // (AddUnificators) and Init injects the synthetic Start/Finish actions. None of that
             // may leak into the caller's problem — a GpProblem must stay reusable across solves.
-            _actions = problem.Actions.Select(action => action.Clone()).ToList();
+            // Content-equal duplicates are dropped: they add nothing semantically and would
+            // collide as dictionary keys during grounding (InstantiateActions).
+            _actions = problem.Actions.Distinct().Select(action => action.Clone()).ToList();
             Init();
         }
 

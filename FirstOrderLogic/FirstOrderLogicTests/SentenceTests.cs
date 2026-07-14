@@ -111,19 +111,5 @@ namespace FolTests {
             var result = S("FORALL x P(x,y)").Substitute(new Variable("y"), new Constant("a"));
             Assert.That(result, Is.EqualTo(S("FORALL x P(x,a)")));
         }
-
-        // Time-indexed instances: rolling an action forward over [from, to).
-        [Test]
-        public void GetInstancesOverTime_ProducesShiftedCopies() {
-            var action = S("Cook^0 => HaveIngredient^0 AND Food^1");
-            var instances = action.GetInstancesOverTime(0, 3);
-            Assert.That(instances.Count, Is.EqualTo(3));
-            // Every time index is shifted by the instance's offset.
-            Assert.That(instances[0], Is.EqualTo(S("Cook^0 => HaveIngredient^0 AND Food^1")));
-            Assert.That(instances[1], Is.EqualTo(S("Cook^1 => HaveIngredient^1 AND Food^2")));
-            Assert.That(instances[2], Is.EqualTo(S("Cook^2 => HaveIngredient^2 AND Food^3")));
-            // Originals are untouched (clones were shifted).
-            Assert.That(action, Is.EqualTo(S("Cook^0 => HaveIngredient^0 AND Food^1")));
-        }
     }
 }

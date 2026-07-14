@@ -71,7 +71,6 @@ the propositional fragment.
   including quantifier evaluation by ranging over the domain's elements.
 - **Kernel sets**: minimal entailing subsets of a belief base (Hansson 1994).
 - **WalkSAT** for propositional clause sets.
-- **Time-indexed predicates** for temporal reasoning (`P(x)^1`).
 
 ## Syntax
 
@@ -83,7 +82,6 @@ the propositional fragment.
 - Negation as failure — `NAF` (used by the chaining engines)
 - Quantifiers — `FORALL x ...`, `EXISTS x ...`
 - Constants — `TRUE`, `FALSE`
-- Time index — `P(x)^1`
 
 Exactly the identifiers `x`, `y`, `z`, `w` are free variables; every other identifier
 (including e.g. `x1` or `yPos`) is a constant unless it is bound by an enclosing

@@ -64,5 +64,61 @@ namespace AIPlanningTests {
                 "with Obj as the only object, x=y=Obj grounds Act to the duplicated " +
                 "precondition {P(Obj), P(Obj)}, which must still count as satisfied");
         }
+
+        // ── Findings of the second July 2026 whole-project review ─────────────────────
+
+        // Finding 6 — InstantiateActions keys a dictionary by GpAction, whose equality is
+        // content-based, so two content-equal actions in the problem's action list crash
+        // Solve with ArgumentException instead of being deduplicated.
+        [Test]
+        public void Finding06_ContentEqualDuplicateActions_AreTolerated() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var act = Factory.Create("Act", new() { "P(K)" }, new() { "G(K)" });
+            var duplicate = Factory.Create("Act", new() { "P(K)" }, new() { "G(K)" });
+
+            var problem = new GpProblem(initialState, goals, new() { act, duplicate });
+            var solution = SolveWithGuard(problem);
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "a duplicated action definition changes nothing semantically and must not " +
+                "crash grounding or lose the one-step plan");
+        }
+
+        // Finding 7 — FindSolutions treats an empty belief state at levelIndex > 0 as failure
+        // (its success arm is gated on the unreachable levelIndex < 0), so a trivially
+        // satisfied empty goal set extracts as "no plan exists".
+        [Test]
+        public void Finding07_EmptyGoals_AtHigherLevel_AreTriviallySatisfied() {
+            var initialState = Factory.StringToSentence(new() { "P(K)" });
+            var goals = Factory.StringToSentence(new());
+            var act = Factory.Create("X", new() { "P(K)" }, new() { "Q(K)" });
+            var problem = new GpProblem(initialState, goals, new() { act });
+
+            var graph = new GpPlanGraph(problem);
+            graph.ExpandGraph();
+            var solution = graph.ExtractSolution(1, new NoGoods());
+
+            Assert.That(solution.IsEmpty, Is.False,
+                "an empty goal set is satisfied by the empty plan at every level; IsEmpty " +
+                "must mean 'no plan exists', not 'nothing was requested'");
+        }
+
+        // Finding 8 — GpBeliefState.Equals (and GpActionSet.Equals alike) uses equal counts
+        // plus one-directional Contains, which is multiset-unsafe: {P, P} equals {P, Q}. The
+        // IEnumerable constructor accepts duplicates, and NoGoods keys hash sets on this
+        // equality — the same defect that was already fixed on GpAction.
+        [Test]
+        public void Finding08_BeliefStateEquality_IsMultisetSafe() {
+            var p = new GpLiteralNode(L("P(Obj)"));
+            var q = new GpLiteralNode(L("Q(Obj)"));
+
+            var pp = new GpBeliefState(new List<GpNode> { p, p });
+            var pq = new GpBeliefState(new List<GpNode> { p, q });
+
+            Assert.That(pp.Equals(pq), Is.False,
+                "{P, P} and {P, Q} are different states even though the counts match and " +
+                "every element of the first occurs in the second");
+        }
     }
 }

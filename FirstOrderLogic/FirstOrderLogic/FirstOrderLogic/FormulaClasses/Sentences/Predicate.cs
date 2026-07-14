@@ -18,10 +18,6 @@ namespace FirstOrderLogic {
         public Predicate(string predicateSymbol, Term[] terms) : base(predicateSymbol) {
             Terms = terms;
         }
-    
-        public Predicate(string predicateSymbol, Term[] terms, int time) : base(predicateSymbol, time) {
-            Terms = terms;
-        }
 
         public override ISentence Substitute(Term target, Term replacement) {
             var terms = new Term[Terms.Length];
@@ -29,14 +25,9 @@ namespace FirstOrderLogic {
                 terms[i] = Terms[i].Substitute(target, replacement);
             }
 
-            return Time.HasValue ? new Predicate(Symbol, terms, Time.Value) : new Predicate(Symbol, terms);
+            return new Predicate(Symbol, terms);
         }
 
-        public override ISentence WithTimeShift(int offset) =>
-            Time.HasValue
-                ? new Predicate(Symbol, (Term[])Terms.Clone(), Time.Value + offset)
-                : this;
-    
         public Variable[] GetVariables() {
             var variables = new List<Variable>();
             foreach (var term in Terms) {
@@ -71,7 +62,7 @@ namespace FirstOrderLogic {
         }
 
         public override string ToString() {
-            return $"{Symbol}({string.Join<Term>(",", Terms)}){(Time.HasValue ? $"^{Time}" : "")}";
+            return $"{Symbol}({string.Join<Term>(",", Terms)})";
         }
     }
 }

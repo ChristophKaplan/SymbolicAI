@@ -56,24 +56,6 @@ namespace FolTests {
             Assert.That(entails, Is.True, "P, R, and S are universal, so T(a) follows");
         }
 
-        // Finding 3 — Unificator.UnifyLiteral compares Symbol, Arity, and Terms but not Time
-        // on predicates (the proposition branch does check Time), so temporally distinct
-        // literals unify and a fact at time 1 proves the same fact at any other time.
-        [Test]
-        public void Finding03_Unification_TimeIndexedPredicates_DoNotUnifyAcrossTimes() {
-            var u = new Unificator(S("P(a)^1"), S("P(a)^2"));
-            Assert.That(u.IsUnifiable, Is.False,
-                "P(a)^1 and P(a)^2 are distinct atoms (AtomicSentence.Equals distinguishes Time)");
-        }
-
-        [Test]
-        public void Finding03_Entailment_TimeIndexedFact_DoesNotProveOtherTimes() {
-            var theory = new Theory(Set("P(a)^1"));
-            var entails = RunWithin(Bound, "Entails(P(a)^2)", () => theory.Entails(S("P(a)^2")));
-            Assert.That(entails, Is.False,
-                "a fact holding at time 1 must not entail the same fact at time 2");
-        }
-
         // Finding 4 — IsUnsatisfiable skips SimplifyConstants when the input is already CNF,
         // so TRUE/FALSE are treated as ordinary resolvable atoms.
         [Test]
@@ -178,6 +160,113 @@ namespace FolTests {
             Assert.That(u1, Is.EqualTo(u2), "same substitution content must compare equal");
             Assert.That(new HashSet<Unificator> { u1, u2 }, Has.Count.EqualTo(1),
                 "content-equal unifiers must collapse to one hash-set entry");
+        }
+
+        // ── Findings of the second July 2026 whole-project review ─────────────────────
+
+        // Finding 13 — SkolemForm draws witness arguments only from the explicit prenex
+        // prefix, so a free (implicitly universal) variable never enters the witness and
+        // EXISTS y Q(x,y) skolemizes to a single shared constant Q(x, sk$1) instead of
+        // Q(x, sk$1(x)) — resolution then proves conclusions that are not entailed.
+        [Test]
+        public void Finding13_SkolemWitness_MustDependOnImplicitlyUniversalFreeVariables() {
+            var entails = RunWithin(Bound, "Resolve(EXISTS y Q(x,y) ⊨ goal)",
+                () => Resolution.Resolve(S("EXISTS y (Q(x,y))"), S("EXISTS y (Q(a,y) AND Q(b,y))"), false, 200));
+            Assert.That(entails, Is.False,
+                "∀x∃y Q(x,y) does not entail ∃y (Q(a,y) AND Q(b,y)); a true result means the " +
+                "Skolem witness ignored the free x and became one constant shared by a and b");
+        }
+
+        [Test]
+        public void Finding13_ExplicitForall_ControlCase_IsNotEntailedEither() {
+            var entails = RunWithin(Bound, "Resolve(FORALL x EXISTS y Q(x,y) ⊨ goal)",
+                () => Resolution.Resolve(S("FORALL x (EXISTS y (Q(x,y)))"), S("EXISTS y (Q(a,y) AND Q(b,y))"), false, 200));
+            Assert.That(entails, Is.False,
+                "free-variable and explicit-FORALL KBs are the same sentence by the engine's " +
+                "own convention and must resolve identically");
+        }
+
+        // Finding 14 — AbductiveChaining's consistency filter uses the exact-match Conflicts()
+        // check, so a derived ground negation (NOT Sunny(a)) never conflicts with a universal
+        // fact (Sunny(x)) and an inconsistent assumption survives as an explanation.
+        [Test]
+        public void Finding14_Abduction_AssumptionConflictingWithUniversalFact_IsDiscarded() {
+            var explanations = new AbductiveChaining().Explain(
+                Set("Sunny(x)", "Rain(z) => NOT Sunny(z)", "Rain(z) => Wet(z)"),
+                S("Wet(a)"), new[] { "Rain" });
+            Assert.That(explanations, Is.Empty,
+                "assuming Rain(a) derives NOT Sunny(a), which contradicts the universal fact " +
+                "Sunny(x) — the documented 'without introducing new conflicts' contract");
+        }
+
+        // Finding 15 — Theory.RulesMatch compares only Premises and Head; NafPremises never
+        // enter the comparison, so rules that fire under different NAF guards (or none at all)
+        // count as the same commitment.
+        [Test]
+        public void Finding15_TheoryCompare_RulesWithDifferentNafGuards_DoNotAgree() {
+            var viaQ = new Theory(Set("(P(x) AND (NAF Q(x))) => R(x)"));
+            var viaT = new Theory(Set("(P(x) AND (NAF T(x))) => R(x)"));
+            Assert.That(viaQ.Compare(viaT).Agreements, Is.Empty,
+                "the rules fire under different NAF guards (Q underivable vs T underivable) " +
+                "and derive different closures from the same facts");
+        }
+
+        [Test]
+        public void Finding15_TheoryCompare_NafGuardedRule_IsNotTheStrictRule() {
+            var guarded = new Theory(Set("(P(x) AND (NAF Q(x))) => R(x)"));
+            var strict = new Theory(Set("P(x) => R(x)"));
+            Assert.That(guarded.Compare(strict).Agreements, Is.Empty,
+                "a default rule (R unless Q is derivable) and a strict rule are different " +
+                "commitments; agreement means the NAF premise was ignored");
+        }
+
+        // Finding 16 — SkolemForm's bottom-up RemoveQuantifier rewrite deletes EVERY
+        // quantifier, not just the skolemized prefix, so a non-PNF input has its inner
+        // existentials silently flipped into free (effectively universal) variables.
+        [Test]
+        public void Finding16_SkolemForm_NonPrenexInput_MustNotSilentlyDropQuantifiers() {
+            var sentence = S("FORALL x (P(x) AND (EXISTS y (Q(y))))");
+            ISentence result;
+            try {
+                result = Logic.SkolemForm(sentence);
+            } catch (Exception) {
+                return; // rejecting non-PNF input outright is also acceptable
+            }
+            Assert.That(result.ToString(), Does.Contain("sk$"),
+                $"the inner EXISTS y must become a Skolem witness, not a free variable — got: {result}");
+        }
+
+        // Finding 18 — InstantiateVariable writes its synthetic per-element constants into
+        // the interpretation's function table and never removes them, so a logically
+        // read-only Evaluate mutates the interpretation and later lookups resolve spuriously.
+        [Test]
+        public void Finding18_QuantifierEvaluation_MustNotLeakSyntheticConstants() {
+            IDomainOfDiscourse domain = new Domain(new Element(1), new Element(2));
+            var relations = new Dictionary<string, Func<IElementOfDiscourse[], bool>> {
+                ["Human"] = terms => terms[0] is Element e && e.Id == 1,
+            };
+            var interpretation = new Interpretation(domain, relations,
+                new Dictionary<string, Func<Term[], IElementOfDiscourse>>(),
+                new Dictionary<string, IElementOfDiscourse>(),
+                new Dictionary<IProposition, bool>());
+
+            Assert.That(interpretation.Evaluate(S("EXISTS x (Human(x))")), Is.True, "sanity");
+            Assert.That(() => interpretation.EvaluateTerm(new Constant("x_element_1")),
+                Throws.TypeOf<InterpretationException>(),
+                "the synthetic constant used to range over the domain must not remain " +
+                "resolvable after the quantifier evaluation returns");
+        }
+
+        // Finding 19 — an empty clause is never satisfiable, so it is always eligible for the
+        // random-walk branch, where flipping one of its zero literals throws instead of the
+        // solver reporting unsat.
+        [Test]
+        public void Finding19_WalkSat_EmptyClause_ReportsUnsatInsteadOfCrashing() {
+            var clauses = new List<Clause> { new Clause() };
+            PossibleWorld? model = null;
+            Assert.That(() => model = new SatSolvers().WalkSAT(clauses, 1f, 100), Throws.Nothing,
+                "the empty clause is a legal Clause value and must not crash the walk");
+            Assert.That(model, Is.Null, "no assignment satisfies the empty clause");
         }
     }
 }

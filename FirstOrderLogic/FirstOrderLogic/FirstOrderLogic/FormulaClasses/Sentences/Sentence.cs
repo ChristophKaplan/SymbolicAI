@@ -16,7 +16,6 @@ namespace FirstOrderLogic {
         bool IsNegationOf(ISentence other, bool onlyPredSignature = false);
         ISentence Substitute(Term target, Term replacement);
         ISentence WithChildren(IReadOnlyList<ISentence> children);
-        ISentence WithTimeShift(int offset);
         ISentence Negated();
         bool HasScopeConflict(List<Variable>? boundVariables = null);
         bool HasQuantifier();
@@ -43,7 +42,6 @@ namespace FirstOrderLogic {
         public bool IsImplication => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.IMPLICATION;
         public abstract ISentence Substitute(Term target, Term replacement);
         public abstract ISentence WithChildren(IReadOnlyList<ISentence> children);
-        public abstract ISentence WithTimeShift(int offset);
         public abstract ISentence Negated();
     
         public bool IsNegationOf(ISentence other, bool onlyPredSignature = false) {

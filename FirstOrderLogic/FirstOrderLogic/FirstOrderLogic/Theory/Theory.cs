@@ -114,23 +114,38 @@ namespace FirstOrderLogic
         private static bool RulesMatch(Rule rule, Rule candidate, bool negatedHead)
         {
             if (rule.Premises.Count != candidate.Premises.Count) return false;
+            if (rule.NafPremises.Count != candidate.NafPremises.Count) return false;
 
             candidate = candidate.Renamed(0);
-            var left = rule.Premises.Append(rule.Head).ToList();
-            var right = candidate.Premises.Append(negatedHead ? candidate.Head.Negated() : candidate.Head).ToList();
+            var left = rule.Premises.Concat(rule.NafPremises).Append(rule.Head).ToList();
+            var right = candidate.Premises.Concat(candidate.NafPremises)
+                .Append(negatedHead ? candidate.Head.Negated() : candidate.Head).ToList();
+            var positiveCount = rule.Premises.Count;
 
             // Premise order carries no logical meaning: each left premise must match a distinct
-            // right premise (backtracking over a used-set; premise lists are small). The heads —
-            // last in both lists — are still matched only against each other.
+            // right premise of the same kind — positive with positive, NAF with NAF (backtracking
+            // over a used-set; premise lists are small). The heads — last in both lists — are
+            // still matched only against each other.
             return MatchFrom(left, 0, right, new bool[right.Count]);
 
-            static bool MatchFrom(List<ISentence> left, int i, List<ISentence> right, bool[] used)
+            bool MatchFrom(List<ISentence> left, int i, List<ISentence> right, bool[] used)
             {
                 if (i == left.Count) return true;
 
                 var headIndex = left.Count - 1;
-                var first = i == headIndex ? headIndex : 0;
-                var last = i == headIndex ? headIndex : headIndex - 1;
+                int first, last;
+                if (i == headIndex) {
+                    first = headIndex;
+                    last = headIndex;
+                }
+                else if (i < positiveCount) {
+                    first = 0;
+                    last = positiveCount - 1;
+                }
+                else {
+                    first = positiveCount;
+                    last = headIndex - 1;
+                }
                 for (var j = first; j <= last; j++)
                 {
                     if (used[j]) continue;

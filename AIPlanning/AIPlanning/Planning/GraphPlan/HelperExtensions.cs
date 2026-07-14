@@ -11,6 +11,30 @@ namespace AIPlanning.Planning.GraphPlan {
             return Unificator.TryMatch(other, sentence, out unificator);
         }
 
+        // Multiset semantics (order-insensitive, duplicate counts matter):
+        // {P,P,Q} must NOT equal {P,Q,Q}, which a one-directional Contains check allows.
+        public static bool MultisetEquals<T>(this IReadOnlyList<T> left, IReadOnlyList<T> right) where T : notnull {
+            if (left.Count != right.Count) {
+                return false;
+            }
+
+            var counts = new Dictionary<T, int>();
+            foreach (var item in left) {
+                counts.TryGetValue(item, out var count);
+                counts[item] = count + 1;
+            }
+
+            foreach (var item in right) {
+                if (!counts.TryGetValue(item, out var count) || count == 0) {
+                    return false;
+                }
+
+                counts[item] = count - 1;
+            }
+
+            return true;
+        }
+
         public static List<GpNode> GetConflictFreeSubset(this IReadOnlyList<GpNode> nodes) {
             return nodes.Where(node => !node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode))).ToList();
         }

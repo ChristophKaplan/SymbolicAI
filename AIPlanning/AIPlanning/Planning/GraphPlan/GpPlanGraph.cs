@@ -55,15 +55,12 @@ namespace AIPlanning.Planning.GraphPlan {
                 return true;
             }
 
-            // The "no goal literals at this level" branch was reached either because a
-            // recursive call drilled below level 0 or because the goals were empty.
-            // Treat it as a base case with success.
+            // No goal literals to support at this level: the empty state is trivially
+            // satisfied, so the branch is complete. Only top-level calls with an empty goal
+            // set land here — the recursion below handles empty precondition states itself.
             if (curBeliefState.GetNodes.Count == 0) {
-                if (levelIndex < 0) {
-                    solutions.Add(outcome);
-                    return true;
-                }
-                return false;
+                solutions.Add(outcome);
+                return true;
             }
 
             // B-fix: prune already-recorded nogoods.

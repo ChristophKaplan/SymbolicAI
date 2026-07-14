@@ -7,7 +7,10 @@ namespace FirstOrderLogic {
         readonly Random _random = new();
         public PossibleWorld? WalkSAT(List<Clause> clauses, float p, int maxFlips) {
             if(!IsPropositional(clauses)) throw new Exception("WalkSAT only works with propositional logic");
-        
+
+            // The empty clause has no model and no symbol to flip: unsatisfiable outright.
+            if (clauses.Any(clause => clause.Literals.Count == 0)) return null;
+
             var model = new PossibleWorld(GetRandomAssigmentFor(clauses));
 
             for (var i = 0; i < maxFlips; i++) {

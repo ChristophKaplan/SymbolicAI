@@ -5,7 +5,6 @@ namespace FirstOrderLogic {
     public interface IAtomicSentence : ISentence
     {
         string Symbol { get; }
-        public int? Time { get; }
         bool IsNullaryConstant { get; }
         bool Tautology { get; }
         bool Contradiction { get; }
@@ -14,7 +13,6 @@ namespace FirstOrderLogic {
     public abstract class AtomicSentence : Sentence, IAtomicSentence
     {
         public string Symbol { get; }
-        public int? Time { get; }
         public bool IsNullaryConstant => Tautology || Contradiction;
         public bool Tautology => Symbol.Equals(Connective.SymbolToString(Connective.LogicSymbol.TRUE));
         public bool Contradiction => Symbol.Equals(Connective.SymbolToString(Connective.LogicSymbol.FALSE));
@@ -22,13 +20,6 @@ namespace FirstOrderLogic {
         protected AtomicSentence(string symbol)
         {
             Symbol = symbol;
-            Time = null;
-        }
-    
-        protected AtomicSentence(string symbol, int time)
-        {
-            Symbol = symbol;
-            Time = time;
         }
 
         public override ISentence Negated()
@@ -39,10 +30,9 @@ namespace FirstOrderLogic {
         }
 
         // Nullary constants (TRUE/FALSE) are always propositions.
-        private ISentence Constant(Connective.LogicSymbol symbol)
+        private static ISentence Constant(Connective.LogicSymbol symbol)
         {
-            var name = Connective.SymbolToString(symbol);
-            return Time.HasValue ? new Proposition(name, Time.Value) : new Proposition(name);
+            return new Proposition(Connective.SymbolToString(symbol));
         }
 
         public override ISentence WithChildren(IReadOnlyList<ISentence> children) => this;
@@ -53,13 +43,13 @@ namespace FirstOrderLogic {
             }
 
             var other = (AtomicSentence)obj;
-            return Symbol.Equals(other.Symbol) && Time == other.Time;
-        }
-    
-        public override int GetHashCode() {
-            return HashCode.Combine(Symbol, Time);
+            return Symbol.Equals(other.Symbol);
         }
 
-        public override string ToString() => $"{Symbol}{(Time.HasValue ? $"^{Time}" : "")}";
+        public override int GetHashCode() {
+            return Symbol.GetHashCode();
+        }
+
+        public override string ToString() => Symbol;
     }
 }

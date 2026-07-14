@@ -111,9 +111,8 @@ namespace FirstOrderLogic {
         private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment = new();
     
         // The tables are copied (the propositional one by the base ctor): builders like
-        // Semantics reuse and Clear() their dictionaries between builds, and quantifier
-        // evaluation adds synthetic constants — neither may leak into (or out of) a
-        // previously built interpretation.
+        // Semantics reuse and Clear() their dictionaries between builds, which must not
+        // leak into a previously built interpretation.
         public Interpretation(IDomainOfDiscourse domain,
             Dictionary<string, Func<IElementOfDiscourse[], bool>> relations,
             Dictionary<string, Func<Term[], IElementOfDiscourse>> functions,
@@ -138,13 +137,33 @@ namespace FirstOrderLogic {
     
         protected override bool Evaluate(IComplexSentence complexSentence) {
             // base.Evaluate skips the scope-conflict re-check: validation happens once at the
-            // public entry, and substituting a constant for the bound variable cannot
-            // introduce a conflict.
+            // public entry.
             return complexSentence.Connective.Symbol switch {
-                Connective.LogicSymbol.UNIVERSAL => Domain.Elements.All(element => base.Evaluate(InstantiateVariable(((Quantifier)complexSentence.Connective).Variable, complexSentence.Children[0], element))),
-                Connective.LogicSymbol.EXISTENTIAL => Domain.Elements.Any(element => base.Evaluate(InstantiateVariable(((Quantifier)complexSentence.Connective).Variable, complexSentence.Children[0], element))),
+                Connective.LogicSymbol.UNIVERSAL => Domain.Elements.All(element => EvaluateBoundTo(complexSentence, element)),
+                Connective.LogicSymbol.EXISTENTIAL => Domain.Elements.Any(element => EvaluateBoundTo(complexSentence, element)),
                 _ => base.Evaluate(complexSentence)
             };
+        }
+
+        // Assignment semantics: bind the quantified variable to `element` only for the duration
+        // of the body evaluation, so ranging over the domain leaves the interpretation unchanged.
+        // The finally is required: SemanticChaining.Detach catches evaluation exceptions and
+        // keeps using the interpretation, so a binding must not survive a throwing body.
+        private bool EvaluateBoundTo(IComplexSentence quantified, IElementOfDiscourse element) {
+            var variable = ((Quantifier)quantified.Connective).Variable;
+            var hadOuter = _variableAssigment.TryGetValue(variable.TermSymbol, out var outer);
+            _variableAssigment[variable.TermSymbol] = element;
+            try {
+                return base.Evaluate(quantified.Children[0]);
+            }
+            finally {
+                if (hadOuter) {
+                    _variableAssigment[variable.TermSymbol] = outer!;
+                }
+                else {
+                    _variableAssigment.Remove(variable.TermSymbol);
+                }
+            }
         }
     
         protected override bool Evaluate(IAtomicSentence atomicSentence) {
@@ -171,12 +190,5 @@ namespace FirstOrderLogic {
             };
         }
 
-        // Substitution semantics: replace the bound variable with a fresh constant mapped to
-        // `element`. The substituted body is the quantifier-stripped sentence to evaluate.
-        private ISentence InstantiateVariable(Variable variable, ISentence body, IElementOfDiscourse element) {
-            var constantToElement = new Constant($"{variable}_element_{element.Id}");
-            _functions[constantToElement.TermSymbol] = _ => element;
-            return body.Substitute(variable, constantToElement);
-        }
     }
 }

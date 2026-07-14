@@ -160,39 +160,13 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            if (Signifier != other.Signifier ||
-                Preconditions.Count != other.Preconditions.Count ||
-                Effects.Count != other.Effects.Count)
+            if (Signifier != other.Signifier)
             {
                 return false;
             }
 
-            // Multiset semantics (order-insensitive, duplicate counts matter):
-            // {P,P,Q} must NOT equal {P,Q,Q}, which a one-directional Contains check allows.
-            return MultisetEquals(Preconditions, other.Preconditions)
-                && MultisetEquals(Effects, other.Effects);
-        }
-
-        private static bool MultisetEquals(List<ISentence> left, List<ISentence> right)
-        {
-            var counts = new Dictionary<ISentence, int>();
-            foreach (var sentence in left)
-            {
-                counts.TryGetValue(sentence, out var count);
-                counts[sentence] = count + 1;
-            }
-
-            foreach (var sentence in right)
-            {
-                if (!counts.TryGetValue(sentence, out var count) || count == 0)
-                {
-                    return false;
-                }
-
-                counts[sentence] = count - 1;
-            }
-
-            return true;
+            return Preconditions.MultisetEquals(other.Preconditions)
+                && Effects.MultisetEquals(other.Effects);
         }
 
         public override bool Equals(object? obj)

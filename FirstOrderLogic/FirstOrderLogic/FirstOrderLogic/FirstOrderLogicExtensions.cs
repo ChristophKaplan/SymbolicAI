@@ -150,12 +150,18 @@ namespace FirstOrderLogic {
 
             // Expects PNF. Each existential becomes a Skolem term over the universals enclosing
             // it: sk$1 if none, sk$1(u, …) otherwise ('$' is unparseable, so a witness can never
-            // resolve against a user constant that happens to share its name).
+            // resolve against a user constant that happens to share its name). Free variables
+            // are implicitly universal at widest scope, so every witness depends on them too.
             var prefix = new List<Quantifier>();
             var current = clone;
             while (current is IComplexSentence { IsQuantifier: true } quantified) {
                 prefix.Add((Quantifier)quantified.Connective);
                 current = quantified.Children[0];
+            }
+
+            if (current.HasQuantifier()) {
+                throw new ArgumentException(
+                    $"'{sentence}' is not in prenex normal form — call ToPrenexForm first.", nameof(sentence));
             }
 
             // A binder shadowed by an inner same-named one binds nothing (every matrix
@@ -168,7 +174,10 @@ namespace FirstOrderLogic {
             }
 
             var substitution = new Dictionary<Variable, Function>();
-            var universalsInScope = new List<Variable>();
+            var universalsInScope = CollectVariables(current)
+                .Where(v => !lastBinderOf.ContainsKey(v.TermSymbol))
+                .Distinct()
+                .ToList();
             for (var i = 0; i < prefix.Count; i++) {
                 var quantifier = prefix[i];
                 if (lastBinderOf[quantifier.Variable.TermSymbol] != i) {
@@ -195,7 +204,15 @@ namespace FirstOrderLogic {
 
             return clone;
         }
-    
+
+        private static IEnumerable<Variable> CollectVariables(ISentence sentence) {
+            if (sentence is IPredicate predicate) {
+                return predicate.GetVariables();
+            }
+
+            return sentence.Children.SelectMany(CollectVariables);
+        }
+
         public static List<Clause> GetClauseSet(this ISentence sentence, List<Clause>? clauseSet = null) {
             if (sentence.ContainsNaf()) {
                 throw new ArgumentException(
@@ -240,25 +257,40 @@ namespace FirstOrderLogic {
         public static bool ContainsNaf(this ISentence sentence) =>
             sentence.IsNaf || sentence.Children.Any(ContainsNaf);
 
-        // Positive literals within the list whose negation is also present (its counter is the negation).
+        // Positive literals within the list whose negation is also present (its counter is the
+        // negation). Facts are implicitly universally quantified, so a conflict is detected by
+        // unification after renaming apart: the universal Sunny(x) conflicts with ¬Sunny(a).
         public static List<ISentence> Conflicts(this IReadOnlyList<ISentence> literals) {
             var claims = new List<ISentence>();
             for (var i = 0; i < literals.Count; i++) {
                 for (var j = i + 1; j < literals.Count; j++) {
-                    if (!literals[i].IsNegationOf(literals[j])) continue;
-                    claims.Add(literals[i].IsNegation ? literals[j] : literals[i]);
+                    if (literals[i].IsNegation == literals[j].IsNegation) {
+                        continue;
+                    }
+
+                    var positive = literals[i].IsNegation ? literals[j] : literals[i];
+                    var negatedAtom = (literals[i].IsNegation ? literals[i] : literals[j]).Children[0];
+                    if (!Unificator.TryUnify(positive, RenamedApartFrom(negatedAtom, positive), out _)) {
+                        continue;
+                    }
+
+                    if (!claims.Contains(positive)) {
+                        claims.Add(positive);
+                    }
                 }
             }
             return claims;
         }
 
-        public static List<ISentence> GetInstancesOverTime(this ISentence sentence, int from, int to) {
-            var sentences = new List<ISentence>();
-            for (var i = from; i < to; i++) {
-                sentences.Add(sentence.WithTimeShift(i));
+        // "cf$" names cannot pre-exist ('$' is unparseable and no renaming scheme uses this
+        // prefix), so a per-call counter suffices.
+        private static ISentence RenamedApartFrom(ISentence literal, ISentence other) {
+            var taken = other.VariablesOf().Select(v => v.TermSymbol).ToHashSet();
+            var fresh = 0;
+            foreach (var variable in literal.VariablesOf().Where(v => taken.Contains(v.TermSymbol)).Distinct().ToList()) {
+                literal = literal.Substitute(variable, new Variable($"cf${++fresh}"));
             }
-
-            return sentences;
+            return literal;
         }
     }
 }

@@ -80,17 +80,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            if (_actionNodes.Count != other._actionNodes.Count) {
-                return false;
-            }
-
-            foreach (var node in _actionNodes) {
-                if (!other._actionNodes.Contains(node)) {
-                    return false;
-                }
-            }
-
-            return true;
+            return _actionNodes.MultisetEquals(other._actionNodes);
         }
 
         public override string ToString() {

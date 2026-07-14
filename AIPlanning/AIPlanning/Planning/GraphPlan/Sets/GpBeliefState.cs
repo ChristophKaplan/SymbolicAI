@@ -156,19 +156,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            if (_literalNodes.Count != other._literalNodes.Count) {
-                return false;
-            }
-
-            // Set semantics: every literal in `this` must occur in `other` and vice versa.
-            // Counts are equal, so checking one direction suffices.
-            foreach (var node in _literalNodes) {
-                if (!other._literalNodes.Contains(node)) {
-                    return false;
-                }
-            }
-
-            return true;
+            return _literalNodes.MultisetEquals(other._literalNodes);
         }
 
         public override string ToString() {

@@ -120,7 +120,7 @@ namespace FirstOrderLogic
 
             if (atom1 is IPredicate pred1 && atom2 is IPredicate pred2)
             {
-                if (pred1.Symbol != pred2.Symbol || pred1.Arity != pred2.Arity || pred1.Time != pred2.Time)
+                if (pred1.Symbol != pred2.Symbol || pred1.Arity != pred2.Arity)
                 {
                     return false;
                 }
@@ -139,7 +139,7 @@ namespace FirstOrderLogic
             // Propositional atoms carry no terms: they unify iff they are the same atom.
             if (atom1 is IProposition && atom2 is IProposition)
             {
-                return atom1.Symbol == atom2.Symbol && atom1.Time == atom2.Time;
+                return atom1.Symbol == atom2.Symbol;
             }
 
             return false;
