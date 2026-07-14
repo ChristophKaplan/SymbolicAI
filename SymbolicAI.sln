@@ -3,23 +3,33 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstOrderLogic", "FirstOrderLogic\FirstOrderLogic\FirstOrderLogic.csproj", "{D361A3B2-DDDE-4FBA-907F-B56875B919AD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstOrderLogic", "src\FirstOrderLogic\FirstOrderLogic.csproj", "{D361A3B2-DDDE-4FBA-907F-B56875B919AD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logger", "..\Logger\Logger\Logger.csproj", "{8A4F664D-B73F-41F4-AC77-4F1D2E41C4BE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LRParser", "..\LRParser\LRParser\LRParser.csproj", "{2B2037B1-3F83-45B3-9725-38EF92F0EDEE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstOrderLogicTests", "FirstOrderLogic\FirstOrderLogicTests\FirstOrderLogicTests.csproj", "{7A175E2B-81C7-460A-950C-78040E4AF5CE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstOrderLogic.Tests", "tests\FirstOrderLogic.Tests\FirstOrderLogic.Tests.csproj", "{7A175E2B-81C7-460A-950C-78040E4AF5CE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstOrderLogicExample", "FirstOrderLogic\FirstOrderLogicExample\FirstOrderLogicExample.csproj", "{EBD1787B-C7A7-4D47-AC35-B9EE2202AAB9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstOrderLogic.Example", "examples\FirstOrderLogic.Example\FirstOrderLogic.Example.csproj", "{EBD1787B-C7A7-4D47-AC35-B9EE2202AAB9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfBench", "FirstOrderLogic\PerfBench\PerfBench.csproj", "{7641ABE9-2D02-4ABD-9D9D-9C7DAE5E75E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfBench", "benchmarks\PerfBench\PerfBench.csproj", "{7641ABE9-2D02-4ABD-9D9D-9C7DAE5E75E7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIPlanning", "AIPlanning\AIPlanning\AIPlanning.csproj", "{B009CEEA-9024-46D6-8382-9A8A517D7C6B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIPlanning", "src\AIPlanning\AIPlanning.csproj", "{B009CEEA-9024-46D6-8382-9A8A517D7C6B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIPlanningExample", "AIPlanning\AIPlanningExample\AIPlanningExample.csproj", "{1E54F8E7-D040-4E41-8D3A-231B63E13A80}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIPlanning.Example", "examples\AIPlanning.Example\AIPlanning.Example.csproj", "{1E54F8E7-D040-4E41-8D3A-231B63E13A80}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIPlanningTests", "AIPlanning\AIPlanning\AIPlanningTests\AIPlanningTests.csproj", "{EB6ECDED-E954-4DFB-97EA-0B47D698B4FD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIPlanning.Tests", "tests\AIPlanning.Tests\AIPlanning.Tests.csproj", "{EB6ECDED-E954-4DFB-97EA-0B47D698B4FD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3C24F9A1-7E5B-4D02-9A6E-1B8F2C5D7E90}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{5D8A2B3C-9F41-4E67-8C2D-6A0B1E4F7C25}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{7E1F4C5D-2A83-4B09-A1E6-3D5C8B0F2A47}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{9F3B6D7E-4C05-4A21-B3F8-5E7D0A2C4B69}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "external", "external", "{1A5D8F9B-6E27-4C43-95BA-7F9E2C4D6081}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -142,5 +152,16 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D361A3B2-DDDE-4FBA-907F-B56875B919AD} = {3C24F9A1-7E5B-4D02-9A6E-1B8F2C5D7E90}
+		{B009CEEA-9024-46D6-8382-9A8A517D7C6B} = {3C24F9A1-7E5B-4D02-9A6E-1B8F2C5D7E90}
+		{7A175E2B-81C7-460A-950C-78040E4AF5CE} = {5D8A2B3C-9F41-4E67-8C2D-6A0B1E4F7C25}
+		{EB6ECDED-E954-4DFB-97EA-0B47D698B4FD} = {5D8A2B3C-9F41-4E67-8C2D-6A0B1E4F7C25}
+		{EBD1787B-C7A7-4D47-AC35-B9EE2202AAB9} = {7E1F4C5D-2A83-4B09-A1E6-3D5C8B0F2A47}
+		{1E54F8E7-D040-4E41-8D3A-231B63E13A80} = {7E1F4C5D-2A83-4B09-A1E6-3D5C8B0F2A47}
+		{7641ABE9-2D02-4ABD-9D9D-9C7DAE5E75E7} = {9F3B6D7E-4C05-4A21-B3F8-5E7D0A2C4B69}
+		{8A4F664D-B73F-41F4-AC77-4F1D2E41C4BE} = {1A5D8F9B-6E27-4C43-95BA-7F9E2C4D6081}
+		{2B2037B1-3F83-45B3-9725-38EF92F0EDEE} = {1A5D8F9B-6E27-4C43-95BA-7F9E2C4D6081}
 	EndGlobalSection
 EndGlobal

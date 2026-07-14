@@ -4,7 +4,6 @@
         <OutputType>Library</OutputType>
         <TargetFramework>netstandard2.1</TargetFramework>
         <ImplicitUsings>disable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <LangVersion>9</LangVersion>
     </PropertyGroup>

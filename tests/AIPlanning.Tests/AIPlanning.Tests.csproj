@@ -3,8 +3,6 @@
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <RootNamespace>AIPlanningTests</RootNamespace>
@@ -20,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\AIPlanning.csproj"/>
+        <ProjectReference Include="..\..\src\AIPlanning\AIPlanning.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

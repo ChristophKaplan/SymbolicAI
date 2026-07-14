@@ -5,16 +5,19 @@ A symbolic-AI toolkit in C#, combining first-order logic inference and classical
 
 | Project | Description |
 |---|---|
-| `FirstOrderLogic/` | FOL representation, parsing, equivalence transformations, normal forms, and a resolution theorem prover. |
-| `AIPlanning/` | GraphPlan classical planner with FOL action schemas, built on FirstOrderLogic. |
+| `src/FirstOrderLogic/` | FOL representation, parsing, equivalence transformations, normal forms, and a resolution theorem prover. |
+| `src/AIPlanning/` | GraphPlan classical planner with FOL action schemas, built on FirstOrderLogic. |
 
 ## Layout
 
 ```
 SymbolicAI/
-  FirstOrderLogic/   FOL library + example, tests, perf bench
-  AIPlanning/        GraphPlan library + example, tests
-  SymbolicAI.sln     unified solution
+  src/           FirstOrderLogic and AIPlanning libraries
+  tests/         NUnit test projects
+  examples/      runnable example programs
+  benchmarks/    PerfBench
+  docs/          design notes + reference papers
+  SymbolicAI.sln unified solution
 ```
 
 ## Dependencies
@@ -114,7 +117,7 @@ large, redundant problems; off by default). `Resolution.Resolve(kb, goal, maxRou
 saturation loop — FOL entailment is only semi-decidable, so a non-entailed KB with
 function symbols can otherwise grow clauses forever; exceeding the budget throws
 `InvalidOperationException`. A runnable version lives in
-`FirstOrderLogic/FirstOrderLogicExample/Program.cs`.
+`examples/FirstOrderLogic.Example/Program.cs`.
 
 ## Kernel sets
 
@@ -185,7 +188,7 @@ var solution = problem.Solve();
 Console.WriteLine(solution);
 ```
 
-A runnable version lives in `AIPlanning/AIPlanningExample/Program.cs`.
+A runnable version lives in `examples/AIPlanning.Example/Program.cs`.
 
 ## Features
 
@@ -198,7 +201,7 @@ A runnable version lives in `AIPlanning/AIPlanningExample/Program.cs`.
 - **Persistence (no-op) actions** — automatically inserted so literals carry forward across layers.
 - **Multi-agent / joint planning** — multiple agent constants in one `GpProblem` produce
   per-agent grounded instances solvable in one pass (see
-  `AIPlanning/AIPlanning/AIPlanningTests/MultiAgentPlanningTests.cs`; works for small N,
+  `tests/AIPlanning.Tests/MultiAgentPlanningTests.cs`; works for small N,
   scales super-linearly).
 - **`GpSolution`** — distinguishes "no plan exists" from a trivially-satisfied zero-step plan.
 
@@ -234,7 +237,7 @@ multi-agent / joint-planning encoding scales super-linearly with the number of a
 
 ## Further reading
 
-The papers in `AIPlanning/` are the working references:
+The papers in `docs/papers/` are the working references:
 
 - `graphplan_paper.pdf` — A. Blum & M. Furst, *Fast Planning Through Planning Graph Analysis*
   (IJCAI-95; extended version in *Artificial Intelligence* 90(1–2):281–300, 1997). The core
