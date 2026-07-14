@@ -19,35 +19,35 @@ namespace AIPlanning.Planning.GraphPlan {
             _solutions.Add(solution);
         }
     
-        public SortedDictionary<int, GpActionSet> GetSolution(int index) {
+        // A plan is an ordered sequence of steps; the graph's absolute layer indices are an
+        // extraction detail (a branch can complete above layer 0) and are not exposed.
+        public IReadOnlyList<GpActionSet> GetSolution(int index) {
             if (index < 0 || index >= _solutions.Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), index,
                     $"Solution index must be in [0, {_solutions.Count - 1}]");
             }
 
-            var solution = new SortedDictionary<int, GpActionSet>();
-            foreach (var solutionLayer in _solutions[index]) {
-                solution.Add(solutionLayer.Key, solutionLayer.Value.ActionSet);
-            }
-
-            return solution;
+            return _solutions[index]
+                .OrderBy(layer => layer.Key)
+                .Select(layer => layer.Value.ActionSet)
+                .ToList();
         }
-    
+
         public override string ToString() {
             if (IsEmpty) return "No solutions found!";
-        
+
             var result = "";
 
             for (var i = 0; i < _solutions.Count; i++)
             {
                 result += $"Solution: {i}\n";
                 var solution = GetSolution(i);
-                foreach (var step in solution)
+                for (var step = 0; step < solution.Count; step++)
                 {
-                    var actions = step.Value.Nodes.Where(actionNode => !actionNode.IsPersistenceAction);
+                    var actions = solution[step].Nodes.Where(actionNode => !actionNode.IsPersistenceAction);
                     var actionsAsString = string.Join("\n", actions);
-                    result += $"\n STEP: {step.Key} ACTIONS: {actionsAsString}";
+                    result += $"\n STEP: {step} ACTIONS: {actionsAsString}";
                 }
             }
 

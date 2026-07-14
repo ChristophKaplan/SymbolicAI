@@ -74,6 +74,20 @@ namespace FolTests
         public void Symbol_GroundThrowsOnArityMismatch() =>
             Assert.That(() => new Signature.Symbol("Knows", 2).Ground("Anna"), Throws.TypeOf<ArgumentException>());
 
+        // Applied with a variable must equal the parsed open atom, so Applied-built
+        // queries unify against parsed facts (Answers relies on this).
+        [Test]
+        public void Symbol_AppliedEqualsParsedAtom()
+        {
+            var applied = new Signature.Symbol("Knows", 2).Applied(new Constant("Anna"), new Variable("x"));
+            Assert.That(applied, Is.EqualTo(S("Knows(Anna, x)")));
+        }
+
+        [Test]
+        public void Symbol_AppliedThrowsOnArityMismatch() =>
+            Assert.That(() => new Signature.Symbol("Knows", 2).Applied(new Constant("Anna")),
+                Throws.TypeOf<ArgumentException>());
+
         [Test]
         public void Builder_AcceptsSymbol()
         {

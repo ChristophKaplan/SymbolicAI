@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using FirstOrderLogic;
 using NUnit.Framework;
@@ -114,6 +115,40 @@ namespace FolTests {
         public void Holds_NonLiteralQuery_Throws() {
             var facts = Set("Have(mySelf, Money)", "Role(mySelf, Worker)");
             Assert.That(() => ForwardChaining.Holds(facts, S("Role(z, Worker) => Have(z, Money)")),
+                Throws.ArgumentException);
+        }
+
+        [Test]
+        public void Answers_OneBindingPerMatchingFact() {
+            var facts = Set("Parent(Anna, Bob)", "Parent(Anna, Carl)", "Parent(Bob, Dora)");
+            var answers = ForwardChaining.Answers(facts, S("Parent(Anna, x)"));
+
+            var bound = answers.Select(a => a.Single().Value.ToString()).ToList();
+            Assert.That(bound, Is.EquivalentTo(new[] { "Bob", "Carl" }));
+        }
+
+        [Test]
+        public void Answers_RespectsPolarity() {
+            var facts = Set("Parent(Anna, Bob)", "NOT Parent(Anna, Carl)");
+            var answers = ForwardChaining.Answers(facts, S("NOT Parent(Anna, x)"));
+
+            Assert.That(answers, Has.Count.EqualTo(1));
+            Assert.That(answers[0].Single().Value.ToString(), Is.EqualTo("Carl"));
+        }
+
+        [Test]
+        public void Answers_GroundQuery_EmptyBindingPerMatch() {
+            var facts = Set("Parent(Anna, Bob)", "Parent(Bob, Dora)");
+
+            Assert.That(ForwardChaining.Answers(facts, S("Parent(Anna, Bob)")),
+                Is.EqualTo(new List<Dictionary<Variable, Term>> { new() }));
+            Assert.That(ForwardChaining.Answers(facts, S("Parent(Anna, Dora)")), Is.Empty);
+        }
+
+        [Test]
+        public void Answers_NonLiteralQuery_Throws() {
+            var facts = Set("Role(mySelf, Worker)");
+            Assert.That(() => ForwardChaining.Answers(facts, S("Role(z, Worker) => Have(z, Money)")),
                 Throws.ArgumentException);
         }
 

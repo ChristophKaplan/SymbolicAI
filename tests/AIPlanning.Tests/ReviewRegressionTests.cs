@@ -49,7 +49,7 @@ namespace AIPlanningTests {
                 "goals contained in the initial state are trivially achieved");
 
             var plan = solution.GetSolution(0);
-            var realActions = plan.Values
+            var realActions = plan
                 .SelectMany(set => set.GetActions(ignorePersistence: true))
                 .ToList();
             Assert.That(realActions, Is.Empty,
@@ -57,7 +57,7 @@ namespace AIPlanningTests {
             Assert.That(plan, Is.Empty,
                 "goals already satisfied at level 0 must yield a plan with ZERO action layers " +
                 "(like the empty-goals case); a persist-only layer is a spurious expansion. " +
-                $"Actual layers: [{string.Join(", ", plan.Keys)}]");
+                $"Actual layer count: {plan.Count}");
         }
 
         // Fixed defect: OperatorGraph reachability is driven purely by precondition edges

@@ -169,6 +169,27 @@ namespace FirstOrderLogic
             return facts.Any(f => f.Signature() == sig && Unificator.TryUnify(query, f, out _));
         }
 
+        // Holds' enumerating sibling: one binding set per fact the query unifies with.
+        // A ground query yields one empty binding set per matching fact.
+        public static List<Dictionary<Variable, Term>> Answers(IReadOnlyList<ISentence> facts, ISentence query)
+        {
+            if (!query.IsLiteral)
+            {
+                throw new ArgumentException($"Answers is literal-only; got non-literal query '{query}'.");
+            }
+
+            var sig = query.Signature();
+            var answers = new List<Dictionary<Variable, Term>>();
+            foreach (var fact in facts)
+            {
+                if (fact.Signature() == sig && Unificator.TryUnify(query, fact, out var mgu))
+                {
+                    answers.Add(mgu);
+                }
+            }
+            return answers;
+        }
+
         // Stratified evaluation: a rule runs strictly after every literal it reads through NAF is
         // complete. A head's stratum is the max over its positive dependencies, and over its NAF
         // dependencies + 1; a NAF cycle admits no such order and is rejected. Keys carry polarity

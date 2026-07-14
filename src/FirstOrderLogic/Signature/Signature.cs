@@ -32,6 +32,16 @@ namespace FirstOrderLogic
                 return new Predicate(Name, args.Select(a => (Term)new Constant(a)).ToArray());
             }
 
+            // Ground's open sibling: builds a predicate over arbitrary terms, so queries
+            // with variables can be formed (e.g. for ForwardChaining.Answers).
+            public Predicate Applied(params Term[] args)
+            {
+                if (args.Length != Arity)
+                    throw new ArgumentException(
+                        $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
+                return new Predicate(Name, args);
+            }
+
             private void RequireArity(string[] args)
             {
                 if (args.Length != Arity)

@@ -328,5 +328,34 @@ namespace FolTests
             var theory = new Theory(Set("Poor(Alice)"));
             Assert.That(theory.Explain(S("Rich(Alice)").Negated()), Is.Empty);
         }
+
+        [Test]
+        public void With_AppendsSentence_OriginalUntouched()
+        {
+            var original = new Theory(Set("Have(Alice, Money)"));
+            var extended = original.With(S("Owns(Alice, Housea)"));
+
+            Assert.That(extended, Is.EqualTo(new Theory(Set("Have(Alice, Money)", "Owns(Alice, Housea)"))));
+            Assert.That(original, Is.EqualTo(new Theory(Set("Have(Alice, Money)"))));
+        }
+
+        [Test]
+        public void With_SkipsAlreadyPresentSentences()
+        {
+            var theory = new Theory(Set("Have(Alice, Money)"))
+                .With(Set("Owns(Alice, Housea)", "Have(Alice, Money)", "Owns(Alice, Housea)"));
+
+            Assert.That(theory, Is.EqualTo(new Theory(Set("Have(Alice, Money)", "Owns(Alice, Housea)"))));
+        }
+
+        [Test]
+        public void Without_RemovesMatches_OriginalUntouched()
+        {
+            var original = new Theory(Set("Have(Alice, Money)", "Owns(Alice, Housea)"));
+            var reduced = original.Without(s => s.Equals(S("Have(Alice, Money)")));
+
+            Assert.That(reduced, Is.EqualTo(new Theory(Set("Owns(Alice, Housea)"))));
+            Assert.That(original.Count, Is.EqualTo(2));
+        }
     }
 }

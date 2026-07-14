@@ -15,8 +15,8 @@ namespace AIPlanningTests {
             Assert.That(solution.Count, Is.GreaterThanOrEqualTo(1));
 
             var actions = solution.GetSolution(0);
-            Assert.That(actions.Keys, Is.EquivalentTo(new[] { 0, 1, 2, 3, 4 }),
-                "cake plan should have exactly 5 action layers (steps 0..4)");
+            Assert.That(actions, Has.Count.EqualTo(5),
+                "cake plan should have exactly 5 steps");
 
             var expectedNames = new[] { "Move", "Work", "Move", "BuyFood", "Move" };
             for (var step = 0; step < expectedNames.Length; step++) {
@@ -105,8 +105,8 @@ namespace AIPlanningTests {
             Assert.That(solution.IsEmpty, Is.False, "expected a plan for chop+work");
             var actions = solution.GetSolution(0);
 
-            Assert.That(actions.Keys, Is.EquivalentTo(new[] { 0, 1, 2, 3 }),
-                "chop+work plan should have exactly 4 action layers (steps 0..3)");
+            Assert.That(actions, Has.Count.EqualTo(4),
+                "chop+work plan should have exactly 4 steps");
 
             var expectedNames = new[] { "Move", "Chop", "Move", "Work" };
             for (var step = 0; step < expectedNames.Length; step++) {
@@ -129,7 +129,7 @@ namespace AIPlanningTests {
 
             Assert.That(solution1.IsEmpty, Is.False);
             Assert.That(solution2.IsEmpty, Is.False);
-            Assert.That(solution1.GetSolution(0).Keys, Is.EquivalentTo(solution2.GetSolution(0).Keys));
+            Assert.That(solution1.GetSolution(0).Count, Is.EqualTo(solution2.GetSolution(0).Count));
         }
 
         private static GpProblem BuildCakeProblem() {

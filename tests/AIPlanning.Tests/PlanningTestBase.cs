@@ -31,7 +31,7 @@ namespace AIPlanningTests {
             var plan = solution.GetSolution(0);
             var state = new HashSet<ISentence>(problem.InitialState);
 
-            foreach (var layer in plan.Keys) {
+            for (var layer = 0; layer < plan.Count; layer++) {
                 var actions = plan[layer].GetActions(ignorePersistence: true);
                 foreach (var action in actions) {
                     foreach (var precondition in action.Preconditions.Distinct()) {

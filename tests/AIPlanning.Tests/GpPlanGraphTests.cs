@@ -48,7 +48,7 @@ namespace AIPlanningTests {
             Assert.That(firstOnly.Count, Is.EqualTo(1), "first-solution mode stops after one plan");
 
             var plan = firstOnly.GetSolution(0);
-            Assert.That(plan.Keys, Is.EqualTo(new[] { 0 }), "one-step plan at step 0");
+            Assert.That(plan, Has.Count.EqualTo(1), "one-step plan");
             var stepActions = plan[0].GetActions(ignorePersistence: true);
             Assert.That(stepActions, Has.Count.EqualTo(1));
             Assert.That(stepActions[0].Signifier, Is.AnyOf("M1", "M2"),
@@ -67,8 +67,8 @@ namespace AIPlanningTests {
 
             Assert.That(solution.IsEmpty, Is.False);
             var plan = solution.GetSolution(0);
-            var names = plan.OrderBy(pair => pair.Key)
-                .Select(pair => pair.Value.GetActions(ignorePersistence: true).Single().Signifier)
+            var names = plan
+                .Select(step => step.GetActions(ignorePersistence: true).Single().Signifier)
                 .ToList();
             Assert.That(names, Is.EqualTo(new[] { "A1", "A2" }),
                 "the two-step chain A1 → A2 is the only way to reach R(K)");

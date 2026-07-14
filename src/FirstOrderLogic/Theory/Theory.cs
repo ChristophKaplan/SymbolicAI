@@ -20,6 +20,25 @@ namespace FirstOrderLogic
         public Theory(List<ISentence> state) =>
             _state = state.ToList();
 
+        public Theory With(ISentence sentence) => With(new[] { sentence });
+
+        // Set semantics: sentences already present (by Equals) are not added again.
+        public Theory With(IEnumerable<ISentence> sentences)
+        {
+            var state = _state.ToList();
+            foreach (var sentence in sentences)
+            {
+                if (!state.Contains(sentence))
+                {
+                    state.Add(sentence);
+                }
+            }
+            return new Theory(state);
+        }
+
+        public Theory Without(Func<ISentence, bool> match) =>
+            new(_state.Where(s => !match(s)).ToList());
+
         public List<ISentence> Inconsistencies() => Inconsistencies(null);
         
         public List<ISentence> Inconsistencies(ITheory? other, ComparisonMode mode = ComparisonMode.Syntactic) =>

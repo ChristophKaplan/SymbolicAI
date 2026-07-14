@@ -38,8 +38,8 @@ namespace AIPlanningTests {
 
         private static List<string> PlanSignature(GpSolution solution) {
             var steps = solution.GetSolution(0);
-            return steps.OrderBy(pair => pair.Key)
-                .Select(pair => string.Join("+", pair.Value.GetActions(ignorePersistence: true)
+            return steps
+                .Select(step => string.Join("+", step.GetActions(ignorePersistence: true)
                     .Select(action => action.Signifier).OrderBy(name => name)))
                 .ToList();
         }

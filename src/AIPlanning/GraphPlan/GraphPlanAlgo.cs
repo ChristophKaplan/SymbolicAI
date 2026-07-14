@@ -1,6 +1,6 @@
 namespace AIPlanning.Planning.GraphPlan {
-    public class GraphPlanAlgo {
-        public GpSolution Run(GpProblem problem) {
+    public static class GraphPlanAlgo {
+        public static GpSolution Run(GpProblem problem) {
             if (problem.Goals.Count == 0) {
                 return GpSolution.EmptyPlan();
             }

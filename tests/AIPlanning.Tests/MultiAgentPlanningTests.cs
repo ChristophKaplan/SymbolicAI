@@ -84,12 +84,12 @@ namespace AIPlanningTests {
 
             var plan = solution.GetSolution(0);
             Assert.That(plan, Is.Not.Empty, "plan must have at least one action layer");
-            Assert.That(plan.Keys.Count, Is.GreaterThanOrEqualTo(4),
+            Assert.That(plan.Count, Is.GreaterThanOrEqualTo(4),
                 "chop+work for any agent needs at least 4 steps; two agents need at least the same");
 
             AssertPlanIsValid(problem, solution);
 
-            var allNodes = plan.Values
+            var allNodes = plan
                 .SelectMany(actionSet => actionSet.Nodes)
                 .Where(n => !n.IsPersistenceAction)
                 .ToList();
