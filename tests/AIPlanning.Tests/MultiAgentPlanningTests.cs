@@ -90,7 +90,7 @@ namespace AIPlanningTests {
             AssertPlanIsValid(problem, solution);
 
             var allNodes = plan.Values
-                .SelectMany(actionSet => actionSet.GetActionNodes)
+                .SelectMany(actionSet => actionSet.Nodes)
                 .Where(n => !n.IsPersistenceAction)
                 .ToList();
 

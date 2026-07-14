@@ -162,7 +162,7 @@ namespace FirstOrderLogic
         {
             if (!query.IsLiteral)
             {
-                throw new System.ArgumentException($"Holds is literal-only; got non-literal query '{query}'.");
+                throw new ArgumentException($"Holds is literal-only; got non-literal query '{query}'.");
             }
 
             var sig = query.Signature();

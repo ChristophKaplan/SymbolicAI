@@ -13,9 +13,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public GpAction Create(string name, List<string> preconditions, List<string> effects) {
-            return new GpAction(name,
-                preconditions.Select(p => (ISentence)_logic.TryParse(p)).ToList(),
-                effects.Select(e => (ISentence)_logic.TryParse(e)).ToList());
+            return new GpAction(name, StringToSentence(preconditions), StringToSentence(effects));
         }
 
         public List<ISentence> StringToSentence(List<string> strings) {

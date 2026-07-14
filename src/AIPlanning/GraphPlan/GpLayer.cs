@@ -17,13 +17,13 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpLayer(int level) : this(level, new GpBeliefState(), new GpActionSet()) {
         }
 
-        public void TryAdd(GpLiteralNode literalNode) {
-            BeliefState.TryAdd(literalNode);
+        public void Add(GpLiteralNode literalNode) {
+            BeliefState.Add(literalNode);
         }
 
         public List<GpAction> GetUsableActions(OperatorGraph operatorGraph) {
             var usableActions = new HashSet<GpAction>();
-            foreach (var node in BeliefState.GetLiteralNodes) {
+            foreach (var node in BeliefState.Nodes) {
                 foreach (var action in operatorGraph.GetActionsForLiteral(node.Literal)) {
                     usableActions.Add(action);
                 }
@@ -48,7 +48,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
             }
 
-            foreach (var stateNode in BeliefState.GetLiteralNodes) {
+            foreach (var stateNode in BeliefState.Nodes) {
                 var literal = stateNode.Literal;
                 if (!persistCache.TryGetValue(literal, out var persistAction)) {
                     persistAction = new GpAction("Persist",
@@ -68,9 +68,9 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public override string ToString() {
             var output = $"Layer: {Level}\n";
-            output = BeliefState.GetLiteralNodes.Aggregate(output, (current, stateNode) => current + $"{stateNode}\n");
+            output = BeliefState.Nodes.Aggregate(output, (current, stateNode) => current + $"{stateNode}\n");
             output += "\n";
-            output = ActionSet.GetActionNodes.Aggregate(output, (current, actionNode) => current + $"{actionNode}\n");
+            output = ActionSet.Nodes.Aggregate(output, (current, actionNode) => current + $"{actionNode}\n");
             output += "\n";
             return output;
         }

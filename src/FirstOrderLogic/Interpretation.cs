@@ -12,7 +12,7 @@ namespace FirstOrderLogic {
     }
 
     public class PossibleWorld : ILanguageObject{
-        public readonly Dictionary<IProposition, bool> _propositionalAssignment;
+        private readonly Dictionary<IProposition, bool> _propositionalAssignment;
 
         // Copies the assignment: builders reuse (and Clear()) their dictionaries between
         // builds, and a world's identity must not change under the caller's hands.

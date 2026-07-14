@@ -184,7 +184,7 @@ namespace FirstOrderLogic
             }
         }
 
-        private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => sentences.ToList().ConnectSentences();
+        private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => sentences.ConnectSentences();
 
         public override bool Equals(object? obj)
         {

@@ -5,11 +5,25 @@ using System.Linq;
 namespace FirstOrderLogic {
     public static class FirstOrderLogicExtensions
     {
-        public static ISentence ConnectSentences(this List<ISentence> sentences, Connective.LogicSymbol connective = Connective.LogicSymbol.CONJUNCTION) {
+        public static ISentence ConnectSentences(this IReadOnlyList<ISentence> sentences, Connective.LogicSymbol connective = Connective.LogicSymbol.CONJUNCTION) {
             return sentences.Aggregate((a, b) => (ISentence)new ComplexSentence(a, connective, b));
         }
-    
-        private delegate void TransformationDelegate(ref ISentence sentence);
+
+        private static readonly TransformationFOL.EquivType[] PrenexPipeline = {
+            TransformationFOL.EquivType.SimplifyConstants,
+            TransformationFOL.EquivType.DissolveBiconditional,
+            TransformationFOL.EquivType.DissolveImplication,
+            TransformationFOL.EquivType.PushNegation,
+            TransformationFOL.EquivType.DoubleNegation,
+            TransformationFOL.EquivType.Absorption,
+            TransformationFOL.EquivType.AssociationAndIdem,
+            TransformationFOL.EquivType.PullQuantifier,
+            TransformationFOL.EquivType.RemoveDuplicateQuantifier,
+        };
+
+        private static readonly TransformationFOL.EquivType[] CnfPipeline = {
+            TransformationFOL.EquivType.DistributionOfDisjunction,
+        };
 
         public static ISentence ToPrenexForm(this ISentence sentence, out List<ISentence> steps) {
             steps = new List<ISentence>();
@@ -22,29 +36,16 @@ namespace FirstOrderLogic {
 
         private static ISentence ToPrenexFormCore(ISentence sentence, List<ISentence>? steps) {
             var clone = sentence;
-
-            var transformations = new List<TransformationDelegate> {
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.SimplifyConstants, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.DissolveBiconditional, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.DissolveImplication, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.PushNegation, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.DoubleNegation, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.Absorption, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.AssociationAndIdem, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.PullQuantifier, ref s),
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.RemoveDuplicateQuantifier, ref s),
-            };
-
-            ApplyUntilStable(ref clone, transformations, steps);
+            ApplyUntilStable(ref clone, PrenexPipeline, steps);
             return clone;
         }
 
         private static void ApplyUntilStable(
-            ref ISentence clone, List<TransformationDelegate> transformations, List<ISentence>? steps) {
+            ref ISentence clone, TransformationFOL.EquivType[] transformations, List<ISentence>? steps) {
             while (true) {
                 var start = clone;
                 foreach (var transform in transformations) {
-                    transform(ref clone);
+                    TransformationFOL.Transform(transform, ref clone);
                     steps?.Add(clone);
                 }
                 if (start.Equals(clone)) {
@@ -62,18 +63,10 @@ namespace FirstOrderLogic {
             ToConjunctiveNormalFormCore(sentence, null);
 
         private static ISentence ToConjunctiveNormalFormCore(ISentence sentence, List<ISentence>? steps) {
-            if (sentence.ContainsNaf()) {
-                throw new ArgumentException(
-                    $"'{sentence}' contains negation-as-failure, which has no classical semantics — CNF/Resolution cannot consume it.");
-            }
+            RequireClassical(sentence);
 
             var clone = ToPrenexFormCore(sentence, steps);
-
-            var transformations = new List<TransformationDelegate> {
-                (ref ISentence s) => TransformationFOL.Transform(TransformationFOL.EquivType.DistributionOfDisjunction, ref s)
-            };
-
-            ApplyUntilStable(ref clone, transformations, steps);
+            ApplyUntilStable(ref clone, CnfPipeline, steps);
 
             if(!clone.IsCNF()) { throw new Exception("Sentence is not in CNF"); }
             return clone;
@@ -151,10 +144,7 @@ namespace FirstOrderLogic {
         }
 
         public static List<Clause> GetClauseSet(this ISentence sentence, List<Clause>? clauseSet = null) {
-            if (sentence.ContainsNaf()) {
-                throw new ArgumentException(
-                    $"'{sentence}' contains negation-as-failure, which has no classical semantics — CNF/Resolution cannot consume it.");
-            }
+            RequireClassical(sentence);
             if (!sentence.IsCNF()) { throw new Exception("Sentence is not in CNF"); }
         
             clauseSet ??= new List<Clause>();
@@ -176,6 +166,13 @@ namespace FirstOrderLogic {
 
         public static bool ContainsNaf(this ISentence sentence) =>
             sentence.IsNaf || sentence.Children.Any(ContainsNaf);
+
+        private static void RequireClassical(ISentence sentence) {
+            if (sentence.ContainsNaf()) {
+                throw new ArgumentException(
+                    $"'{sentence}' contains negation-as-failure, which has no classical semantics — CNF/Resolution cannot consume it.");
+            }
+        }
 
         // Positive literals within the list whose negation is also present (its counter is the
         // negation). Facts are implicitly universally quantified, so a conflict is detected by

@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\AIPlanning\AIPlanning.csproj" />
+      <ProjectReference Include="..\..\..\Logger\Logger\Logger.csproj" />
     </ItemGroup>
 
 </Project>

@@ -5,7 +5,6 @@ using FirstOrderLogic;
 namespace AIPlanning.Planning.GraphPlan {
     public class OperatorGraph
     {
-        private readonly GpProblem _problem;
         private readonly List<GpLiteralNode> _literalNodes = new();
         private readonly List<GpAction> _actions;
         private readonly List<GpAction> _preconditionlessInstances = new();
@@ -16,20 +15,19 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public OperatorGraph(GpProblem problem)
         {
-            _problem = problem;
             // Clones: construction accumulates grounding state on the actions and injects
             // Start/Finish; none of that may leak — a GpProblem must stay reusable across solves.
             // Content-equal duplicates would collide as dictionary keys during grounding.
             _actions = problem.Actions.Distinct().Select(action => action.Clone()).ToList();
-            Init();
+            Init(problem);
         }
 
-        private void Init()
+        private void Init(GpProblem problem)
         {
             var startNode = new GpActionNode(new GpAction("Start",
-                new List<ISentence>(), new List<ISentence>(_problem.InitialState), isSynthetic: true));
+                new List<ISentence>(), new List<ISentence>(problem.InitialState), isSynthetic: true));
             var finishNode = new GpActionNode(new GpAction("Finish",
-                new List<ISentence>(_problem.Goals), new List<ISentence>(), isSynthetic: true));
+                new List<ISentence>(problem.Goals), new List<ISentence>(), isSynthetic: true));
 
             foreach (var preCon in startNode.GpAction.Effects)
             {

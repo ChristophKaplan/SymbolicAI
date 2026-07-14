@@ -9,8 +9,6 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpActionSet(IEnumerable<GpNode> actionNodes) : base(actionNodes) {
         }
 
-        public List<GpActionNode> GetActionNodes => Nodes;
-
         public List<GpAction> GetActions(bool ignorePersistence = true) => Nodes
             .Where(n => !ignorePersistence || !n.IsPersistenceAction)
             .Select(n => n.GpAction).ToList();
@@ -36,7 +34,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
             }
 
-            beliefState.GetNodes.CheckMutexRelations();
+            beliefState.Nodes.CheckMutexRelations();
             return beliefState;
         }
 

@@ -22,18 +22,21 @@ namespace FirstOrderLogic
 
             public string Of(params string[] args)
             {
-                if (args.Length != Arity)
-                    throw new ArgumentException(
-                        $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
+                RequireArity(args);
                 return args.Length == 0 ? Name : $"{Name}({string.Join(", ", args)})";
             }
 
             public Predicate Ground(params string[] args)
             {
+                RequireArity(args);
+                return new Predicate(Name, args.Select(a => (Term)new Constant(a)).ToArray());
+            }
+
+            private void RequireArity(string[] args)
+            {
                 if (args.Length != Arity)
                     throw new ArgumentException(
                         $"{Name}/{Arity} cannot be applied to {args.Length} argument(s).");
-                return new Predicate(Name, args.Select(a => (Term)new Constant(a)).ToArray());
             }
         }
 

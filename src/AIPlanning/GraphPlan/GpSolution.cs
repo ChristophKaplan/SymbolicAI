@@ -45,7 +45,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 var solution = GetSolution(i);
                 foreach (var step in solution)
                 {
-                    var actions = step.Value.GetActionNodes.Where(actionNode => !actionNode.IsPersistenceAction);
+                    var actions = step.Value.Nodes.Where(actionNode => !actionNode.IsPersistenceAction);
                     var actionsAsString = string.Join("\n", actions);
                     result += $"\n STEP: {step.Key} ACTIONS: {actionsAsString}";
                 }

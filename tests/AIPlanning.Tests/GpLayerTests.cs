@@ -9,7 +9,7 @@ namespace AIPlanningTests {
         private static GpLayer LayerWithBelief(params string[] literals) {
             var layer = new GpLayer(0);
             foreach (var literal in literals) {
-                layer.TryAdd(new GpLiteralNode(L(literal)));
+                layer.Add(new GpLiteralNode(L(literal)));
             }
             return layer;
         }
@@ -53,7 +53,7 @@ namespace AIPlanningTests {
             var layer = LayerWithBelief("P(Obj)", "R(Obj)");
             layer.ExpandActions(new List<GpAction>(), new Dictionary<ISentence, GpAction>());
 
-            var persistNodes = layer.ActionSet.GetActionNodes
+            var persistNodes = layer.ActionSet.Nodes
                 .Where(node => node.IsPersistenceAction)
                 .ToList();
             Assert.That(persistNodes, Has.Count.EqualTo(2),
@@ -76,7 +76,7 @@ namespace AIPlanningTests {
             var next = layer.ExpandLayer();
 
             Assert.That(next.Level, Is.EqualTo(layer.Level + 1));
-            var literals = next.BeliefState.GetLiteralNodes.Select(n => n.Literal.ToString()).ToList();
+            var literals = next.BeliefState.Nodes.Select(n => n.Literal.ToString()).ToList();
             Assert.That(literals, Does.Contain(L("G(Obj)").ToString()), "Act's effect must appear");
             Assert.That(literals, Does.Contain(L("P(Obj)").ToString()), "the persisted literal must appear");
         }

@@ -10,8 +10,6 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpBeliefState(IEnumerable<GpNode> nodes) : base(nodes) {
         }
 
-        public List<GpLiteralNode> GetLiteralNodes => Nodes;
-
         public List<GpNode>? GetSubSetOfNodesMatching(List<ISentence> literals) {
             var subset = new List<GpNode>();
 

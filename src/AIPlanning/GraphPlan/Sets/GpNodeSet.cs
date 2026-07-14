@@ -3,31 +3,29 @@ using System.Linq;
 
 namespace AIPlanning.Planning.GraphPlan {
     public abstract class GpNodeSet<TNode> where TNode : GpNode {
-        protected readonly List<TNode> Nodes;
+        private readonly List<TNode> _nodes;
 
         protected GpNodeSet() {
-            Nodes = new List<TNode>();
+            _nodes = new List<TNode>();
         }
 
         protected GpNodeSet(IEnumerable<GpNode> nodes) {
-            Nodes = nodes.Cast<TNode>().ToList();
+            _nodes = nodes.Cast<TNode>().ToList();
         }
 
-        public IReadOnlyList<GpNode> GetNodes => Nodes;
+        public IReadOnlyList<TNode> Nodes => _nodes;
 
         // Returns the canonical node stored in the set; callers MUST connect edges to the
         // returned instance, not to their input.
         public TNode Add(TNode node) {
-            var contained = Nodes.FirstOrDefault(node.Equals);
+            var contained = _nodes.FirstOrDefault(node.Equals);
             if (contained != null) {
                 return contained;
             }
 
-            Nodes.Add(node);
+            _nodes.Add(node);
             return node;
         }
-
-        public void TryAdd(TNode node) => Add(node);
 
         public override int GetHashCode() {
             var hash = Nodes.Count;

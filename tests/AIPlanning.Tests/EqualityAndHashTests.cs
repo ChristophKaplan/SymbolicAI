@@ -84,12 +84,12 @@ namespace AIPlanningTests {
             var lit2 = L("Subject(Subject1)");
 
             var stateAB = new GpBeliefState();
-            stateAB.TryAdd(new GpLiteralNode(lit1));
-            stateAB.TryAdd(new GpLiteralNode(lit2));
+            stateAB.Add(new GpLiteralNode(lit1));
+            stateAB.Add(new GpLiteralNode(lit2));
 
             var stateBA = new GpBeliefState();
-            stateBA.TryAdd(new GpLiteralNode(lit2));
-            stateBA.TryAdd(new GpLiteralNode(lit1));
+            stateBA.Add(new GpLiteralNode(lit2));
+            stateBA.Add(new GpLiteralNode(lit1));
 
             Assert.That(stateAB, Is.EqualTo(stateBA),
                 "belief states with the same literals in different insertion order must be Equal");
@@ -109,7 +109,7 @@ namespace AIPlanningTests {
             Assert.That(canonical1, Is.SameAs(first), "first add stores the new instance");
             Assert.That(canonical2, Is.SameAs(first),
                 "second add of an Equal literal must return the original instance, not the new one");
-            Assert.That(state.GetLiteralNodes, Has.Count.EqualTo(1));
+            Assert.That(state.Nodes, Has.Count.EqualTo(1));
         }
 
         [Test]
@@ -118,12 +118,12 @@ namespace AIPlanningTests {
             var actionB = MakeAction("B");
 
             var setAB = new GpActionSet();
-            setAB.TryAdd(new GpActionNode(actionA));
-            setAB.TryAdd(new GpActionNode(actionB));
+            setAB.Add(new GpActionNode(actionA));
+            setAB.Add(new GpActionNode(actionB));
 
             var setBA = new GpActionSet();
-            setBA.TryAdd(new GpActionNode(actionB));
-            setBA.TryAdd(new GpActionNode(actionA));
+            setBA.Add(new GpActionNode(actionB));
+            setBA.Add(new GpActionNode(actionA));
 
             Assert.That(setAB, Is.EqualTo(setBA));
             Assert.That(setAB.GetHashCode(), Is.EqualTo(setBA.GetHashCode()));
@@ -132,9 +132,9 @@ namespace AIPlanningTests {
         [Test]
         public void GpActionSet_DistinctActions_AreNotEqual() {
             var setA = new GpActionSet();
-            setA.TryAdd(new GpActionNode(MakeAction("A")));
+            setA.Add(new GpActionNode(MakeAction("A")));
             var setB = new GpActionSet();
-            setB.TryAdd(new GpActionNode(MakeAction("B")));
+            setB.Add(new GpActionNode(MakeAction("B")));
 
             Assert.That(setA, Is.Not.EqualTo(setB));
         }

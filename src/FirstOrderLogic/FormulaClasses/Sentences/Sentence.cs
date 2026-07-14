@@ -95,9 +95,10 @@ namespace FirstOrderLogic {
                 complexSentence.Connective == Connective.LogicSymbol.BICONDITIONAL) {
                 return false;
             }
-        
-            var eval = complexSentence.Connective == Connective.LogicSymbol.DISJUNCTION ? complexSentence.Children.All(child => child.IsDisjunctionOfLiterals()) : Children.All(child => child.IsCNF());
-            return eval;
+
+            return complexSentence.IsDisjunction
+                ? IsDisjunctionOfLiterals()
+                : Children.All(child => child.IsCNF());
         }
 
         public bool IsDisjunctionOfLiterals() {

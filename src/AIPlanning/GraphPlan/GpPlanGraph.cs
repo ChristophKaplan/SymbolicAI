@@ -15,10 +15,10 @@ namespace AIPlanning.Planning.GraphPlan {
 
             var initialLayer = new GpLayer(0);
             foreach (var sentence in problem.InitialState) {
-                initialLayer.TryAdd(new GpLiteralNode(sentence));
+                initialLayer.Add(new GpLiteralNode(sentence));
             }
 
-            initialLayer.BeliefState.GetNodes.CheckMutexRelations();
+            initialLayer.BeliefState.Nodes.CheckMutexRelations();
             _layers.Add(0, initialLayer);
         }
 
@@ -50,7 +50,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 return true;
             }
 
-            if (curBeliefState.GetNodes.Count == 0) {
+            if (curBeliefState.Nodes.Count == 0) {
                 solutions.Add(outcome);
                 return true;
             }
@@ -73,7 +73,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
                 // Empty joint preconditions mean the branch needs nothing from the levels below —
                 // it is complete, not a dead end.
-                if (nextLevelIndex == 0 || preConditionalState.GetNodes.Count == 0) {
+                if (nextLevelIndex == 0 || preConditionalState.Nodes.Count == 0) {
                     solutions.Add(outcomeBranch);
                     anyBranchSucceeded = true;
                     if (stopAtFirst) {
@@ -118,7 +118,7 @@ namespace AIPlanning.Planning.GraphPlan {
             var usableActions = curLayer.GetUsableActions(_operatorGraph);
 
             curLayer.ExpandActions(usableActions, _persistCache);
-            curLayer.ActionSet.GetNodes.CheckMutexRelations();
+            curLayer.ActionSet.Nodes.CheckMutexRelations();
             var nextLayer = curLayer.ExpandLayer();
             _layers.Add(nextLayer.Level, nextLayer);
         }
