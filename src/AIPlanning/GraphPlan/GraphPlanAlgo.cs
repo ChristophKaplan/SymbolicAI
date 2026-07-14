@@ -1,6 +1,5 @@
 namespace AIPlanning.Planning.GraphPlan {
     public class GraphPlanAlgo {
-        // Returns an empty GpSolution (IsEmpty == true) when the problem has no plan.
         public GpSolution Run(GpProblem problem) {
             if (problem.Goals.Count == 0) {
                 return GpSolution.EmptyPlan();

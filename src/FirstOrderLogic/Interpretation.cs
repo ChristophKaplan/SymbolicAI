@@ -20,10 +20,6 @@ namespace FirstOrderLogic {
             _propositionalAssignment = new Dictionary<IProposition, bool>(propositionalAssignment);
         }
     
-        public void Assign(IProposition proposition, bool value) {
-            _propositionalAssignment[proposition] = value;
-        }
-    
         public void Switch(IProposition proposition) {
             _propositionalAssignment[proposition] = !_propositionalAssignment[proposition];
         }
@@ -75,16 +71,6 @@ namespace FirstOrderLogic {
     
         public bool Evaluate(Clause clause) {
             return clause.Literals.Any(Evaluate);        
-        }
-    
-        public override int GetHashCode() {
-            var hash = 17;
-            foreach (var kv in _propositionalAssignment) {
-                var (key, value) = kv;
-                hash = HashCode.Combine(hash ,key, value);
-            }
-
-            return hash;
         }
     
         public override string ToString()

@@ -1,81 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LogHelper;
-using LRParser.Language;
 
 namespace FirstOrderLogic {
     public static class FirstOrderLogicExtensions
     {
-        public static Connective.LogicSymbol ToLogicalConstant(this LexValue lexValue) {
-            switch (lexValue.Value) {
-                case "OR":
-                case "||":
-                case "\u2228":
-                    return Connective.LogicSymbol.DISJUNCTION;
-                case "AND":
-                case "&&":
-                case "\u2227":
-                    return Connective.LogicSymbol.CONJUNCTION;
-                case "NOT":
-                case "!":
-                case "-":
-                case "~":
-                case "\u00ac":
-                    return Connective.LogicSymbol.NEGATION;
-                case "IFF":
-                case "<=>":
-                case "\u21d4":
-                    return Connective.LogicSymbol.BICONDITIONAL;
-                case "IMPLIES":
-                case "=>":
-                case "\u21d2":
-                    return Connective.LogicSymbol.IMPLICATION;
-                case "NAF":
-                    return Connective.LogicSymbol.NAF;
-                case "TRUE":
-                case "\u22a4":
-                    return Connective.LogicSymbol.TRUE;
-                case "FALSE":
-                case "\u22a5":
-                    return Connective.LogicSymbol.FALSE;
-                case "FORALL":
-                case "\u2200":
-                    return Connective.LogicSymbol.UNIVERSAL;
-                case "EXISTS":
-                case "\u2203":
-                    return Connective.LogicSymbol.EXISTENTIAL;
-                
-                default:
-                    throw new Exception($"Unknown Logic Symbol: {lexValue}");
-            }
-        }
-    
-        public static ISentence ConnectSentences(this FirstOrderLogic logic, List<ISentence> sentences, Connective.LogicSymbol connective = Connective.LogicSymbol.CONJUNCTION) {
-            switch (sentences.Count) {
-                case 0:
-                    throw new Exception("No sentences to connect.");
-                case 1:
-                    return sentences[0];
-            }
-
-            var conjunct = new ComplexSentence(sentences[0], connective, sentences[1]);
-            for (var i = 2; i < sentences.Count; i++) {
-                conjunct = new ComplexSentence(conjunct,connective, sentences[i]);
-            }
-
-            return conjunct;
+        public static ISentence ConnectSentences(this List<ISentence> sentences, Connective.LogicSymbol connective = Connective.LogicSymbol.CONJUNCTION) {
+            return sentences.Aggregate((a, b) => (ISentence)new ComplexSentence(a, connective, b));
         }
     
         private delegate void TransformationDelegate(ref ISentence sentence);
 
-        public static ISentence ToPrenexForm(this FirstOrderLogic logic, ISentence sentence, out List<ISentence> steps) {
+        public static ISentence ToPrenexForm(this ISentence sentence, out List<ISentence> steps) {
             steps = new List<ISentence>();
             return ToPrenexFormCore(sentence, steps);
         }
 
         // Trace-free overload: skips the per-step clones that dominate normalisation cost.
-        public static ISentence ToPrenexForm(this FirstOrderLogic logic, ISentence sentence) =>
+        public static ISentence ToPrenexForm(this ISentence sentence) =>
             ToPrenexFormCore(sentence, null);
 
         private static ISentence ToPrenexFormCore(ISentence sentence, List<ISentence>? steps) {
@@ -111,12 +53,12 @@ namespace FirstOrderLogic {
             }
         }
 
-        public static ISentence ToConjunctiveNormalForm(this FirstOrderLogic logic, ISentence sentence, out List<ISentence> steps) {
+        public static ISentence ToConjunctiveNormalForm(this ISentence sentence, out List<ISentence> steps) {
             steps = new List<ISentence>();
             return ToConjunctiveNormalFormCore(sentence, steps);
         }
 
-        public static ISentence ToConjunctiveNormalForm(this FirstOrderLogic logic, ISentence sentence) =>
+        public static ISentence ToConjunctiveNormalForm(this ISentence sentence) =>
             ToConjunctiveNormalFormCore(sentence, null);
 
         private static ISentence ToConjunctiveNormalFormCore(ISentence sentence, List<ISentence>? steps) {
@@ -144,7 +86,7 @@ namespace FirstOrderLogic {
         // Test seam for assertions that pin exact Skolem names.
         public static void ResetSkolemCounter() => System.Threading.Interlocked.Exchange(ref _skolemCounter, 0);
 
-        public static ISentence SkolemForm(this FirstOrderLogic logic, ISentence sentence) {
+        public static ISentence SkolemForm(this ISentence sentence) {
             var clone = sentence;
 
             // Each existential becomes a Skolem term over the universals enclosing it ('$' is
@@ -172,7 +114,8 @@ namespace FirstOrderLogic {
             }
 
             var substitution = new Dictionary<Variable, Function>();
-            var universalsInScope = CollectVariables(current)
+            var universalsInScope = current.GetLiterals()
+                .SelectMany(l => l.VariablesOf())
                 .Where(v => !lastBinderOf.ContainsKey(v.TermSymbol))
                 .Distinct()
                 .ToList();
@@ -207,14 +150,6 @@ namespace FirstOrderLogic {
             return clone;
         }
 
-        private static IEnumerable<Variable> CollectVariables(ISentence sentence) {
-            if (sentence is IPredicate predicate) {
-                return predicate.GetVariables();
-            }
-
-            return sentence.Children.SelectMany(CollectVariables);
-        }
-
         public static List<Clause> GetClauseSet(this ISentence sentence, List<Clause>? clauseSet = null) {
             if (sentence.ContainsNaf()) {
                 throw new ArgumentException(
@@ -237,22 +172,6 @@ namespace FirstOrderLogic {
             }
         
             return clauseSet;
-        }
-
-        public static bool TryGetBinary(
-            this ISentence sentence, string symbol, string firstTerm, out string? secondTerm) {
-            secondTerm = null;
-            if (sentence is not IPredicate wrapper) return false;
-
-            var pred = wrapper.GetPredicate();
-            if (pred.Symbol != symbol) return false;
-
-            var terms = pred.Terms;
-            if (terms == null || terms.Length < 2) return false;
-            if (terms[0].ToString() != firstTerm) return false;
-
-            secondTerm = terms[1].ToString();
-            return !string.IsNullOrEmpty(secondTerm);
         }
 
         public static bool ContainsNaf(this ISentence sentence) =>
@@ -288,10 +207,7 @@ namespace FirstOrderLogic {
         private static ISentence RenamedApartFrom(ISentence literal, ISentence other) {
             var taken = other.VariablesOf().Select(v => v.TermSymbol).ToHashSet();
             var fresh = 0;
-            foreach (var variable in literal.VariablesOf().Where(v => taken.Contains(v.TermSymbol)).Distinct().ToList()) {
-                literal = literal.Substitute(variable, new Variable($"cf${++fresh}"));
-            }
-            return literal;
+            return literal.Renamed(v => taken.Contains(v.TermSymbol) ? new Variable($"cf${++fresh}") : null);
         }
     }
 }

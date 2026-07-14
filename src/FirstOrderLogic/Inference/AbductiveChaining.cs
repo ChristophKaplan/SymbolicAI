@@ -21,9 +21,7 @@ namespace FirstOrderLogic
 
             var sentences = kb.ToList();
             var candidates = BackwardChaining.Prove(
-                    Rule.FromAll(sentences), new List<ISentence> { observation },
-                    Substitution.Empty, new List<ISentence>(), new List<ISentence>(),
-                    0, new BackwardChaining.Counter(),
+                    Rule.FromAll(sentences), observation,
                     new HashSet<string>(abduciblePredicates), _maxDepth)
                 .ToList();
 

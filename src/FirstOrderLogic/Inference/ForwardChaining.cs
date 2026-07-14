@@ -143,13 +143,7 @@ namespace FirstOrderLogic
         private static ISentence Canonical(ISentence literal)
         {
             var next = 0;
-            var result = literal;
-            foreach (var variable in literal.VariablesOf().Distinct().ToList())
-            {
-                result = result.Substitute(variable, new Variable("$" + next++));
-            }
-
-            return result;
+            return literal.Renamed(_ => new Variable("$" + next++));
         }
 
         // Standardize apart per use, like BackwardChaining does per clause: a non-ground fact is
@@ -158,13 +152,7 @@ namespace FirstOrderLogic
         // (unsound heads, lost entailments, cyclic substitutions).
         private static ISentence RenamedApart(ISentence fact, int id)
         {
-            var result = fact;
-            foreach (var variable in fact.VariablesOf().Distinct().ToList())
-            {
-                result = result.Substitute(variable, new Variable(variable.TermSymbol + "#" + id));
-            }
-
-            return result;
+            return fact.Renamed(v => new Variable(v.TermSymbol + "#" + id));
         }
 
         public static bool Entails(IEnumerable<ISentence> kb, ISentence query) =>

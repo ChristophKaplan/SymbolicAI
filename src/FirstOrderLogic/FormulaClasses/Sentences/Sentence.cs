@@ -7,8 +7,6 @@ namespace FirstOrderLogic {
     public interface ISentence : ILanguageObject {
         IReadOnlyList<ISentence> Children { get; }
         bool IsBinary { get; }
-        bool IsUnary { get; }
-        bool IsNullary { get; }
         bool IsLiteral { get; }
         bool IsNegation { get; }
         bool IsNaf { get; }
@@ -26,15 +24,12 @@ namespace FirstOrderLogic {
         List<ISentence> GetLiterals();
         IPredicate GetPredicate();
         IProposition GetProposition();
-        bool IsImplicationAndEqualPremise(ISentence premise);
     }
 
     public abstract class Sentence : ISentence {
         public IReadOnlyList<ISentence> Children { get; protected set; } = Array.Empty<ISentence>();
 
         public bool IsBinary => Children.Count == 2;
-        public bool IsUnary => Children.Count == 1;
-        public bool IsNullary => Children.Count == 0;
         public bool IsLiteral => this is IAtomicSentence || 
                                  (this is IComplexSentence { IsNegation: true } complex && complex.Children[0] is IAtomicSentence);
         public bool IsNegation => this is IComplexSentence complex && complex.Connective == Connective.LogicSymbol.NEGATION;
@@ -128,35 +123,19 @@ namespace FirstOrderLogic {
             return literals;
         }
 
-        public IPredicate GetPredicate()
+        public IPredicate GetPredicate() => GetAtom<IPredicate>();
+
+        public IProposition GetProposition() => GetAtom<IProposition>();
+
+        private T GetAtom<T>()
         {
             if(!IsLiteral) throw new Exception("Sentence is not a literal");
             return this switch
             {
-                IPredicate predicate => predicate,
-                IComplexSentence => (IPredicate)Children[0],
-                _ => throw new Exception("Literal has no predicate")
+                T atom => atom,
+                IComplexSentence => (T)Children[0],
+                _ => throw new Exception($"Literal has no {typeof(T).Name}")
             };
-        }
-    
-        public IProposition GetProposition()
-        {
-            if(!IsLiteral) throw new Exception("Sentence is not a literal");
-            return this switch
-            {
-                IProposition proposition => proposition,
-                IComplexSentence => (IProposition)Children[0],
-                _ => throw new Exception("Literal has no proposition")
-            };
-        }
-
-        public bool IsImplicationAndEqualPremise(ISentence premise) {
-            if (!IsImplication) {
-                return false;
-            }
-
-            var complexSentence = (IComplexSentence)this;
-            return complexSentence.Children[0].Equals(premise);
         }
 
         public bool IsPropositional() {

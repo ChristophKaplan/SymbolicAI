@@ -10,7 +10,6 @@ namespace FirstOrderLogic
         public static List<ISentence> Detach(IEnumerable<ISentence> rules, Interpretation model)
         {
             var result = new List<ISentence>();
-            if (model == null) return result;
             foreach (var s in rules)
             {
                 if (s is not IComplexSentence rule || !rule.IsImplication) continue;

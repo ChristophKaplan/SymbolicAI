@@ -112,8 +112,8 @@ namespace FirstOrderLogic
                 throw new Exception("Both sentences must be literals");
             }
 
-            var atom1 = GetAtom(lit1);
-            var atom2 = GetAtom(lit2);
+            var atom1 = (IAtomicSentence)lit1.AtomOf();
+            var atom2 = (IAtomicSentence)lit2.AtomOf();
 
             if (atom1 is IPredicate pred1 && atom2 is IPredicate pred2)
             {
@@ -140,13 +140,6 @@ namespace FirstOrderLogic
 
             return false;
         }
-
-        private static IAtomicSentence GetAtom(ISentence literal) => literal switch
-        {
-            IAtomicSentence atom => atom,
-            IComplexSentence complex => (IAtomicSentence)complex.Children[0],
-            _ => throw new Exception($"{literal} is not a literal")
-        };
 
         private bool UnifyTerm(Term term1, Term term2)
         {

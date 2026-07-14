@@ -85,8 +85,8 @@ namespace FolTests {
         // call, so independently skolemized sentences reuse the same Skolem name (sk1).
         [Test]
         public void Issue08_SkolemNames_UniqueAcrossCalls() {
-            var s1 = (Predicate)Logic.SkolemForm(S("EXISTS x (P(x))"));
-            var s2 = (Predicate)Logic.SkolemForm(S("EXISTS y (Q(y))"));
+            var s1 = (Predicate)S("EXISTS x (P(x))").SkolemForm();
+            var s2 = (Predicate)S("EXISTS y (Q(y))").SkolemForm();
             Assert.That(s1.Terms[0].TermSymbol, Is.Not.EqualTo(s2.Terms[0].TermSymbol),
                 $"both skolemizations produced '{s1.Terms[0].TermSymbol}'");
         }

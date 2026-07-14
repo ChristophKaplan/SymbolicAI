@@ -86,7 +86,7 @@ namespace FolTests {
         [Test]
         public void Finding06_SkolemForm_RepeatedExistentialVariable_DoesNotThrow() {
             var sentence = S("EXISTS x (FORALL y (EXISTS x (P(x))))");
-            Assert.That(() => Logic.SkolemForm(sentence), Throws.Nothing);
+            Assert.That(() => sentence.SkolemForm(), Throws.Nothing);
         }
 
         // Finding 7 — Skolem witnesses are named sk1, sk2, ... which are parseable identifiers,
@@ -226,7 +226,7 @@ namespace FolTests {
             var sentence = S("FORALL x (P(x) AND (EXISTS y (Q(y))))");
             ISentence result;
             try {
-                result = Logic.SkolemForm(sentence);
+                result = sentence.SkolemForm();
             } catch (Exception) {
                 return; // rejecting non-PNF input outright is also acceptable
             }

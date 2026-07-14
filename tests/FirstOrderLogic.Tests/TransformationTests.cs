@@ -103,7 +103,7 @@ namespace FolTests {
 
         [Test]
         public void PullQuantifier_OutOfConjunction() {
-            var pnf = Logic.ToPrenexForm(S("(FORALL x P(x)) AND Q(a)"), out _);
+            var pnf = S("(FORALL x P(x)) AND Q(a)").ToPrenexForm(out _);
             Assert.That(pnf, Is.EqualTo(S("FORALL x (P(x) AND Q(a))")));
         }
 
@@ -133,7 +133,7 @@ namespace FolTests {
 
         [Test]
         public void Cnf_NestedMixedFormula() {
-            var cnf = Logic.ToConjunctiveNormalForm(S("(P => Q) AND (R OR (S AND T))"), out _);
+            var cnf = S("(P => Q) AND (R OR (S AND T))").ToConjunctiveNormalForm(out _);
             Assert.That(cnf.IsCNF(), Is.True);
         }
     }

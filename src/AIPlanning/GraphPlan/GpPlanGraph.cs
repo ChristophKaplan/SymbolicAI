@@ -45,8 +45,6 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolution solutions, bool stopAtFirst) {
-            // Both base cases are reachable only from top-level calls — the recursion below
-            // handles nextLevelIndex == 0 and empty precondition states before recursing.
             if (levelIndex == 0) {
                 solutions.Add(outcome);
                 return true;

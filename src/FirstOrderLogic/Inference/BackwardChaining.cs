@@ -19,10 +19,15 @@ namespace FirstOrderLogic
         public bool Entails(IEnumerable<ISentence> kb, ISentence query)
         {
             if (!query.IsLiteral) return false;
-            return Prove(Rule.FromAll(kb), new List<ISentence> { query },
-                    Substitution.Empty, new List<ISentence>(), new List<ISentence>(),
-                    0, new Counter(), NoAbducibles, _maxDepth)
-                .Any();
+            return Prove(Rule.FromAll(kb), query, NoAbducibles, _maxDepth).Any();
+        }
+
+        // Entry point supplying the boilerplate of a fresh top-level proof.
+        internal static IEnumerable<List<ISentence>> Prove(
+            List<Rule> clauses, ISentence goal, HashSet<string> abducibles, int maxDepth)
+        {
+            return Prove(clauses, new List<ISentence> { goal }, Substitution.Empty,
+                new List<ISentence>(), new List<ISentence>(), 0, new Counter(), abducibles, maxDepth);
         }
 
         // Every proof of `goals`, yielded as the literals assumed along the way; a ground goal over

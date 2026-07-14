@@ -27,10 +27,6 @@ namespace AIPlanning.Planning.GraphPlan {
             return obj is GpLiteralNode stateNode && Literal.Equals(stateNode.Literal);
         }
 
-        public bool EqualLiteral(GpLiteralNode gpLiteralNode) {
-            return Literal.Equals(gpLiteralNode.Literal);
-        }
-
         // Inconsistent support (Blum & Furst): every pair of supporting actions is mutex.
         // A lookup on recorded relations suffices because CheckMutexRelations runs on the action
         // layer BEFORE this literal layer is checked (see ExpandGraph / ExpandBeliefState).

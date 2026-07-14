@@ -7,7 +7,7 @@ namespace FolTests {
 
         [Test]
         public void WalkSat_FindsModelForSatisfiableFormula() {
-            var pnf = Logic.ToPrenexForm(S("(P => Q) AND R"), out _);
+            var pnf = S("(P => Q) AND R").ToPrenexForm(out _);
             var clauses = pnf.GetClauseSet();
             var model = Sat.WalkSAT(clauses, 0.5f, 200);
             Assert.That(model, Is.Not.Null);
@@ -16,7 +16,7 @@ namespace FolTests {
 
         [Test]
         public void WalkSat_SatisfiesLargerFormula() {
-            var pnf = Logic.ToPrenexForm(S("(A OR B) AND ((NOT A) OR C) AND (B OR (NOT C))"), out _);
+            var pnf = S("(A OR B) AND ((NOT A) OR C) AND (B OR (NOT C))").ToPrenexForm(out _);
             var clauses = pnf.GetClauseSet();
             var model = Sat.WalkSAT(clauses, 0.5f, 500);
             Assert.That(model, Is.Not.Null);

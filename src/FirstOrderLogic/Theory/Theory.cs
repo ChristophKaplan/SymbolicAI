@@ -8,7 +8,6 @@ namespace FirstOrderLogic
     [Serializable]
     public class Theory : ITheory
     {
-        private static readonly FirstOrderLogic _logic = new();
         private static readonly KernelSets _kernels = new();
 
         private readonly List<ISentence> _state;
@@ -19,11 +18,7 @@ namespace FirstOrderLogic
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public Theory(List<ISentence> state) =>
-            _state = (state ?? Enumerable.Empty<ISentence>()).Where(s => s != null).ToList();
-        
-        public bool Contains(ISentence sentence) => _state.Contains(sentence);
-        public void Add(ISentence sentence) { if (sentence != null) _state.Add(sentence); }
-        public int RemoveAll(Predicate<ISentence> match) => _state.RemoveAll(match);
+            _state = state.ToList();
 
         public List<ISentence> Inconsistencies() => Inconsistencies(null);
         
@@ -108,7 +103,7 @@ namespace FirstOrderLogic
         {
             if (closure == null) return other.Entails(s);
             if (s.IsLiteral) return ForwardChaining.Holds(closure, s);
-            return other.Any(x => x != null && x.Equals(s)) || HoldsRuleForm(other, s, negatedHead: false);
+            return other.Any(x => x.Equals(s)) || HoldsRuleForm(other, s, negatedHead: false);
         }
         
         private static bool DeniedByOther(ITheory other, ISentence s, IReadOnlyList<ISentence>? closure)
@@ -121,7 +116,7 @@ namespace FirstOrderLogic
         {
             var rule = Rule.From(s);
             if (rule == null) return false;
-            return other.Where(x => x != null && !x.IsLiteral)
+            return other.Where(x => !x.IsLiteral)
                 .Select(Rule.From)
                 .Any(candidate => candidate != null && RulesMatch(rule, candidate, negatedHead));
         }
@@ -189,7 +184,7 @@ namespace FirstOrderLogic
             }
         }
 
-        private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => _logic.ConnectSentences(sentences.ToList());
+        private static ISentence Conjoin(IReadOnlyList<ISentence> sentences) => sentences.ToList().ConnectSentences();
 
         public override bool Equals(object? obj)
         {

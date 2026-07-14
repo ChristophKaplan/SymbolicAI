@@ -147,37 +147,21 @@ public static class TransformationFOL {
         return sentence;
     }
 
-    private static ISentence Absorption(ISentence sentence) {
-        if (!sentence.IsBinary) {
-            return sentence;
-        }
-
-        var complex = (IComplexSentence)sentence;
-        var lhs = sentence.Children[0];
-        var rhs = sentence.Children[1];
-
-        if (rhs is IComplexSentence rhsComplex && IsDualOperator(complex.Connective, rhsComplex.Connective) && rhsComplex.Children.Contains(lhs)) {
-            return lhs;
-        }
-
-        if (lhs is IComplexSentence lhsComplex && IsDualOperator(complex.Connective, lhsComplex.Connective) && lhsComplex.Children.Contains(rhs)) {
-            return rhs;
-        }
-
-        return sentence;
-
-        bool IsDualOperator(Connective.LogicSymbol o1, Connective.LogicSymbol o2) {
-            switch (o1) {
-                case Connective.LogicSymbol.CONJUNCTION when o2 == Connective.LogicSymbol.DISJUNCTION:
-                case Connective.LogicSymbol.DISJUNCTION when o2 == Connective.LogicSymbol.CONJUNCTION:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-    }
+    // Absorption keeps the atom side (a ∧ (a ∨ b) ⇒ a); the same-operator case keeps the
+    // compound side ((a ∧ b) ∧ a ⇒ a ∧ b).
+    private static ISentence Absorption(ISentence sentence) =>
+        CollapseNested(sentence, dual: true, keepCompound: false);
 
     private static ISentence AssociationAndIdem(ISentence sentence) {
+        if (sentence is IComplexSentence complex && sentence.IsBinary &&
+            (complex.IsConjunction || complex.IsDisjunction) && sentence.Children[0].Equals(sentence.Children[1])) {
+            return sentence.Children[0];
+        }
+
+        return CollapseNested(sentence, dual: false, keepCompound: true);
+    }
+
+    private static ISentence CollapseNested(ISentence sentence, bool dual, bool keepCompound) {
         if (!sentence.IsBinary) {
             return sentence;
         }
@@ -186,25 +170,22 @@ public static class TransformationFOL {
         var lhs = sentence.Children[0];
         var rhs = sentence.Children[1];
 
-        if ((complex.IsConjunction || complex.IsDisjunction) && lhs.Equals(rhs)) {
-            return lhs;
+        if (rhs is IComplexSentence rhsComplex && Related(complex.Connective, rhsComplex.Connective) && rhsComplex.Children.Contains(lhs)) {
+            return keepCompound ? rhs : lhs;
         }
 
-        if (rhs is IComplexSentence rhsComplex && IsEquivOperator(complex.Connective, rhsComplex.Connective) && rhsComplex.Children.Contains(lhs)) {
-            return rhs;
-        }
-
-        if (lhs is IComplexSentence lhsComplex && IsEquivOperator(complex.Connective, lhsComplex.Connective) && lhsComplex.Children.Contains(rhs)) {
-            return lhs;
+        if (lhs is IComplexSentence lhsComplex && Related(complex.Connective, lhsComplex.Connective) && lhsComplex.Children.Contains(rhs)) {
+            return keepCompound ? lhs : rhs;
         }
 
         return sentence;
 
-        bool IsEquivOperator(Connective.LogicSymbol o1, Connective.LogicSymbol o2) {
+        bool Related(Connective.LogicSymbol o1, Connective.LogicSymbol o2) {
             switch (o1) {
-                case Connective.LogicSymbol.CONJUNCTION when o2 == Connective.LogicSymbol.CONJUNCTION:
-                case Connective.LogicSymbol.DISJUNCTION when o2 == Connective.LogicSymbol.DISJUNCTION:
-                    return true;
+                case Connective.LogicSymbol.CONJUNCTION:
+                    return o2 == (dual ? Connective.LogicSymbol.DISJUNCTION : Connective.LogicSymbol.CONJUNCTION);
+                case Connective.LogicSymbol.DISJUNCTION:
+                    return o2 == (dual ? Connective.LogicSymbol.CONJUNCTION : Connective.LogicSymbol.DISJUNCTION);
                 default:
                     return false;
             }

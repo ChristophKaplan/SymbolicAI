@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -33,46 +33,37 @@ namespace FirstOrderLogic {
 
             Literals.Add(literal);
         }
-    
+
+        // Order-insensitive content equality — a clause is a set of literals.
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (obj is not Clause other || Literals.Count != other.Literals.Count)
+            {
+                return false;
+            }
+
+            return Literals.All(other.Literals.Contains);
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = 0;
+            foreach (var literal in Literals)
+            {
+                hash ^= literal.GetHashCode();
+            }
+
+            return hash;
+        }
+
         public override string ToString()
         {
             return Literals.Aggregate("{", (current, lit) => current + lit + ", ")+ "}";
-        }
-    }
-
-    public class Resolvent : Clause {
-        private readonly Clause _clauseA;
-        private readonly Clause _clauseB;
-        public bool IsEmptyClause() => Literals.Count == 0;
-
-        public Resolvent(Clause clause1, Clause clause2, params ISentence[] literals) : base(literals) {
-            _clauseA = clause1;
-            _clauseB = clause2;
-        }
-    
-        public string ResolventAsString() {
-            var s = "";
-            s += $"C_A: {_clauseA}\n";
-            s += $"C_B: {_clauseB}\n";
-            s += "-----------------------\n";
-            s += $"Res: {ToString()}\n";
-            return s;
-        }
-    
-        public string TraceResolution() {
-            var output = "";
-
-            if (_clauseA is Resolvent parent1) {
-                output += parent1.TraceResolution() + "\n";
-            }
-
-            if (_clauseB is Resolvent parent2) {
-                output += parent2.TraceResolution() + "\n";
-            }
-
-            output += ResolventAsString() + "\n";
-
-            return output;
         }
     }
 }

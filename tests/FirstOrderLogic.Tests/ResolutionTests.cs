@@ -7,8 +7,8 @@ namespace FolTests {
 
         [Test]
         public void Resolve_SocratesIsMortal() {
-            var pnf = Logic.ToPrenexForm(S("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))"), out _);
-            var skolem = Logic.SkolemForm(pnf);
+            var pnf = S("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))").ToPrenexForm(out _);
+            var skolem = pnf.SkolemForm();
             Assert.That(Resolve(skolem, S("Mortal(Sokrates)")), Is.True);
         }
 
@@ -68,13 +68,13 @@ namespace FolTests {
 
         [Test]
         public void Resolve_FirstOrderModusPonens() {
-            var kb = Logic.ToConjunctiveNormalForm(S("Human(Sokrates) AND (Human(x) => Mortal(x))"), out _);
+            var kb = S("Human(Sokrates) AND (Human(x) => Mortal(x))").ToConjunctiveNormalForm(out _);
             Assert.That(Resolve(kb, S("Mortal(Sokrates)")), Is.True);
         }
 
         [Test]
         public void Resolve_DisjunctiveSyllogism() {
-            var kb = Logic.ToConjunctiveNormalForm(S("(A OR B) AND (NOT A)"), out _);
+            var kb = S("(A OR B) AND (NOT A)").ToConjunctiveNormalForm(out _);
             Assert.That(Resolve(kb, S("B")), Is.True);
         }
     }

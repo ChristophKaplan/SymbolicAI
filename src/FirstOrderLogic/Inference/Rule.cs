@@ -56,7 +56,7 @@ namespace FirstOrderLogic
             if (!CollectConjuncts(s.Children[0], premises, nafPremises)) return null;
 
             var bound = new HashSet<Variable>(premises.SelectMany(p => p.VariablesOf()));
-            var unbound = head.VariablesOf().Where(v => !bound.Contains(v)).Distinct().ToList();
+            var unbound = head.VariablesOf().Where(v => !bound.Contains(v)).ToList();
             if (unbound.Count > 0)
                 throw new ArgumentException(
                     $"Unsafe rule '{new Rule(head, premises, nafPremises)}': head variable(s) " +
@@ -77,21 +77,8 @@ namespace FirstOrderLogic
         // each other's bindings.
         public Rule Renamed(int id)
         {
-            var rename = new Dictionary<Variable, Term>();
-            foreach (var v in Variables()) rename[v] = new Variable(v.TermSymbol + "#" + id);
-            var substitution = new Substitution(rename);
-            var head = substitution.Apply(Head);
-            var premises = Premises.Select(substitution.Apply).ToList();
-            var nafPremises = NafPremises.Select(substitution.Apply).ToList();
-            return new Rule(head, premises, nafPremises);
-        }
-
-        private IEnumerable<Variable> Variables()
-        {
-            var all = Head.VariablesOf().ToList();
-            foreach (var p in Premises) all.AddRange(p.VariablesOf());
-            foreach (var n in NafPremises) all.AddRange(n.VariablesOf());
-            return all.Distinct();
+            ISentence Fresh(ISentence literal) => literal.Renamed(v => new Variable(v.TermSymbol + "#" + id));
+            return new Rule(Fresh(Head), Premises.Select(Fresh).ToList(), NafPremises.Select(Fresh).ToList());
         }
 
         private static bool HasCompoundTerm(ISentence literal)

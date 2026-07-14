@@ -16,10 +16,5 @@ namespace FirstOrderLogic
             Disagreements = disagreements;
             Silences      = silences;
         }
-        
-        public float AgreementShare    => Verdicts == 0 ? 0f : (float)Agreements.Count    / Verdicts;
-        public float DisagreementShare => Verdicts == 0 ? 0f : (float)Disagreements.Count / Verdicts;
-
-        private int Verdicts => Agreements.Count + Disagreements.Count;
     }
 }

@@ -76,8 +76,6 @@ namespace FirstOrderLogic
 
         private void Collect(ISentence sentence, List<string> missing)
         {
-            if (sentence == null) return;
-
             if (sentence.IsLiteral)
             {
                 var atom = sentence.AtomOf();

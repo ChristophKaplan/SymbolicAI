@@ -38,10 +38,6 @@ namespace AIPlanning.Planning.GraphPlan {
         public bool IsCompetingNeeds(GpActionNode other) {
             foreach (var inNode in InEdges) {
                 foreach (var mutex in inNode.MutexRelation) {
-                    if (mutex.Type == MutexType.None) {
-                        continue;
-                    }
-
                     if (other.InEdges.Contains(mutex.ToNode)) {
                         return true;
                     }
@@ -68,9 +64,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
     
         public override string ToString() {
-            var showMutex = false;
-            var mutex = showMutex ? $"[m:{MutexRelation.Aggregate("", (s, m) => $"{s}{m},")}]" : string.Empty;
-            return $"{GpAction} {mutex}";
+            return $"{GpAction} ";
         }
     }
 }

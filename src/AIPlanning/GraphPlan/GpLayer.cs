@@ -17,15 +17,8 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpLayer(int level) : this(level, new GpBeliefState(), new GpActionSet()) {
         }
 
-        public void TryAdd(GpNode gpNode) {
-            switch (gpNode) {
-                case GpLiteralNode stateNode:
-                    BeliefState.TryAdd(stateNode);
-                    break;
-                case GpActionNode actionNode:
-                    ActionSet.TryAdd(actionNode);
-                    break;
-            }
+        public void TryAdd(GpLiteralNode literalNode) {
+            BeliefState.TryAdd(literalNode);
         }
 
         public List<GpAction> GetUsableActions(OperatorGraph operatorGraph) {

@@ -10,8 +10,6 @@ namespace FirstOrderLogic
 
         public Substitution(IReadOnlyDictionary<Variable, Term> map) => _map = map;
 
-        public int Count => _map.Count;
-
         // Resolves a term to its final binding, following variable chains (x -> y -> a). The
         // unifier's occurs-check rules out cycles, so the recursion terminates.
         public Term Walk(Term term)

@@ -18,27 +18,9 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        private void AddMutexRelation(MutexRel mutexRel) {
-            MutexRelation.Add(mutexRel);
-        }
-
         public void ConnectTo(GpNode connectToMe) {
             AddOutEdge(connectToMe);
             connectToMe.AddInEdge(this);
-        }
-
-        public void MergeRelations(GpNode mergeTo) {
-            foreach (var inNode in InEdges) {
-                mergeTo.AddInEdge(inNode);
-            }
-
-            foreach (var outNode in OutEdges) {
-                mergeTo.AddOutEdge(outNode);
-            }
-
-            foreach (var mutexNode in MutexRelation) {
-                mergeTo.AddMutexRelation(mutexNode);
-            }
         }
 
         // Mutex is recorded symmetrically (TryAddMutexRelations), so checking one side suffices.
@@ -82,8 +64,8 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public void TryAddMutexRelations(GpNode other, MutexType type) {
-            AddMutexRelation(new MutexRel(type, other));
-            other.AddMutexRelation(new MutexRel(type, this));
+            MutexRelation.Add(new MutexRel(type, other));
+            other.MutexRelation.Add(new MutexRel(type, this));
         }
     }
 }

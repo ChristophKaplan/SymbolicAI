@@ -7,8 +7,8 @@ namespace FirstOrderLogicExample {
             var logic = new FirstOrderLogic.FirstOrderLogic();
 
             var sentence = (ISentence)logic.TryParse("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))");
-            var prenexForm = logic.ToPrenexForm(sentence, out var steps);
-            var skolemForm = logic.SkolemForm(prenexForm);
+            var prenexForm = sentence.ToPrenexForm(out var steps);
+            var skolemForm = prenexForm.SkolemForm();
             var consequence = (ISentence)logic.TryParse("Mortal(Sokrates)");
 
             var result = Resolution.Resolve(skolemForm, consequence);

@@ -20,7 +20,7 @@ namespace FirstOrderLogic
         {
             var results = new List<List<ISentence>>();
             FindAllKernelsRec(new List<ISentence>(B), α, results,
-                explored: new HashSet<SentenceSet>(), emitted: new HashSet<SentenceSet>());
+                explored: new HashSet<string>(), emitted: new HashSet<string>());
             return results;
         }
 
@@ -44,13 +44,13 @@ namespace FirstOrderLogic
         // `explored` and `emitted` must be separate: a kernel can equal the subset it was found in,
         // and conflating the two would silently drop it.
         private void FindAllKernelsRec(List<ISentence> sentences, ISentence α,
-            List<List<ISentence>> results, HashSet<SentenceSet> explored, HashSet<SentenceSet> emitted)
+            List<List<ISentence>> results, HashSet<string> explored, HashSet<string> emitted)
         {
-            if (!explored.Add(new SentenceSet(sentences))) return;
+            if (!explored.Add(Key(sentences))) return;
             if (!Entails(sentences, α)) return;
 
             var kernel = Shrink(sentences, α);
-            if (emitted.Add(new SentenceSet(kernel))) results.Add(kernel);
+            if (emitted.Add(Key(kernel))) results.Add(kernel);
 
             foreach (var e in kernel)
             {
@@ -59,42 +59,8 @@ namespace FirstOrderLogic
             }
         }
 
-        // Order-independent multiset identity over ISentence value-equality.
-        private sealed class SentenceSet
-        {
-            private readonly List<ISentence> _items;
-            private readonly int _hash;
-
-            public SentenceSet(IEnumerable<ISentence> items)
-            {
-                _items = items.ToList();
-                var hash = 0;
-                foreach (var s in _items) hash ^= s?.GetHashCode() ?? 0;
-                _hash = hash;
-            }
-
-            public override int GetHashCode() => _hash;
-
-            public override bool Equals(object obj)
-            {
-                if (obj is not SentenceSet other) return false;
-                if (_items.Count != other._items.Count) return false;
-
-                var matched = new bool[other._items.Count];
-                foreach (var item in _items)
-                {
-                    var found = false;
-                    for (var i = 0; i < other._items.Count; i++)
-                    {
-                        if (matched[i] || !Equals(item, other._items[i])) continue;
-                        matched[i] = true;
-                        found = true;
-                        break;
-                    }
-                    if (!found) return false;
-                }
-                return true;
-            }
-        }
+        // Order-independent multiset identity; ToString is structural, mirroring ISentence equality.
+        private static string Key(IEnumerable<ISentence> sentences) =>
+            string.Join("\n", sentences.Select(s => s.ToString()).OrderBy(s => s, System.StringComparer.Ordinal));
     }
 }

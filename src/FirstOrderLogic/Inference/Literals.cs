@@ -29,5 +29,21 @@ namespace FirstOrderLogic
 
         public static ISentence AtomOf(this ISentence literal) =>
             literal.IsNegation ? literal.Children[0] : literal;
+
+        // Applies `fresh` to each distinct variable in first-occurrence order; a null result
+        // leaves that variable untouched.
+        public static ISentence Renamed(this ISentence literal, System.Func<Variable, Variable?> fresh)
+        {
+            foreach (var variable in literal.VariablesOf().ToList())
+            {
+                var replacement = fresh(variable);
+                if (replacement != null)
+                {
+                    literal = literal.Substitute(variable, replacement);
+                }
+            }
+
+            return literal;
+        }
     }
 }

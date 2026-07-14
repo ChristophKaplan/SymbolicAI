@@ -215,7 +215,7 @@ namespace FolTests {
         [Test]
         public void Naf_RejectedByCnf() {
             Assert.That(
-                () => Logic.ToConjunctiveNormalForm(S("(Bird(x) AND NAF Penguin(x)) => Flies(x)")),
+                () => S("(Bird(x) AND NAF Penguin(x)) => Flies(x)").ToConjunctiveNormalForm(),
                 Throws.ArgumentException);
         }
     }

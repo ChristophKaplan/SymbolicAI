@@ -69,6 +69,50 @@ namespace FirstOrderLogic {
             };
         }
 
+        private static Connective.LogicSymbol ToLogicalConstant(LexValue lexValue) {
+            switch (lexValue.Value) {
+                case "OR":
+                case "||":
+                case "∨":
+                    return Connective.LogicSymbol.DISJUNCTION;
+                case "AND":
+                case "&&":
+                case "∧":
+                    return Connective.LogicSymbol.CONJUNCTION;
+                case "NOT":
+                case "!":
+                case "-":
+                case "~":
+                case "¬":
+                    return Connective.LogicSymbol.NEGATION;
+                case "IFF":
+                case "<=>":
+                case "⇔":
+                    return Connective.LogicSymbol.BICONDITIONAL;
+                case "IMPLIES":
+                case "=>":
+                case "⇒":
+                    return Connective.LogicSymbol.IMPLICATION;
+                case "NAF":
+                    return Connective.LogicSymbol.NAF;
+                case "TRUE":
+                case "⊤":
+                    return Connective.LogicSymbol.TRUE;
+                case "FALSE":
+                case "⊥":
+                    return Connective.LogicSymbol.FALSE;
+                case "FORALL":
+                case "∀":
+                    return Connective.LogicSymbol.UNIVERSAL;
+                case "EXISTS":
+                case "∃":
+                    return Connective.LogicSymbol.EXISTENTIAL;
+
+                default:
+                    throw new Exception($"Unknown Logic Symbol: {lexValue}");
+            }
+        }
+
         // Precedence, tightest first: NOT/NAF/quantifiers, AND, OR, IMPLIES, IFF.
         // AND/OR are left-associative; IMPLIES/IFF are right-associative.
         protected override void SetUpGrammar()
@@ -99,7 +143,7 @@ namespace FirstOrderLogic {
 
             AddRule(rhs =>
             {
-                var quantifierSymbol = ((LexValue)rhs[0].Attribute).ToLogicalConstant();
+                var quantifierSymbol = ToLogicalConstant((LexValue)rhs[0].Attribute);
                 var variable = new Variable(((LexValue)rhs[1].Attribute).Value);
                 var body = BindConstantsToVariable((ISentence)rhs[2].Attribute, variable);
                 return new ComplexSentence(new Quantifier(quantifierSymbol, variable), body);
@@ -111,7 +155,7 @@ namespace FirstOrderLogic {
             AddRule(rhs => rhs[0].Attribute, NonTerminal.PrimarySentence, NonTerminal.AtomicSentence);
             AddRule(rhs =>
             {
-                var boolean = ((LexValue)rhs[0].Attribute).ToLogicalConstant();
+                var boolean = ToLogicalConstant((LexValue)rhs[0].Attribute);
                 return new Proposition(Connective.SymbolToString(boolean));
             }, NonTerminal.PrimarySentence, Terminal.Boolean);
 
@@ -196,14 +240,5 @@ namespace FirstOrderLogic {
         // name is baked into many call sites. The inherited TryParse(string, out …) overload
         // has real try-semantics.
         public ILanguageObject TryParse(string input) => base.Parse(input);
-
-        public List<ILanguageObject> TryParse(List<string> inputList)
-        {
-            var langObjList = new List<ILanguageObject>();
-            foreach (var input in inputList) {
-                langObjList.Add(TryParse(input));
-            }
-            return langObjList;
-        }
     }
 }

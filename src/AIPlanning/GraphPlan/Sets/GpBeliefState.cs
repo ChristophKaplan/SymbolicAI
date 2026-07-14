@@ -3,38 +3,20 @@ using System.Linq;
 using FirstOrderLogic;
 
 namespace AIPlanning.Planning.GraphPlan {
-    public class GpBeliefState {
-        private readonly List<GpLiteralNode> _literalNodes = new();
-
+    public class GpBeliefState : GpNodeSet<GpLiteralNode> {
         public GpBeliefState() {
         }
 
-        public GpBeliefState(IEnumerable<GpNode> nodes) {
-            _literalNodes = nodes.Select(n => (GpLiteralNode)n).ToList();
+        public GpBeliefState(IEnumerable<GpNode> nodes) : base(nodes) {
         }
 
-        public IReadOnlyList<GpNode> GetNodes => _literalNodes;
-        public List<GpLiteralNode> GetLiteralNodes => _literalNodes;
-
-        // Returns the canonical node stored in the belief state; callers MUST connect edges to
-        // the returned instance, not to their input.
-        public GpLiteralNode Add(GpLiteralNode literalNode) {
-            var contained = _literalNodes.FirstOrDefault(literalNode.Equals);
-            if (contained != null) {
-                return contained;
-            }
-
-            _literalNodes.Add(literalNode);
-            return literalNode;
-        }
-
-        public void TryAdd(GpLiteralNode literalNode) => Add(literalNode);
+        public List<GpLiteralNode> GetLiteralNodes => Nodes;
 
         public List<GpNode>? GetSubSetOfNodesMatching(List<ISentence> literals) {
             var subset = new List<GpNode>();
 
             foreach (var literal in literals) {
-                var applicableNode = _literalNodes.FirstOrDefault(node => node.Literal.Equals(literal));
+                var applicableNode = Nodes.FirstOrDefault(node => node.Literal.Equals(literal));
                 if (applicableNode == null) {
                     return null;
                 }
@@ -46,8 +28,8 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public bool EqualStateLiterals(GpBeliefState other) {
-            var aSubsetB = _literalNodes.All(a => other._literalNodes.Any(a.EqualLiteral));
-            var bSubsetA = other._literalNodes.All(b => _literalNodes.Any(b.EqualLiteral));
+            var aSubsetB = Nodes.All(a => other.Nodes.Any(a.Equals));
+            var bSubsetA = other.Nodes.All(b => Nodes.Any(b.Equals));
             return aSubsetB && bSubsetA;
         }
 
@@ -59,14 +41,14 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             // Align the node lists once; aligning inside the pair loop is O(L³).
-            var aligned = new GpLiteralNode[_literalNodes.Count];
-            for (var i = 0; i < _literalNodes.Count; i++) {
-                aligned[i] = other._literalNodes.First(_literalNodes[i].EqualLiteral);
+            var aligned = new GpLiteralNode[Nodes.Count];
+            for (var i = 0; i < Nodes.Count; i++) {
+                aligned[i] = other.Nodes.First(Nodes[i].Equals);
             }
 
-            for (var i = 0; i < _literalNodes.Count; i++) {
-                for (var j = i + 1; j < _literalNodes.Count; j++) {
-                    if (_literalNodes[i].IsMutexWith(_literalNodes[j]) != aligned[i].IsMutexWith(aligned[j])) {
+            for (var i = 0; i < Nodes.Count; i++) {
+                for (var j = i + 1; j < Nodes.Count; j++) {
+                    if (Nodes[i].IsMutexWith(Nodes[j]) != aligned[i].IsMutexWith(aligned[j])) {
                         return false;
                     }
                 }
@@ -100,14 +82,14 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         private IEnumerable<GpActionSet> SelectSupporters(int goalIndex, List<GpNode> chosen) {
-            if (goalIndex == _literalNodes.Count) {
+            if (goalIndex == Nodes.Count) {
                 if (chosen.Count > 0) {
                     yield return new GpActionSet(new List<GpNode>(chosen));
                 }
                 yield break;
             }
 
-            var goalSupporters = _literalNodes[goalIndex].InEdges;
+            var goalSupporters = Nodes[goalIndex].InEdges;
 
             // Minimality: reuse an already-selected supporter rather than branching on every one;
             // this stops redundant supersets (a real action plus the same literal's Persist).
@@ -131,35 +113,8 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        public override int GetHashCode() {
-            var hash = _literalNodes.Count;
-            foreach (var node in _literalNodes) {
-                hash ^= node.GetHashCode();
-            }
-
-            return hash;
-        }
-
-        public override bool Equals(object? obj) {
-            if (ReferenceEquals(this, obj)) {
-                return true;
-            }
-
-            if (obj is not GpBeliefState other) {
-                return false;
-            }
-
-            return _literalNodes.MultisetEquals(other._literalNodes);
-        }
-
         public override string ToString() {
-            var output = "BeliefState:\n";
-
-            foreach (var node in _literalNodes) {
-                output += $"\t{node}\n";
-            }
-
-            return output;
+            return Nodes.Aggregate("BeliefState:\n", (current, node) => current + $"\t{node}\n");
         }
     }
 }

@@ -5,14 +5,7 @@ using System.Linq;
 using FirstOrderLogic;
 
 namespace AIPlanning.Planning.GraphPlan {
-    public interface IGpAction {
-        string Signifier { get; }
-        List<ISentence> Preconditions { get; }
-        List<ISentence> Effects { get; }
-        bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpNode>? satisfied);
-    }
-
-    public class GpAction : IGpAction , IEquatable<GpAction> {
+    public class GpAction : IEquatable<GpAction> {
         private int _hashcode;
         public string Signifier { get; }
         public List<ISentence> Preconditions { get; }
@@ -56,8 +49,8 @@ namespace AIPlanning.Planning.GraphPlan {
             return satisfied != null && satisfied.Count == distinct.Count;
         }
 
-        public HashSet<Unificator> GetConflictFreeUnificatorPossibilities(HashSet<Unificator> unificators) {
-            var substitutions = ArrangeSubstitutionsAsTrees(unificators);
+        public HashSet<Unificator> GetConflictFreeUnificatorPossibilities() {
+            var substitutions = ArrangeSubstitutionsAsTrees(Unificators);
 
             var variables = substitutions.Keys.ToList();
             var termLists = substitutions.Values.ToList();
@@ -109,7 +102,7 @@ namespace AIPlanning.Planning.GraphPlan {
             return true;
         }
 
-        private Dictionary<Variable, List<Term>> ArrangeSubstitutionsAsTrees(HashSet<Unificator> unificators) {
+        private static Dictionary<Variable, List<Term>> ArrangeSubstitutionsAsTrees(HashSet<Unificator> unificators) {
             var collectPossibilities = new Dictionary<Variable, List<Term>>();
 
             foreach (var unificator in unificators) {
@@ -151,23 +144,18 @@ namespace AIPlanning.Planning.GraphPlan {
         // XOR would let duplicate pairs cancel out.
         private void UpdateHashCode()
         {
-            var preHash = 0;
-            unchecked {
-                foreach (var precondition in Preconditions)
-                {
-                    preHash += precondition.GetHashCode();
+            static int SumHashes(List<ISentence> sentences) {
+                var hash = 0;
+                unchecked {
+                    foreach (var sentence in sentences) {
+                        hash += sentence.GetHashCode();
+                    }
                 }
+
+                return hash;
             }
 
-            var effHash = 0;
-            unchecked {
-                foreach (var effect in Effects)
-                {
-                    effHash += effect.GetHashCode();
-                }
-            }
-
-            _hashcode = HashCode.Combine(Signifier, Preconditions.Count, Effects.Count, preHash, effHash);
+            _hashcode = HashCode.Combine(Signifier, Preconditions.Count, Effects.Count, SumHashes(Preconditions), SumHashes(Effects));
         }
 
         public bool Equals(GpAction? other)

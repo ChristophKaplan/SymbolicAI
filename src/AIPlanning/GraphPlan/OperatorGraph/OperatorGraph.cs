@@ -39,7 +39,7 @@ namespace AIPlanning.Planning.GraphPlan {
             _actions.Add(startNode.GpAction);
             _actions.Add(finishNode.GpAction);
 
-            ConstructGraphRecursivly(finishNode);
+            MapPreConditionsToAction(finishNode, new Dictionary<GpAction, GpActionNode>());
             ReplaceAbstractWithConcreteActions();
         }
 
@@ -131,7 +131,7 @@ namespace AIPlanning.Planning.GraphPlan {
                     continue;
                 }
 
-                var conflictFreeUnificators = action.GetConflictFreeUnificatorPossibilities(action.Unificators);
+                var conflictFreeUnificators = action.GetConflictFreeUnificatorPossibilities();
                 foreach (var unificator in conflictFreeUnificators)
                 {
                     var clone = action.Clone();
@@ -146,21 +146,6 @@ namespace AIPlanning.Planning.GraphPlan {
             }
 
             return mapping;
-        }
-
-        private void ConstructGraphRecursivly(GpNode curNode)
-        {
-            var operatorNodes = new Dictionary<GpAction, GpActionNode>();
-
-            switch (curNode)
-            {
-                case GpActionNode curOperator:
-                    MapPreConditionsToAction(curOperator, operatorNodes);
-                    break;
-                case GpLiteralNode curState:
-                    FindApplicableAction(curState, operatorNodes);
-                    break;
-            }
         }
 
         private void MapPreConditionsToAction(GpActionNode curAction, Dictionary<GpAction, GpActionNode> operatorNodes)

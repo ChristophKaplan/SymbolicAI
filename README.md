@@ -102,7 +102,7 @@ using FirstOrderLogic;
 var logic = new FirstOrderLogic.FirstOrderLogic();
 
 var kb = (ISentence)logic.TryParse("(Human(Sokrates) AND (FORALL x (Human(x) => Mortal(x))))");
-var skolem = logic.SkolemForm(logic.ToPrenexForm(kb, out _));
+var skolem = kb.ToPrenexForm(out _).SkolemForm();
 var goal = (ISentence)logic.TryParse("Mortal(Sokrates)");
 
 bool entailed = Resolution.Resolve(skolem, goal); // True

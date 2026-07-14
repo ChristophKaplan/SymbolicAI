@@ -9,7 +9,6 @@ namespace FirstOrderLogic {
         bool IsConjunction { get; }
         bool IsDisjunction { get; }
         ISentence GetSiblingOf(ISentence sentence);
-        Quantifier[] GetQuantifiers(Connective.LogicSymbol quantifier);
     }
 
     public class ComplexSentence : Sentence, IComplexSentence{
@@ -58,21 +57,6 @@ namespace FirstOrderLogic {
             }
 
             throw new Exception("Error: Sentence not found in ComplexSentence.");
-        }
-
-        public Quantifier[] GetQuantifiers(Connective.LogicSymbol quantifier) {
-            var quantifiers = new List<Quantifier>();
-            if (Connective.Symbol == quantifier) {
-                quantifiers.Add((Quantifier)Connective);
-            }
-        
-            foreach (var child in Children) {
-                if (child is IComplexSentence complex) { 
-                    quantifiers.AddRange(complex.GetQuantifiers(quantifier));
-                }
-            }
-
-            return quantifiers.ToArray();
         }
 
         // Capture-avoiding: occurrences of the bound variable are not free, so substituting it

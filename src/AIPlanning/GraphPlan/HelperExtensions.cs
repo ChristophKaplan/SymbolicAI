@@ -34,11 +34,15 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public static List<GpNode> GetConflictFreeSubset(this IReadOnlyList<GpNode> nodes) {
-            return nodes.Where(node => !node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode))).ToList();
+            return nodes.Where(node => !node.HasConflictIn(nodes)).ToList();
         }
 
         public static bool IsConflictFree(this IReadOnlyList<GpNode> nodes) {
-            return !nodes.Any(node => node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode)));
+            return !nodes.Any(node => node.HasConflictIn(nodes));
+        }
+
+        private static bool HasConflictIn(this GpNode node, IReadOnlyList<GpNode> nodes) {
+            return node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode));
         }
 
         public static void CheckMutexRelations(this IReadOnlyList<GpNode> nodes) {
@@ -55,14 +59,10 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public static List<List<T>> GetCombinations<T>(this List<List<T>> lists) {
-            var c = lists.CartesianProduct().Select(l => l.ToList()).ToList();
-            return c;
-        }
-
-        private static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<IEnumerable<T>> sequences) {
             IEnumerable<IEnumerable<T>> emptyProduct = new[] {Enumerable.Empty<T>()};
-            return sequences.Aggregate(emptyProduct,
-                (accumulator, sequence) => from accseq in accumulator from item in sequence select accseq.Concat(new[] {item}));
+            return lists.Aggregate(emptyProduct,
+                    (accumulator, sequence) => from accseq in accumulator from item in sequence select accseq.Concat(new[] {item}))
+                .Select(l => l.ToList()).ToList();
         }
     }
 }

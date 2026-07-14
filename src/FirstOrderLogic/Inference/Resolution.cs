@@ -6,11 +6,9 @@ namespace FirstOrderLogic {
     
     public static class Resolution
     {
-        private static readonly FirstOrderLogic Logic = new();
-
-        private static List<Resolvent> GetResolvents(Clause clause1, Clause clause2)
+        private static List<Clause> GetResolvents(Clause clause1, Clause clause2)
         {
-            var resolvents = new List<Resolvent>();
+            var resolvents = new List<Clause>();
 
             var literals2 = StandardizeApart(clause1.Literals, clause2.Literals);
 
@@ -39,7 +37,7 @@ namespace FirstOrderLogic {
                     // Clause ctor.
                     CanonicalizeVariables(kept);
 
-                    resolvents.Add(new Resolvent(clause1, clause2, kept.ToArray()));
+                    resolvents.Add(new Clause(kept.ToArray()));
                 }
             }
 
@@ -105,32 +103,20 @@ namespace FirstOrderLogic {
         // so a per-call counter suffices for freshness.
         private static List<ISentence> StandardizeApart(List<ISentence> left, List<ISentence> right)
         {
-            var leftNames = new HashSet<string>();
-            foreach (var literal in left)
-                foreach (var variable in literal.VariablesOf())
-                    leftNames.Add(variable.TermSymbol);
-
+            var leftNames = left.SelectMany(l => l.VariablesOf()).Select(v => v.TermSymbol).ToHashSet();
             if (leftNames.Count == 0) return right;
 
-            var freshVarCounter = 0;
             var renames = new Dictionary<string, Variable>();
-            foreach (var literal in right)
-                foreach (var variable in literal.VariablesOf())
-                    if (leftNames.Contains(variable.TermSymbol) && !renames.ContainsKey(variable.TermSymbol))
-                        renames.Add(variable.TermSymbol, new Variable($"y${++freshVarCounter}"));
-
-            if (renames.Count == 0) return right;
-
-            var theta = new Dictionary<Variable, Term>(renames.Count);
-            foreach (var pair in renames)
-                theta.Add(new Variable(pair.Key), pair.Value);
-
-            var substitution = new Substitution(theta);
-            var renamed = new List<ISentence>(right.Count);
-            foreach (var literal in right)
-                renamed.Add(substitution.Apply(literal));
-
-            return renamed;
+            return right.Select(literal => literal.Renamed(v =>
+            {
+                if (!leftNames.Contains(v.TermSymbol)) return null;
+                if (!renames.TryGetValue(v.TermSymbol, out var fresh))
+                {
+                    fresh = new Variable($"y${renames.Count + 1}");
+                    renames.Add(v.TermSymbol, fresh);
+                }
+                return fresh;
+            })).ToList();
         }
 
         // Renames variables in place to x$1, x$2, … by first occurrence over a name-insensitive
@@ -193,7 +179,7 @@ namespace FirstOrderLogic {
             // the order that keeps refutation sound.
             if (sentence.HasQuantifier())
             {
-                sentence = Logic.SkolemForm(Logic.ToPrenexForm(sentence));
+                sentence = sentence.ToPrenexForm().SkolemForm();
             }
 
             // TRUE/FALSE are truth values, not resolvable atoms; fold them away so already-CNF
@@ -205,7 +191,7 @@ namespace FirstOrderLogic {
 
             if (!sentence.IsCNF())
             {
-                sentence = Logic.ToConjunctiveNormalForm(sentence);
+                sentence = sentence.ToConjunctiveNormalForm();
             }
 
             var clauses = sentence.GetClauseSet();
@@ -213,7 +199,7 @@ namespace FirstOrderLogic {
             // Tautologies can never contribute to the empty clause; dropping them is sound.
             clauses.RemoveAll(IsTautology);
 
-            var seen = new HashSet<Clause>(clauses, ClauseByContent);
+            var seen = new HashSet<Clause>(clauses);
 
             var inputFactors = new List<Clause>();
             foreach (var clause in clauses)
@@ -247,7 +233,7 @@ namespace FirstOrderLogic {
                     for (; j < count; j++)
                     {
                         var possibleResolvents = GetResolvents(clauses[i], clauses[j]);
-                        if (possibleResolvents.Any(resolvent => resolvent.IsEmptyClause()))
+                        if (possibleResolvents.Any(resolvent => resolvent.Literals.Count == 0))
                         {
                             return true;
                         }
@@ -318,25 +304,6 @@ namespace FirstOrderLogic {
             foreach (var literal in candidate.Literals)
                 if (unitLiterals.Contains(literal)) return true;
             return false;
-        }
-
-        private static readonly IEqualityComparer<Clause> ClauseByContent = new ClauseContentComparer();
-
-        private sealed class ClauseContentComparer : IEqualityComparer<Clause>
-        {
-            public bool Equals(Clause a, Clause b)
-            {
-                if (ReferenceEquals(a, b)) return true;
-                if (a is null || b is null || a.Literals.Count != b.Literals.Count) return false;
-                return a.Literals.All(literal => b.Literals.Contains(literal));
-            }
-
-            public int GetHashCode(Clause clause)
-            {
-                var hash = 0;
-                foreach (var literal in clause.Literals) hash ^= literal?.GetHashCode() ?? 0;
-                return hash;
-            }
         }
     }
 }
