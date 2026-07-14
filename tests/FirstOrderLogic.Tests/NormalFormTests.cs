@@ -4,14 +4,12 @@ using NUnit.Framework;
 
 namespace FolTests {
     public class NormalFormTests : TestBase {
-        // ── Prenex ────────────────────────────────────────────────────────────────
         [Test]
         public void Prenex_EliminatesImplication() {
             var pnf = Logic.ToPrenexForm(S("(P(x) => Q(y)) AND R(z)"), out _);
             Assert.That(pnf, Is.EqualTo(S("((NOT P(x)) OR Q(y)) AND R(z)")));
         }
 
-        // ── CNF ──────────────────────────────────────────────────────────────────
         [Test]
         public void Cnf_FromImplication() {
             var input = S("P(x) => (P(y) AND Q(z))");
@@ -38,7 +36,6 @@ namespace FolTests {
             Assert.That(cnf.IsCNF(), Is.True);
         }
 
-        // ── Skolemization ──────────────────────────────────────────────────────────
         // Skolem names come from a process-wide counter; reset so the pinned names below
         // stay deterministic regardless of test order.
         [SetUp]
@@ -69,7 +66,6 @@ namespace FolTests {
                     .Substitute(new Constant("k2"), Sk(2))));
         }
 
-        // Mixed prefix ∀x ∃y ∀z ∃w: y depends on x, w depends on x and z.
         [Test]
         public void Skolem_MixedPrefixTracksScope() {
             Assert.That(Logic.SkolemForm(S("FORALL x (EXISTS y (FORALL z (EXISTS w R(x,y,z,w))))")),
@@ -78,7 +74,6 @@ namespace FolTests {
                     .Substitute(new Constant("k2"), Sk(2, "x", "z"))));
         }
 
-        // ── Clause sets ──────────────────────────────────────────────────────────
         [Test]
         public void ClauseSet_SplitsTopLevelConjuncts() {
             var pnf = Logic.ToPrenexForm(S("(P(x) => Q(y)) AND R(z)"), out _);

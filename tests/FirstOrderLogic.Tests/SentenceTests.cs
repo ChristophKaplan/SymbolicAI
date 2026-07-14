@@ -35,7 +35,6 @@ namespace FolTests {
             Assert.That(S("A OR (B AND C)").IsCNF(), Is.False);
         }
 
-        // NAF is not a classical connective, so no NAF-containing sentence is in CNF.
         [Test]
         public void IsCNF_NafIsNeverCNF() {
             Assert.That(S("NAF P(a)").IsCNF(), Is.False);
@@ -63,16 +62,13 @@ namespace FolTests {
             Assert.That(p.IsNegationOf(S("P(b)")), Is.False);
         }
 
-        // Signature-only comparison must handle propositional literals (they have no predicate).
         [Test]
         public void IsNegationOf_PredSignature_WorksForPropositions() {
             Assert.That(S("NOT A").IsNegationOf(S("A"), onlyPredSignature: true), Is.True);
             Assert.That(S("A").IsNegationOf(S("NOT A"), onlyPredSignature: true), Is.True);
             Assert.That(S("NOT A").IsNegationOf(S("B"), onlyPredSignature: true), Is.False);
-            // Mixed atom kinds never share a signature.
             Assert.That(S("NOT A").IsNegationOf(S("P(a)"), onlyPredSignature: true), Is.False);
             Assert.That(S("NOT P(a)").IsNegationOf(S("A"), onlyPredSignature: true), Is.False);
-            // Predicate behavior is unchanged: same symbol/arity matches regardless of terms.
             Assert.That(S("NOT P(a)").IsNegationOf(S("P(b)"), onlyPredSignature: true), Is.True);
         }
 
@@ -97,7 +93,6 @@ namespace FolTests {
             Assert.That(result, Is.EqualTo(S("P(f(a))")));
         }
 
-        // Pure variant: returns a new tree and leaves the original untouched.
         [Test]
         public void Substitute_IsPure_AndReplacesThroughout() {
             var original = S("P(x) AND Q(f(x))");

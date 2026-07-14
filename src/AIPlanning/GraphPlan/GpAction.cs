@@ -19,9 +19,8 @@ namespace AIPlanning.Planning.GraphPlan {
         public List<ISentence> Effects { get; }
         public HashSet<Unificator> Unificators { get; private set; } = new();
 
-        // Marks the Start/Finish actions the OperatorGraph injects to bootstrap its backward
-        // construction; they must never surface at runtime. A flag (survives Clone) instead of
-        // reference identity, which a clone would silently lose.
+        // Marks the injected Start/Finish actions, which must never surface at runtime.
+        // A flag rather than reference identity, which a Clone would silently lose.
         public bool IsSynthetic { get; }
 
         private GpAction(GpAction action) : this(action.Signifier,
@@ -41,8 +40,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public GpAction Clone() => new GpAction(this);
 
-        // Belief-state matching is exact over ground literals, so only a fully ground action
-        // can ever fire.
+        // Belief-state matching is exact over ground literals, so only a fully ground action can fire.
         public bool IsGround() => Preconditions.All(p => p.IsGround()) && Effects.All(e => e.IsGround());
 
         public void AddUnificators(IEnumerable<Unificator> unificators)
@@ -51,8 +49,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
     
         public bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpNode>? satisfied) {
-            // Duplicate precondition literals (user-written, or minted when distinct variables
-            // ground to the same object) map onto one node; comparing against the raw count
+            // Duplicate precondition literals map onto one node; comparing against the raw count
             // would make the action permanently inapplicable.
             var distinct = Preconditions.Distinct().ToList();
             satisfied = beliefState.GetSubSetOfNodesMatching(distinct);
@@ -74,10 +71,9 @@ namespace AIPlanning.Planning.GraphPlan {
                     possibility.Add(variables[i], comb[i]);
                 }
 
-                // Each unifier is acyclic on its own (occurs check), but recombining bindings
-                // from different unifiers can close a cycle (x→y from one, y→x from another),
-                // which Substitution.Walk must never see. Such a combination grounds nothing —
-                // skip it.
+                // Each unifier is acyclic on its own, but recombining bindings from different
+                // unifiers can close a cycle (x→y from one, y→x from another), which
+                // Substitution.Walk must never see.
                 if (!IsAcyclic(possibility)) {
                     continue;
                 }
@@ -122,8 +118,6 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
 
                 foreach (var substitution in unificator.Substitutions) {
-                    // Dedup per variable: k unifiers all binding x→a must not inflate the
-                    // materialized cartesian product k-fold with identical combinations.
                     if (!collectPossibilities.TryGetValue(substitution.Key, out var terms)) {
                         collectPossibilities.Add(substitution.Key, new List<Term> { substitution.Value });
                     }
@@ -153,8 +147,8 @@ namespace AIPlanning.Planning.GraphPlan {
             return _hashcode;
         }
 
-        // Order-insensitive AND multiset-safe: summing the element hashes keeps duplicates
-        // visible ({P,P,Q} vs {P,Q,Q} differ), whereas XOR let duplicate pairs cancel out.
+        // Summing element hashes keeps duplicates visible ({P,P,Q} vs {P,Q,Q} differ);
+        // XOR would let duplicate pairs cancel out.
         private void UpdateHashCode()
         {
             var preHash = 0;

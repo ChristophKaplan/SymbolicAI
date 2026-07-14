@@ -4,15 +4,10 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // Direct tests on OperatorGraph: the unification-based literal→action lookup, the
-    // precondition-less action surface, and the exclusion of the synthetic Start/Finish
-    // bootstrap actions from runtime results.
     [TestFixture]
     public class OperatorGraphTests : PlanningTestBase {
         [Test]
         public void GetActionsForLiteral_GroundLiteral_FindsActionAnchoredAtVariableNode() {
-            // A2's precondition node in the operator graph is the non-ground Q(x);
-            // the ground runtime literal Q(Obj) must still find A2's instances via unification.
             var initialState = Factory.StringToSentence(new() { "P(Obj)" });
             var goals = Factory.StringToSentence(new() { "R(Obj)" });
             var a1 = Factory.Create("A1", new() { "P(x)" }, new() { "Q(x)" });
@@ -63,8 +58,6 @@ namespace AIPlanningTests {
 
         [Test]
         public void GetActionsForLiteral_NeverReturnsSyntheticStartOrFinish() {
-            // The goal literal G(Obj) is a precondition of the synthetic Finish action, and the
-            // initial literal P(Obj) is an effect of Start; neither may leak into runtime layers.
             var initialState = Factory.StringToSentence(new() { "P(Obj)" });
             var goals = Factory.StringToSentence(new() { "G(Obj)" });
             var make = Factory.Create("Make", new() { "P(Obj)" }, new() { "G(Obj)" });

@@ -3,7 +3,7 @@ using AIPlanning.Planning.GraphPlan;
 using NUnit.Framework;
 
 namespace AIPlanningTests {
-    // Repro tests for the open findings of the July 2026 whole-project review. Each test
+    // Repro tests for the open findings of the July 2026 whole-project reviews. Each test
     // asserts the CORRECT behavior, so a failure here confirms the corresponding bug is
     // real and still present. Once a bug is fixed its test doubles as a regression pin.
     [TestFixture]
@@ -65,8 +65,6 @@ namespace AIPlanningTests {
                 "precondition {P(Obj), P(Obj)}, which must still count as satisfied");
         }
 
-        // ── Findings of the second July 2026 whole-project review ─────────────────────
-
         // Finding 6 — InstantiateActions keys a dictionary by GpAction, whose equality is
         // content-based, so two content-equal actions in the problem's action list crash
         // Solve with ArgumentException instead of being deduplicated.
@@ -120,8 +118,6 @@ namespace AIPlanningTests {
                 "{P, P} and {P, Q} are different states even though the counts match and " +
                 "every element of the first occurs in the second");
         }
-
-        // ── Findings of the third July 2026 whole-project review ──────────────────────
 
         // Finding 9 — MapPreConditionsToAction skips creating a literal node for a non-ground
         // precondition whenever ANY existing node unifies with it, even a strictly more

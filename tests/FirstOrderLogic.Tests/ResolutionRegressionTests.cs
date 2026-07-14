@@ -14,8 +14,6 @@ namespace FolTests {
                 Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
         }
 
-        // ── Entailed (must stay true) ─────────────────────────────────────────────
-
         [TestCase("A AND (A => B)", "B")]
         [TestCase("(A => B) AND (B => C) AND A", "C")]
         [TestCase("(A OR B) AND (NOT A)", "B")]
@@ -31,8 +29,6 @@ namespace FolTests {
         public void Resolve_Entailed_True(string kb, string goal) {
             AssertResolves(kb, goal, expected: true);
         }
-
-        // ── Not entailed (must stay false) ────────────────────────────────────────
 
         [TestCase("A", "B")]
         [TestCase("A => B", "A")]                                      // affirming the consequent

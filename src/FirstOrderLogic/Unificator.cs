@@ -71,7 +71,6 @@ namespace FirstOrderLogic
             _hashcode = CalcHashCode();
         }
 
-        // Try-pattern over the constructor: the most general unifier of two literals, or false.
         public static bool TryUnify(ISentence a, ISentence b, out Dictionary<Variable, Term> mgu)
         {
             var unificator = new Unificator(a, b);
@@ -85,10 +84,8 @@ namespace FirstOrderLogic
             return true;
         }
 
-        // The shared single-literal matching primitive: two literals match iff they have the same
-        // polarity and their atoms unify, in which case the unifier is returned. Forward/backward
-        // chaining and the planner's operator graph all bottom out here, so "what it means for two
-        // literals to match" — including the polarity rule — lives in exactly one place.
+        // The shared single-literal matching primitive: forward/backward chaining and the
+        // planner's operator graph all bottom out here, so the polarity rule lives in one place.
         public static bool TryMatch(ISentence a, ISentence b, [NotNullWhen(true)] out Unificator? match)
         {
             if (a.IsNegation != b.IsNegation)
@@ -136,7 +133,6 @@ namespace FirstOrderLogic
                 return true;
             }
 
-            // Propositional atoms carry no terms: they unify iff they are the same atom.
             if (atom1 is IProposition && atom2 is IProposition)
             {
                 return atom1.Symbol == atom2.Symbol;
@@ -284,7 +280,6 @@ namespace FirstOrderLogic
             }
         }
 
-        // Applies the unifier, returning a new sentence; the input is never mutated.
         // Delegates to Substitution so triangular bindings like {x/a, z/f(x)} resolve their
         // chains (z -> f(a)) instead of depending on dictionary iteration order.
         public ISentence Apply(ISentence sentence)

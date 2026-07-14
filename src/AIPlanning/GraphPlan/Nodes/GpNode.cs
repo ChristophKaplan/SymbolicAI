@@ -41,9 +41,7 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        // Mutex is recorded symmetrically (TryAddMutexRelations), so one side suffices; a node
-        // has no relation to itself, so shared nodes count as non-mutex — matching
-        // GetMutexType's Equals short-circuit.
+        // Mutex is recorded symmetrically (TryAddMutexRelations), so checking one side suffices.
         public bool IsMutexWith(GpNode other) {
             foreach (var mutex in MutexRelation) {
                 if (mutex.ToNode.Equals(other)) {

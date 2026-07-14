@@ -4,14 +4,7 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // Direct tests for every mutex type on small hand-built nodes, verified against the
-    // Blum & Furst definitions:
-    //   Inconsistent effects — an effect of one action negates an effect of the other.
-    //   Interference         — an effect of one action negates a precondition of the other.
-    //   Competing needs      — a precondition of one is mutex (previous level) with a
-    //                          precondition of the other.
-    //   Literal negation     — the two literals are negations of each other.
-    //   Inconsistent support — every pair of actions supporting the two literals is mutex.
+    // Every mutex type on small hand-built nodes, verified against the Blum & Furst definitions.
     [TestFixture]
     public class MutexTests : PlanningTestBase {
         [Test]
@@ -78,8 +71,6 @@ namespace AIPlanningTests {
 
         [Test]
         public void InconsistentSupport_WhenAllSupporterPairsAreMutex() {
-            // A and B have inconsistent effects (M vs -M); each is the ONLY supporter of its
-            // literal, so L1 and L2 have inconsistent support.
             var a = new GpActionNode(new GpAction("A", new() { L("P(Obj)") }, new() { L("L1(Obj)"), L("-M(Obj)") }));
             var b = new GpActionNode(new GpAction("B", new() { L("P(Obj)") }, new() { L("L2(Obj)"), L("M(Obj)") }));
 
@@ -101,7 +92,6 @@ namespace AIPlanningTests {
         public void NoInconsistentSupport_WhenOneNonMutexSupporterPairExists() {
             var a = new GpActionNode(new GpAction("A", new() { L("P(Obj)") }, new() { L("L1(Obj)"), L("-M(Obj)") }));
             var b = new GpActionNode(new GpAction("B", new() { L("P(Obj)") }, new() { L("L2(Obj)"), L("M(Obj)") }));
-            // C also supports L2 and conflicts with nothing.
             var c = new GpActionNode(new GpAction("C", new() { L("P(Obj)") }, new() { L("L2(Obj)") }));
 
             var actionNodes = new List<GpNode> { a, b, c };

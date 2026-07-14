@@ -10,20 +10,16 @@ namespace AIPlanning.Planning.GraphPlan {
         private readonly List<GpAction> _actions;
         private readonly List<GpAction> _preconditionlessInstances = new();
 
-        // Caps how often one action node is revisited while the graph is built backwards from
-        // Finish; without it, mutually-supporting actions (A enables B enables A ...) would
-        // recurse forever. The graph only needs each literal→action edge once, so a small
-        // constant bound loses nothing.
+        // Caps revisits of one action node during the backward construction; mutually-supporting
+        // actions (A enables B enables A ...) would otherwise recurse forever.
         private const int UseCountStop = 10;
 
         public OperatorGraph(GpProblem problem)
         {
             _problem = problem;
-            // Work on clones: graph construction accumulates grounding state on the actions
-            // (AddUnificators) and Init injects the synthetic Start/Finish actions. None of that
-            // may leak into the caller's problem — a GpProblem must stay reusable across solves.
-            // Content-equal duplicates are dropped: they add nothing semantically and would
-            // collide as dictionary keys during grounding (InstantiateActions).
+            // Clones: construction accumulates grounding state on the actions and injects
+            // Start/Finish; none of that may leak — a GpProblem must stay reusable across solves.
+            // Content-equal duplicates would collide as dictionary keys during grounding.
             _actions = problem.Actions.Distinct().Select(action => action.Clone()).ToList();
             Init();
         }
@@ -35,7 +31,6 @@ namespace AIPlanning.Planning.GraphPlan {
             var finishNode = new GpActionNode(new GpAction("Finish",
                 new List<ISentence>(_problem.Goals), new List<ISentence>(), isSynthetic: true));
 
-            //init the effects of start as preconditions
             foreach (var preCon in startNode.GpAction.Effects)
             {
                 _literalNodes.Add(new GpLiteralNode(preCon));
@@ -50,9 +45,9 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public List<GpAction> GetActionsForLiteral(ISentence literal)
         {
-            // Unification-based lookup: graph nodes created from non-ground preconditions
-            // (e.g. Q(x)) must be found by the ground literals (Q(a)) that arise at runtime;
-            // exact equality would leave every action anchored only to such a node unreachable.
+            // Unification-based lookup: nodes created from non-ground preconditions (Q(x)) must be
+            // found by the ground literals (Q(a)) arising at runtime; exact equality would leave
+            // every action anchored only to such a node unreachable.
             var instances = new List<GpAction>();
             foreach (var node in _literalNodes)
             {
@@ -98,10 +93,8 @@ namespace AIPlanning.Planning.GraphPlan {
                         continue;
                     }
 
-                    // The synthetic Start/Finish actions only bootstrap the backward graph
-                    // construction; their instances must not surface at runtime (a Finish
-                    // hanging off the goal literals would enter every layer's action set and
-                    // mutex computation once the goals appear in a belief state).
+                    // Start/Finish only bootstrap the backward construction; a Finish hanging off
+                    // the goal literals would enter every layer's action set at runtime.
                     if (!actionNode.GpAction.IsSynthetic)
                     {
                         allInstances.AddRange(instances);
@@ -172,22 +165,15 @@ namespace AIPlanning.Planning.GraphPlan {
 
         private void MapPreConditionsToAction(GpActionNode curAction, Dictionary<GpAction, GpActionNode> operatorNodes)
         {
-            //necessary preconditions of an action but not sufficient
-
             foreach (var preCon in curAction.GpAction.Preconditions)
             {
                 GetMatchingLiteralNodes(preCon, out var literalNodes, out var unificators);
 
-                // Non-ground literal nodes (e.g. Q(x)) are fine here: they act as unification
-                // anchors — GetActionsForLiteral matches ground runtime literals against them
-                // via Match, and InstantiateActions later drops any action INSTANCE that keeps
-                // an unbound variable, so no non-ground literal ever reaches a belief state.
-                //
                 // A merely unifying node is not enough: a more specific existing node (Q(Home))
-                // matches a general precondition (Q(y)) without covering it — effects that unify
-                // only with the general form would never enter the graph, making solvability
-                // depend on action declaration order. The precondition therefore always gets its
-                // own anchor node unless an equal one already exists.
+                // matches a general precondition (Q(y)) without covering it, making solvability
+                // depend on action declaration order — so the precondition gets its own anchor
+                // node unless an equal one exists. Non-ground anchors are safe: InstantiateActions
+                // drops any instance that keeps an unbound variable.
                 if (literalNodes.All(node => !node.Literal.Equals(preCon)))
                 {
                     var anchor = new GpLiteralNode(preCon);
@@ -267,11 +253,9 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
 
                 // The unifier mixes two owners: bindings for the effect's variables ground the
-                // PRODUCER, while bindings for the node literal's variables ground the CONSUMERS
-                // anchored on this node (e.g. effect Have(Bread) vs precondition anchor Have(x)
-                // binds the consumer's x). Routing everything to the producer would leave a
-                // precondition-only variable unbound forever, and every consumer instance would
-                // be dropped as non-ground.
+                // PRODUCER, bindings for the node literal's variables ground the CONSUMERS anchored
+                // on this node. Routing everything to the producer would leave a precondition-only
+                // variable unbound forever, and every consumer instance dropped as non-ground.
                 var literalVariables = new HashSet<Variable>(LiteralVariables(literal));
                 var producer = new Dictionary<Variable, Term>();
                 var consumer = new Dictionary<Variable, Term>();

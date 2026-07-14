@@ -3,7 +3,6 @@ using NUnit.Framework;
 
 namespace FolTests {
     public class ParsingTests : TestBase {
-        // Term order inside a predicate is preserved left to right.
         [Test]
         public void Predicate_PreservesTermOrder() {
             var p = (Predicate)Logic.TryParse("P(a,b,c)");
@@ -12,7 +11,6 @@ namespace FolTests {
             Assert.That(p.Terms[2].TermSymbol, Is.EqualTo("c"));
         }
 
-        // Identifiers x, y, z, w are variables; everything else is a constant.
         [Test]
         public void Terms_VariableVsConstantClassification() {
             var p = (Predicate)Logic.TryParse("P(x,a)");
@@ -29,7 +27,6 @@ namespace FolTests {
             Assert.That(f.Arity, Is.EqualTo(1));
         }
 
-        // Operator aliases must parse to the same connective as their word forms.
         [Test]
         public void Operators_AsciiAliasesMatchWordForms() {
             Assert.That(S("A && B"), Is.EqualTo(S("A AND B")));

@@ -17,8 +17,6 @@ namespace FolTests {
             Assert.That(new Constant("b"), Is.Not.EqualTo(a));
         }
 
-        // A variable and a constant are different kinds of term even if they share a name,
-        // and equality must be symmetric.
         [Test]
         public void VariableAndConstant_AreNeverEqual_Symmetrically() {
             var x = new Variable("x");
@@ -80,7 +78,6 @@ namespace FolTests {
                 Is.EqualTo(new Function("g", new Term[] { new Variable("y") })));
         }
 
-        // Nothing matched ⇒ the same instance is returned (subterms are shared, not copied).
         [Test]
         public void Substitute_ReturnsSameInstance_WhenNothingMatches() {
             var fy = new Function("f", new Term[] { new Variable("y") });

@@ -69,9 +69,8 @@ namespace FirstOrderLogic {
             };
         }
 
-        // Precedence, tightest first: NOT/NAF/quantifiers, then AND, then OR, then
-        // IMPLIES, then IFF. AND and OR are left-associative (left-recursive rules,
-        // fine for an LALR parser); IMPLIES and IFF are right-associative.
+        // Precedence, tightest first: NOT/NAF/quantifiers, AND, OR, IMPLIES, IFF.
+        // AND/OR are left-associative; IMPLIES/IFF are right-associative.
         protected override void SetUpGrammar()
         {
             AddRule(rhs => rhs[0].Attribute, NonTerminal.LangObject, NonTerminal.Sentence);

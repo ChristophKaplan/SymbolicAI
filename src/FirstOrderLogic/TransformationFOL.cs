@@ -300,7 +300,6 @@ public static class TransformationFOL {
         return sentence;
     }
 
-    // True iff `variable` occurs in `sentence` outside the scope of any same-named quantifier.
     private static bool HasFreeOccurrence(ISentence sentence, Variable variable) {
         if (sentence is IComplexSentence { IsQuantifier: true } quantified &&
             ((Quantifier)quantified.Connective).Variable.Equals(variable)) {

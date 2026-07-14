@@ -7,8 +7,6 @@ namespace FolTests
 {
     public class TheoryTests : TestBase
     {
-        // ── Entailment (resolution-backed) ────────────────────────────────────────
-
         [Test]
         public void Entails_ModusPonens() =>
             Assert.That(new Theory(Set("A", "A => B")).Entails(S("B")), Is.True);
@@ -25,7 +23,6 @@ namespace FolTests
         public void Entails_NotEntailed_False() =>
             Assert.That(new Theory(Set("A")).Entails(S("B")), Is.False);
 
-        // The empty theory entails exactly the tautologies.
         [Test]
         public void Entails_EmptyTheory_EntailsTautology()
         {
@@ -41,8 +38,6 @@ namespace FolTests
         [Test]
         public void Entails_FirstOrderTransitivity() =>
             Assert.That(new Theory(Set("P(x) => Q(x)", "Q(x) => R(x)", "P(a)")).Entails(S("R(a)")), Is.True);
-
-        // ── Equality ────────────────────────────────────────────────────────────
 
         [Test]
         public void Equals_True_ForSameSentenceSequence()
@@ -60,8 +55,6 @@ namespace FolTests
             var b = new Theory(Set("Have(Bob, Money)"));
             Assert.That(a.Equals(b), Is.False);
         }
-
-        // ── Agreements / Conflicts against another theory ───────────────────────
 
         [Test]
         public void Agreements_WhenSentencePresent()
@@ -109,8 +102,6 @@ namespace FolTests
             Assert.That(a.Compare(b).Disagreements.Count, Is.EqualTo(1));
         }
 
-        // ── Chaining vs semantic ────────────────────────────────────────────────
-
         [Test]
         public void Chaining_NoConflict_WhenNoLiteralClash()
         {
@@ -149,8 +140,8 @@ namespace FolTests
         [Test]
         public void Semantic_IsConsistentWith_CatchesJointInconsistency()
         {
-            // Each side alone is consistent, and no single sentence of one is refuted by the other
-            // (the clash needs premises from both sides), so only the union check can see it.
+            // The clash needs premises from both sides, so the directional Compare stays
+            // empty and only the union check can see it.
             var a = new Theory(Set("P", "P => Q"));
             var b = new Theory(Set("Q => R", "NOT R"));
             Assert.That(a.Compare(b, ComparisonMode.Semantic).Disagreements, Is.Empty);
@@ -167,8 +158,7 @@ namespace FolTests
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.True);
         }
 
-        // Explicit quantifiers must not derail the semantic check (IsUnsatisfiable
-        // prenexes/skolemizes internally; a premature CNF conversion used to throw here).
+        // A premature CNF conversion used to throw here on explicit quantifiers.
         [Test]
         public void Semantic_IsConsistentWith_HandlesQuantifiedTheories()
         {
@@ -186,7 +176,6 @@ namespace FolTests
                 () => new Theory(Set("P(a)")).Compare(null),
                 Throws.TypeOf<System.ArgumentNullException>());
 
-        // Premise order carries no logical meaning: P ∧ Q ⇒ R and Q ∧ P ⇒ R are the same rule.
         [Test]
         public void Chaining_NonLiterals_AgreeWhenPremiseOrderPermuted()
         {
@@ -207,8 +196,7 @@ namespace FolTests
         [Test]
         public void IsConsistentWith_IsSymmetric_ForChainedContradiction()
         {
-            // The contradiction only surfaces when scanning A's `Rich(Alice)` against B's rules,
-            // so the directional Conflicts from B misses it but IsConsistentWith must not.
+            // The directional Compare from B misses the clash, but IsConsistentWith must not.
             var a = new Theory(Set("Rich(Alice)"));
             var b = new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)"));
             Assert.That(b.Compare(a, ComparisonMode.Semantic).Disagreements, Is.Empty);
@@ -216,12 +204,9 @@ namespace FolTests
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Semantic), Is.False);
         }
 
-        // ── Chaining mode derivations ───────────────────────────────────────────
-
         [Test]
         public void Chaining_FindsDerivedAgreement()
         {
-            // Syntactically silent (Mortal never literally stated), but the closure derives it.
             var agreements = new Theory(Set("Mortal(Sokrates)"))
                 .Compare(new Theory(Set("Human(Sokrates)", "Human(x) => Mortal(x)")), ComparisonMode.Syntactic).Agreements;
             Assert.That(agreements.Count, Is.EqualTo(1));
@@ -239,7 +224,6 @@ namespace FolTests
         [Test]
         public void Chaining_NonLiterals_AgreeByIdentity()
         {
-            // A shared rule counts as agreement; chaining adds nothing for non-literals.
             var agreements = new Theory(Set("Human(x) => Mortal(x)"))
                 .Compare(new Theory(Set("Human(x) => Mortal(x)")), ComparisonMode.Syntactic).Agreements;
             Assert.That(agreements.Count, Is.EqualTo(1));
@@ -248,7 +232,6 @@ namespace FolTests
         [Test]
         public void Chaining_NonLiterals_ConflictByIdentity()
         {
-            // The complement of a stated rule counts as a conflict (non-literals compare by identity).
             var rule = S("Human(x) => Mortal(x)");
             var conflicts = new Theory(new List<ISentence> { rule })
                 .Compare(new Theory(new List<ISentence> { rule.Negated() }), ComparisonMode.Syntactic).Disagreements;
@@ -258,7 +241,6 @@ namespace FolTests
         [Test]
         public void Chaining_NonLiterals_AgreeByUnification()
         {
-            // A schema rule and its self-bound instance are the same commitment, not silence.
             var stance = new Theory(Set("IsFemale(z) => -Employed(z)"))
                 .Compare(new Theory(Set("IsFemale(mySelf) => -Employed(mySelf)")), ComparisonMode.Syntactic);
             Assert.That(stance.Agreements.Count, Is.EqualTo(1));
@@ -268,8 +250,6 @@ namespace FolTests
         [Test]
         public void Chaining_NonLiterals_ConflictOnOppositeHead()
         {
-            // Same condition, opposite demand: A ⇒ B against A ⇒ ¬B is a disagreement even though
-            // neither is the literal negation of the other.
             var stance = new Theory(Set("IsFemale(z) => -Employed(z)"))
                 .Compare(new Theory(Set("IsFemale(mySelf) => Employed(mySelf)")), ComparisonMode.Syntactic);
             Assert.That(stance.Disagreements.Count, Is.EqualTo(1));
@@ -287,8 +267,6 @@ namespace FolTests
         [Test]
         public void Chaining_IsConsistentWith_CatchesJointInconsistency()
         {
-            // Each side alone is consistent and neither directional Compare sees the clash:
-            // only the union's closure derives ¬Q(a) against B's Q(a).
             var a = new Theory(Set("P(a)", "P(x) => -Q(x)"));
             var b = new Theory(Set("Q(a)"));
             Assert.That(a.IsConsistent(), Is.True);
@@ -296,8 +274,6 @@ namespace FolTests
             Assert.That(a.IsConsistentWith(b, ComparisonMode.Syntactic), Is.False);
         }
 
-        // The union's witnesses, not just the bool: a alone and b alone are clean, but together
-        // the closure derives ¬Q(a) against Q(a).
         [Test]
         public void Inconsistencies_WithOther_ReturnsUnionWitnesses()
         {
@@ -311,7 +287,7 @@ namespace FolTests
             Assert.That(joint[0].ToString(), Is.EqualTo(S("Q(a)").ToString()));
         }
 
-        // Semantic witnesses are not implemented yet (would need an unsat core).
+        // Semantic witnesses would need an unsat core.
         [Test]
         public void Inconsistencies_Semantic_NotImplemented()
         {
@@ -321,12 +297,9 @@ namespace FolTests
                 Throws.TypeOf<System.NotImplementedException>());
         }
 
-        // ── Internal consistency (closure conflicts) ────────────────────────────
-
         [Test]
         public void Conflicts_FindsRuleDrivenSelfConflict()
         {
-            // A fact plus a rule whose consequent contradicts another fact.
             var merged = new Theory(Set("Penguin(p)", "Flies(p)", "Penguin(z) => -Flies(z)"));
             var conflicts = merged.Inconsistencies();
             Assert.That(conflicts.Count, Is.EqualTo(1));
@@ -342,13 +315,11 @@ namespace FolTests
             Assert.That(theory.IsConsistent(), Is.True);
         }
 
-        // ── Complement safety ───────────────────────────────────────────────────
-
         [Test]
         public void Conflicts_DoesNotMutateParentedSentences()
         {
-            // A sentence extracted from an implication still carries its parent linkage;
-            // Conflicts must neither throw nor splice a negation into the source tree.
+            // The consequent still carries its parent linkage; comparing it must not
+            // splice a negation into the source tree.
             var rule = S("A => NOT B");
             var consequent = rule.Children[1];
             var before = rule.ToString();
@@ -360,12 +331,9 @@ namespace FolTests
             Assert.That(rule.ToString(), Is.EqualTo(before));
         }
 
-        // ── Explain (kernels) ───────────────────────────────────────────────────
-
         [Test]
         public void Explain_ReturnsKernelWhenEveryPremiseIsLoadBearing()
         {
-            // The only proof of ¬Rich needs both premises, so the kernel equals the whole theory.
             var theory = new Theory(Set("Poor(Alice)", "Poor(Alice) => -Rich(Alice)"));
             var kernels = theory.Explain(S("Rich(Alice)").Negated());
             Assert.That(kernels.Count, Is.EqualTo(1));

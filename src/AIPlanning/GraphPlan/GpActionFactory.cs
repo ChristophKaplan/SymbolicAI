@@ -6,11 +6,8 @@ namespace AIPlanning.Planning.GraphPlan {
     public class GpActionFactory {
         private readonly FirstOrderLogic.FirstOrderLogic _logic;
 
-        /// <summary>
-        /// Creates a factory bound to <paramref name="logic"/>. Pass a shared instance so all
-        /// parsing goes through one logic (one parse table, structurally comparable sentences);
-        /// if none is supplied a private instance is created.
-        /// </summary>
+        // Pass a shared logic so all parsing goes through one parse table and sentences
+        // stay structurally comparable.
         public GpActionFactory(FirstOrderLogic.FirstOrderLogic? logic = null) {
             _logic = logic ?? new FirstOrderLogic.FirstOrderLogic();
         }

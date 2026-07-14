@@ -49,8 +49,6 @@ namespace AIPlanning.Planning.GraphPlan {
                     continue;
                 }
 
-                // Connect to the canonical action node returned by Add — this avoids
-                // the edge-direction asymmetry that occurred when ConnectTo ran before Add.
                 var canonical = ActionSet.Add(new GpActionNode(action));
                 foreach (var preCon in satisfiedPreCons) {
                     preCon.ConnectTo(canonical);

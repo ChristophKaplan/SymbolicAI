@@ -4,15 +4,8 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // A first-order signature: the non-logical symbols a language is built from — predicate
-    // symbols with their arity, plus constant/function symbols (constants are arity-0 functions).
-    // Pure syntax: declares what *can* be said, not what is true.
     public sealed class Signature
     {
-        // A declared name + arity. Converts implicitly to its name so it drops in wherever a
-        // string symbol is expected; Of(args) renders the applied syntax "Name(a, b)" with an
-        // arity check; Ground(args) builds the same atom directly as a Predicate over constant
-        // terms, so ground facts need no parser round-trip.
         public sealed class Symbol
         {
             public string Name { get; }
@@ -62,7 +55,6 @@ namespace FirstOrderLogic
         public IReadOnlyDictionary<string, int> Predicates => _predicates;
         public IReadOnlyDictionary<string, int> Functions  => _functions;
 
-        // The constant symbols (arity-0 functions).
         public IEnumerable<string> Constants => _functions.Where(kv => kv.Value == 0).Select(kv => kv.Key);
 
         public bool HasPredicate(string symbol) => _predicates.ContainsKey(symbol);
@@ -73,8 +65,6 @@ namespace FirstOrderLogic
         public bool HasConstant(string symbol) =>
             _functions.TryGetValue(symbol, out var a) && a == 0;
 
-        // The predicate symbols ("Symbol/Arity") in `sentence` not declared with a matching arity.
-        // Empty ⇒ well-formed over this signature.
         public List<string> UndeclaredPredicates(ISentence sentence)
         {
             var missing = new List<string>();
@@ -90,7 +80,6 @@ namespace FirstOrderLogic
 
             if (sentence.IsLiteral)
             {
-                // Propositional atoms carry no predicate symbol, so only IPredicate atoms count.
                 var atom = sentence.AtomOf();
                 if (atom is IPredicate predicate && !HasPredicate(predicate.Symbol, predicate.Arity))
                     missing.Add($"{predicate.Symbol}/{predicate.Arity}");
@@ -101,7 +90,6 @@ namespace FirstOrderLogic
                 Collect(child, missing);
         }
 
-        // Fluent construction: sig = new Signature.Builder().Predicate("Role", 2).Constant("Money").Build();
         public sealed class Builder
         {
             private readonly Dictionary<string, int> _predicates = new();

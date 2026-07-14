@@ -4,7 +4,6 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // Direct tests on GpLayer: usable-action collection and layer expansion.
     [TestFixture]
     public class GpLayerTests : PlanningTestBase {
         private static GpLayer LayerWithBelief(params string[] literals) {

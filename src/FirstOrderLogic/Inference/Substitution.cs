@@ -2,8 +2,6 @@ using System.Collections.Generic;
 
 namespace FirstOrderLogic
 {
-    // A variable->term map with the operations the inference procedures need. Immutable: Extend
-    // returns a new substitution rather than mutating.
     internal sealed class Substitution
     {
         public static readonly Substitution Empty = new(new Dictionary<Variable, Term>());
@@ -31,7 +29,6 @@ namespace FirstOrderLogic
             }
         }
 
-        // A fresh literal with every variable resolved through this substitution.
         public ISentence Apply(ISentence literal)
         {
             var result = literal;

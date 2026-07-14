@@ -8,7 +8,6 @@ namespace FirstOrderLogic {
         public PossibleWorld? WalkSAT(List<Clause> clauses, float p, int maxFlips) {
             if(!IsPropositional(clauses)) throw new Exception("WalkSAT only works with propositional logic");
 
-            // The empty clause has no model and no symbol to flip: unsatisfiable outright.
             if (clauses.Any(clause => clause.Literals.Count == 0)) return null;
 
             var model = new PossibleWorld(GetRandomAssigmentFor(clauses));
@@ -20,7 +19,6 @@ namespace FirstOrderLogic {
                 var clause = GetRandomUnsatisfiedClause(clauses, model);
          
                 if (_random.NextDouble() < p) {
-                    // Random walk: the flipped symbol must come from the unsatisfied clause itself.
                     var literal = clause.Literals[_random.Next(0, clause.Literals.Count)];
                     model.Switch(literal.GetProposition());
                 } else {

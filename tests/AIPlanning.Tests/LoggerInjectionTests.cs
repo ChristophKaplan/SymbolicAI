@@ -4,13 +4,12 @@ using System.IO;
 using LogHelper;
 
 namespace AIPlanningTests {
-    // The Logger is part of the Unity-compatibility surface (skill A): consumers must
-    // be able to redirect log output via SetSink, and ResetSink must restore the default.
+    // The Logger sink is part of the Unity-compatibility surface: consumers must be able
+    // to redirect log output via SetSink.
     [TestFixture]
     public class LoggerInjectionTests {
         [TearDown]
         public void TearDown() {
-            // Make sure individual tests do not affect each other's logging state.
             Logger.ResetSink();
         }
 
@@ -31,8 +30,6 @@ namespace AIPlanningTests {
             Logger.SetSink(captured.Add);
             Logger.ResetSink();
 
-            // "Restored" means the message actually reaches the default sink (Console.Out in
-            // non-Unity environments) again — a null sink dropping all output must fail here.
             var console = CaptureConsoleOut(() => Logger.Log("back to default"));
 
             Assert.That(captured, Is.Empty, "the custom sink must no longer receive messages");

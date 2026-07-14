@@ -4,8 +4,8 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // Equality + GetHashCode contracts. These guard the C2 fixes (set-based equality)
-    // and the GpLiteralNode hash bug (identity hash + literal-based Equals → broken).
+    // Guards the set-based-equality fixes and the GpLiteralNode identity-hash bug
+    // (identity hash + literal-based Equals broke the HashSet contract).
     [TestFixture]
     public class EqualityAndHashTests : PlanningTestBase {
         [Test]
@@ -20,7 +20,6 @@ namespace AIPlanningTests {
             Assert.That(nodeA.GetHashCode(), Is.EqualTo(nodeB.GetHashCode()),
                 "Equal nodes MUST have equal hash codes (HashSet contract)");
 
-            // Practical check: two literal-equal nodes collapse in a HashSet.
             var set = new HashSet<GpLiteralNode> { nodeA, nodeB };
             Assert.That(set, Has.Count.EqualTo(1));
         }
@@ -73,8 +72,6 @@ namespace AIPlanningTests {
             var q = L("Q(Obj)");
             var eff = L("R(Obj)");
 
-            // Under the old XOR combination P^P and Q^Q both cancelled to 0, giving
-            // {P,P} and {Q,Q} identical hashes gratuitously.
             var pp = new GpAction("A", new() { p, p }, new() { eff });
             var qq = new GpAction("A", new() { q, q }, new() { eff });
 

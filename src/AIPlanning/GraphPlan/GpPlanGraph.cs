@@ -26,18 +26,16 @@ namespace AIPlanning.Planning.GraphPlan {
             return _layers[i].BeliefState.IsConflictFreeStateReachable(sentences, out _);
         }
 
-        // stopAtFirst: return as soon as ONE complete plan is found instead of enumerating
-        // every supporter combination — the exhaustive walk is exponential in the number of
-        // interchangeable supporters, and callers that only execute one plan don't need it.
-        // Note the early exit also skips nogood recording for branches never explored; that
-        // only matters on success, where the nogood table is discarded anyway.
+        // stopAtFirst: return on the first complete plan instead of the exhaustive walk, which is
+        // exponential in the number of interchangeable supporters. The early exit skips nogood
+        // recording for unexplored branches — harmless, as that only happens on success, where
+        // the nogood table is discarded anyway.
         public GpSolution ExtractSolution(int levelIndex, NoGoods noGoods, bool stopAtFirst = false) {
             var lastState = _layers[levelIndex].BeliefState;
             var solutions = new GpSolution();
 
-            // When the goals are not jointly conflict-free at this level, the out-state is only
-            // the mutex-stripped SUBSET of the goals — extracting from it would yield a plan
-            // that achieves part of the goals. No plan exists at this level.
+            // Goals not jointly conflict-free here: the out-state is only the mutex-stripped
+            // SUBSET of the goals — extracting from it would yield a partial plan.
             if (!lastState.IsConflictFreeStateReachable(_problem.Goals, out var currentState)) {
                 return solutions;
             }
@@ -47,23 +45,18 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolution solutions, bool stopAtFirst) {
-            // Extraction entered at layer 0: the initial state itself supplies the (already
-            // conflict-free) goals, so the empty plan succeeds. Only top-level calls can land
-            // here — the recursion below handles nextLevelIndex == 0 before recursing.
+            // Both base cases are reachable only from top-level calls — the recursion below
+            // handles nextLevelIndex == 0 and empty precondition states before recursing.
             if (levelIndex == 0) {
                 solutions.Add(outcome);
                 return true;
             }
 
-            // No goal literals to support at this level: the empty state is trivially
-            // satisfied, so the branch is complete. Only top-level calls with an empty goal
-            // set land here — the recursion below handles empty precondition states itself.
             if (curBeliefState.GetNodes.Count == 0) {
                 solutions.Add(outcome);
                 return true;
             }
 
-            // B-fix: prune already-recorded nogoods.
             if (noGoods.Contains(levelIndex, curBeliefState)) {
                 return false;
             }
@@ -71,13 +64,8 @@ namespace AIPlanning.Planning.GraphPlan {
             var nextLevelIndex = levelIndex - 1;
             var anyBranchSucceeded = false;
 
-            // Empty stream (no conflict-free action set supports this goal state) falls through to
-            // the !anyBranchSucceeded block below, which records the nogood — same as before.
             foreach (var possibleConditionalActions in curBeliefState.GetPossibleConflictFreeActionSets()) {
                 var preConditionalState = possibleConditionalActions.GetJointPreconditionsIfConflictFree();
-
-                // Skip action sets whose joint preconditions are mutex at the previous
-                // literal level (infeasible).
                 if (preConditionalState == null) {
                     continue;
                 }
@@ -85,8 +73,8 @@ namespace AIPlanning.Planning.GraphPlan {
                 var possibleLayer = new GpLayer(nextLevelIndex, preConditionalState, possibleConditionalActions);
                 var outcomeBranch = new Dictionary<int, GpLayer>(outcome) { { nextLevelIndex, possibleLayer } };
 
-                // Empty joint preconditions (all chosen actions are precondition-less) means the
-                // branch needs nothing from the levels below — it is complete, not a dead end.
+                // Empty joint preconditions mean the branch needs nothing from the levels below —
+                // it is complete, not a dead end.
                 if (nextLevelIndex == 0 || preConditionalState.GetNodes.Count == 0) {
                     solutions.Add(outcomeBranch);
                     anyBranchSucceeded = true;
@@ -104,7 +92,6 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
             }
 
-            // B-fix: only mark as nogood when ALL branches from this state failed.
             if (!anyBranchSucceeded) {
                 noGoods.Add(levelIndex, curBeliefState);
             }
@@ -112,13 +99,10 @@ namespace AIPlanning.Planning.GraphPlan {
             return anyBranchSucceeded;
         }
 
-        // True iff the planning graph has reached a fixed point at this level.
-        // A single "layer N == layer N-1" is not enough because the unification-driven
-        // OperatorGraph can produce a transient identity between two levels and then
-        // grow again — we therefore require TWO consecutive equalities.
-        // The comparison must include the mutex relations: the literal set typically
-        // stabilises several levels before the mutexes finish relaxing, and declaring
-        // level-off on literals alone reports solvable problems as unsolvable.
+        // A single "layer N == layer N-1" is not enough: the unification-driven OperatorGraph can
+        // produce a transient identity and then grow again, hence TWO consecutive equalities.
+        // The comparison must include mutex relations — literals stabilise before mutexes finish
+        // relaxing, and declaring level-off on literals alone reports solvable problems unsolvable.
         public bool Stable(int levelIndex) {
             if (levelIndex < 2 || _layers.Count < 3) {
                 return false;

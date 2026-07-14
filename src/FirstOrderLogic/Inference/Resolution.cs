@@ -12,8 +12,6 @@ namespace FirstOrderLogic {
         {
             var resolvents = new List<Resolvent>();
 
-            // Standardize apart: clause variables are local, so a name shared across the two
-            // clauses must be renamed before unifying or it acts as a spurious constraint.
             var literals2 = StandardizeApart(clause1.Literals, clause2.Literals);
 
             for (var i = 0; i < clause1.Literals.Count; i++)
@@ -28,7 +26,6 @@ namespace FirstOrderLogic {
                     var unify = new Unificator(lit1, lit2);
                     if (!unify.IsUnifiable) continue;
 
-                    // Apply the mgu purely; each result is fresh, so the source clauses are never mutated.
                     var mgu = new Substitution(unify.Substitutions);
                     var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
@@ -104,9 +101,8 @@ namespace FirstOrderLogic {
             }
         }
 
-        // Clones of `right` with colliding variables renamed fresh; never mutates either input.
         // "y$" names cannot pre-exist ('$' is unparseable, resolvents are canonicalized to "x$"),
-        // so a per-call counter suffices.
+        // so a per-call counter suffices for freshness.
         private static List<ISentence> StandardizeApart(List<ISentence> left, List<ISentence> right)
         {
             var leftNames = new HashSet<string>();
@@ -179,29 +175,22 @@ namespace FirstOrderLogic {
 
         private static readonly Variable Placeholder = new("$");
 
-        // Refutation: KB ⊨ consequence iff KB ∧ ¬consequence is unsatisfiable.
-        // useSubsumption is opt-in: it only pays off on larger, redundancy-heavy problems.
         // maxRounds (0 = unlimited) bounds the saturation loop (FOL entailment is only
         // semi-decidable) and throws when exceeded.
         //
-        // Free-variable convention: in the KB free variables are implicitly universal (as
-        // everywhere in the library), but in `consequence` they are QUERY variables — Resolve
-        // asks whether some instance is entailed (AIMA ASK), so Q(x) and FORALL x (Q(x)) are
-        // different questions. The clausal form realizes this on its own: the negated goal's
-        // clause is standardized apart per resolution step, which reads its free variables as
-        // universal under the negation, i.e. existential in the goal.
+        // Free variables in the KB are implicitly universal (as everywhere in the library), but
+        // in `consequence` they are QUERY variables — Resolve asks whether some instance is
+        // entailed (AIMA ASK), so Q(x) and FORALL x (Q(x)) are different questions.
         public static bool Resolve(ISentence knowledgeBase, ISentence consequence,
             bool useSubsumption = false, int maxRounds = 0) =>
             IsUnsatisfiable(new ComplexSentence(
                 knowledgeBase, Connective.LogicSymbol.CONJUNCTION, consequence.Negated()),
                 useSubsumption, maxRounds);
 
-        // True iff the clause set derives the empty clause, i.e. `sentence` has no model.
         public static bool IsUnsatisfiable(ISentence sentence, bool useSubsumption = false, int maxRounds = 0)
         {
-            // Clausification needs a quantifier-free sentence: prenex, then skolemize. Runs after
-            // Resolve's negation, so goal quantifiers are already flipped — the order that keeps
-            // refutation sound.
+            // Skolemization must run after Resolve's negation (goal quantifiers already flipped) —
+            // the order that keeps refutation sound.
             if (sentence.HasQuantifier())
             {
                 sentence = Logic.SkolemForm(Logic.ToPrenexForm(sentence));
@@ -209,8 +198,7 @@ namespace FirstOrderLogic {
 
             // TRUE/FALSE are truth values, not resolvable atoms; fold them away so already-CNF
             // input cannot smuggle them into the clause set (a clause holding ⊤ is satisfied,
-            // {⊥} is the empty clause — the loop below knows neither). After folding, a constant
-            // can only survive as the whole sentence, decided right here.
+            // {⊥} is the empty clause — the loop below knows neither).
             TransformationFOL.Transform(TransformationFOL.EquivType.SimplifyConstants, ref sentence);
             if (sentence is IAtomicSentence { Contradiction: true }) return true;
             if (sentence is IAtomicSentence { Tautology: true }) return false;
@@ -227,15 +215,11 @@ namespace FirstOrderLogic {
 
             var seen = new HashSet<Clause>(clauses, ClauseByContent);
 
-            // Input clauses contribute their factors up front; resolvents get theirs as they
-            // are derived below.
             var inputFactors = new List<Clause>();
             foreach (var clause in clauses)
                 AddNewFactors(clause, seen, inputFactors);
             clauses.AddRange(inputFactors);
 
-            // Unit-clause index for cheap forward subsumption: a unit {L} subsumes every clause
-            // containing L, so a hash lookup replaces an O(n) scan.
             var unitLiterals = new HashSet<ISentence>();
             if (useSubsumption)
                 foreach (var clause in clauses)
@@ -289,7 +273,6 @@ namespace FirstOrderLogic {
                     }
                 }
 
-                // No new clauses → saturated → not entailed.
                 if (fresh.Count == 0) return false;
 
                 // Backward subsumption: only a newly discovered unit can make a kept clause
@@ -339,7 +322,6 @@ namespace FirstOrderLogic {
 
         private static readonly IEqualityComparer<Clause> ClauseByContent = new ClauseContentComparer();
 
-        // Set equality over literals, order aside, on ISentence value-equality.
         private sealed class ClauseContentComparer : IEqualityComparer<Clause>
         {
             public bool Equals(Clause a, Clause b)

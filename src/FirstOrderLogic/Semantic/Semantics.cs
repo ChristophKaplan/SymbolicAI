@@ -3,10 +3,8 @@ using System.Collections.Generic;
 
 namespace FirstOrderLogic
 {
-    // Builds an Interpretation over a fixed Signature, enforcing that every declared symbol is
-    // interpreted (predicate → relation, constant → function). A first-order structure is total
-    // over its signature, so every declared predicate must have a relation. Concrete subclasses
-    // fill the tables in Define().
+    // A first-order structure is total over its signature: every declared symbol must be
+    // interpreted (predicate → relation, constant → function), enforced by Validate.
     public abstract class Semantics
     {
         protected readonly Dictionary<string, Func<IElementOfDiscourse[], bool>> Relations = new();
@@ -16,7 +14,6 @@ namespace FirstOrderLogic
 
         protected abstract Signature Signature { get; }
 
-        // Populate Relations / Functions / assignments for the current context.
         protected abstract void Define();
 
         public Interpretation BuildInterpretation(IDomainOfDiscourse domain)

@@ -32,10 +32,9 @@ namespace AIPlanning.Planning.GraphPlan {
             return isInterference;
         }
 
-        // Competing-Needs (Russell/Norvig): two actions at the same level have a mutex if any
-        // precondition of the one is mutex (at the previous literal level) with any precondition
-        // of the other. We exploit the already-computed mutex relations on the precondition
-        // (literal) nodes via InEdges, which is cheaper than re-checking by literal pairs.
+        // Competing-Needs (Russell/Norvig): mutex if any precondition of the one is mutex, at the
+        // previous literal level, with any precondition of the other. Uses the already-computed
+        // relations on the precondition nodes via InEdges instead of re-checking literal pairs.
         public bool IsCompetingNeeds(GpActionNode other) {
             foreach (var inNode in InEdges) {
                 foreach (var mutex in inNode.MutexRelation) {

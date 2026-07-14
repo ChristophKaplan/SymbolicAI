@@ -5,9 +5,8 @@ using FirstOrderLogic;
 using NUnit.Framework;
 
 namespace FolTests {
-    // Repro tests for the open findings of the July 2026 whole-project review. Each test
-    // asserts the CORRECT behavior, so a failure here confirms the corresponding bug is
-    // real and still present. Once a bug is fixed its test doubles as a regression pin.
+    // Repro tests for the open findings of the July 2026 whole-project reviews. Each test
+    // asserts the CORRECT behavior, so a failure confirms the bug is still present.
     [Category("OpenIssue")]
     public class OpenIssueTests : TestBase {
         private static readonly TimeSpan Bound = TimeSpan.FromSeconds(5);
@@ -163,8 +162,6 @@ namespace FolTests {
                 "content-equal unifiers must collapse to one hash-set entry");
         }
 
-        // ── Findings of the second July 2026 whole-project review ─────────────────────
-
         // Finding 13 — SkolemForm draws witness arguments only from the explicit prenex
         // prefix, so a free (implicitly universal) variable never enters the witness and
         // EXISTS y Q(x,y) skolemizes to a single shared constant Q(x, sk$1) instead of
@@ -270,13 +267,9 @@ namespace FolTests {
             Assert.That(model, Is.Null, "no assignment satisfies the empty clause");
         }
 
-        // ── Findings of the third July 2026 whole-project review ──────────────────────
-
         // Finding 20 — resolved as a convention, not a defect: free variables in a GOAL are
-        // query variables (AIMA ASK) — Resolve asks whether some instance is entailed — while
-        // KB sentences keep the universal reading (Finding13). Q(x) and FORALL x (Q(x)) are
-        // therefore different questions; StandardizeApartTests pins the same reading. These
-        // tests keep the two conventions deliberate.
+        // query variables (AIMA ASK), while KB sentences keep the universal reading
+        // (Finding13), so Q(x) and FORALL x (Q(x)) are different questions.
         [Test]
         public void Finding20_Resolution_FreeVariableGoal_IsAnExistentialQuery() {
             var entails = RunWithin(Bound, "Resolve(Q(b) ⊨ Q(x))",

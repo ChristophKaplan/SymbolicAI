@@ -1,10 +1,8 @@
 using System.Collections.Generic;
 
 namespace AIPlanning.Planning.GraphPlan {
-    // Per-level set of belief states that have been proven unreachable.
-    // Used by FindSolutions to prune already-failed sub-goals and to detect
-    // search exhaustion (no new nogood at the levelled-off level between two
-    // consecutive extraction attempts — Blum & Furst's termination condition).
+    // Per-level set of belief states proven unreachable; prunes failed sub-goals and detects
+    // search exhaustion (Blum & Furst's termination condition).
     public class NoGoods {
         private readonly Dictionary<int, HashSet<GpBeliefState>> _byLevel = new();
         private int _sizeAtLastExpansion = -1;
@@ -23,18 +21,14 @@ namespace AIPlanning.Planning.GraphPlan {
             return _byLevel.TryGetValue(level, out var set) && set.Contains(state);
         }
 
-        // Snapshot the nogood count at `level` — the level the graph levelled off at. A total
-        // count across all levels is useless here: every failed extraction records the goal set
-        // under the brand-new top level, so the total grows on every attempt by construction.
-        // The count at one fixed level is monotone and bounded, so equality between two
-        // consecutive snapshots means the whole search stage added nothing.
+        // Snapshot the nogood count at the levelled-off level. A total across all levels grows on
+        // every failed attempt by construction; the count at one fixed level is monotone and
+        // bounded, so two equal consecutive snapshots mean the search stage added nothing.
         public void MarkExpansion(int level) {
             _sizeAtPreviousExpansion = _sizeAtLastExpansion;
             _sizeAtLastExpansion = CountAt(level);
         }
 
-        // Stable iff the watched level's nogood set didn't grow between the two most recent
-        // checkpoints, i.e. the extraction search cannot make further progress.
         public bool IsStable() {
             return _sizeAtLastExpansion >= 0
                 && _sizeAtPreviousExpansion == _sizeAtLastExpansion;

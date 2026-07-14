@@ -15,7 +15,6 @@ namespace FolTests {
             Assert.That(Entails("A", "A => B", "B"), Is.True);
         }
 
-        // The canonical first-order example: a fact plus a universally-quantified rule.
         [Test]
         public void FirstOrder_SocratesIsMortal() {
             Assert.That(Entails("Human(Sokrates)", "Human(x) => Mortal(x)", "Mortal(Sokrates)"), Is.True);
@@ -26,13 +25,11 @@ namespace FolTests {
             Assert.That(Entails("Human(Sokrates)", "Human(x) => Mortal(x)", "Mortal(Platon)"), Is.False);
         }
 
-        // Transitive chain through two rules — the fixpoint must keep firing past the first round.
         [Test]
         public void Chains_ThroughMultipleRules() {
             Assert.That(Entails("P(a)", "P(x) => Q(x)", "Q(x) => R(x)", "R(a)"), Is.True);
         }
 
-        // A conjunctive body: both premises must be satisfied by the same binding.
         [Test]
         public void ConjunctiveBody_BothPremisesMustHold() {
             Assert.That(
@@ -43,14 +40,12 @@ namespace FolTests {
 
         [Test]
         public void ConjunctiveBody_MissingPremise_NotEntailed() {
-            // No Male(Tom) fact, so the rule never fires.
             Assert.That(
                 Entails("Parent(Tom,Bob)",
                         "(Parent(x,y) AND Male(x)) => Father(x,y)", "Father(Tom,Bob)"),
                 Is.False);
         }
 
-        // A query with a free variable is entailed when some derived fact instantiates it.
         [Test]
         public void VariableQuery_EntailedByInstance() {
             Assert.That(Entails("Human(Sokrates)", "Human(x) => Mortal(x)", "Mortal(x)"), Is.True);
@@ -58,7 +53,6 @@ namespace FolTests {
 
         [Test]
         public void NegatedQuery_NotDerivable_NotEntailed() {
-            // ¬B is a legal query now, but nothing derives it here.
             Assert.That(Entails("A", "A => B", "NOT B"), Is.False);
         }
 
@@ -72,9 +66,6 @@ namespace FolTests {
             Assert.That(closure.Count, Is.EqualTo(3));
         }
 
-        // ── Literal clauses: negation as explicit falsehood ──────────────────────
-
-        // A rule with a negated head fires like any other — negative conclusions are derivable.
         [Test]
         public void NegativeHead_Derived() {
             Assert.That(Entails("Penguin(pingu)", "Penguin(z) => NOT Flies(z)", "NOT Flies(pingu)"), Is.True);
@@ -90,7 +81,6 @@ namespace FolTests {
             Assert.That(closure.Count, Is.EqualTo(4));
         }
 
-        // A negative premise is satisfied only by an explicitly known negative literal.
         [Test]
         public void NegativePremise_MatchesNegativeFact() {
             Assert.That(
@@ -99,8 +89,6 @@ namespace FolTests {
                 Is.True);
         }
 
-        // Explicit negation, not negation-as-failure: an *absent* positive fact does not
-        // satisfy a negative premise.
         [Test]
         public void NegativePremise_AbsenceIsNotNegation() {
             Assert.That(
@@ -109,14 +97,11 @@ namespace FolTests {
                 Is.False);
         }
 
-        // Polarity is part of the match: a positive premise never unifies with a negative fact.
         [Test]
         public void PolarityMismatch_DoesNotFire() {
             Assert.That(Entails("NOT Work(a)", "Work(x) => Tired(x)", "Tired(a)"), Is.False);
         }
 
-        // No ex falso: complementary literals coexist in the closure (a detectable tension,
-        // not an explosion).
         [Test]
         public void ComplementaryLiterals_Coexist() {
             var closure = ForwardChaining.Saturate(Set("P(a)", "NOT P(a)"));
@@ -125,8 +110,6 @@ namespace FolTests {
             Assert.That(closure.Count, Is.EqualTo(2));
         }
 
-        // Holds is a literal-fact lookup; a non-literal query (e.g. a rule-form norm) is a misuse
-        // and fails loudly rather than silently — callers must not pass implications.
         [Test]
         public void Holds_NonLiteralQuery_Throws() {
             var facts = Set("Have(mySelf, Money)", "Role(mySelf, Worker)");
@@ -134,17 +117,12 @@ namespace FolTests {
                 Throws.ArgumentException);
         }
 
-        // An unsafe rule — head variable y is not bound by the body — is rejected loudly rather
-        // than silently looping: each round would otherwise derive a freshly-renamed Q(y#n) and
-        // never reach a fixpoint.
         [Test]
         public void UnsafeRule_IsRejected() {
             Assert.That(
                 () => ForwardChaining.Saturate(Set("P(a)", "P(x) => Q(y)")),
                 Throws.ArgumentException);
         }
-
-        // ── IsChainable: the queryable boundary of the fragment Saturate consumes ────────
 
         [Test]
         public void IsChainable_AcceptsFactsAndRules() {
@@ -155,8 +133,6 @@ namespace FolTests {
             Assert.That(Rule.IsChainable(S("FORALL x (Human(x) => Mortal(x))")), Is.True);
         }
 
-        // Existential antecedents, disjunctions, and non-literal heads live outside the fragment —
-        // Saturate would silently drop them, so callers can validate up front instead.
         [Test]
         public void IsChainable_RejectsRicherForms() {
             Assert.That(Rule.IsChainable(S("(EXISTS y (Parent(Tom, y))) => IsParent(Tom)")), Is.False);
@@ -164,9 +140,6 @@ namespace FolTests {
             Assert.That(Rule.IsChainable(S("Human(x) => (Mortal(x) AND Alive(x))")), Is.False);
         }
 
-        // ── Negation as failure: NAF l holds when l is NOT derivable (closed world) ──────
-
-        // The classic default: birds fly unless something says penguin.
         [Test]
         public void Naf_DerivesFromAbsence() {
             Assert.That(
@@ -178,7 +151,6 @@ namespace FolTests {
 
         [Test]
         public void Naf_BlockedByDerivedInstance() {
-            // Penguin(tweety) is not asserted but derivable through the first rule, so NAF fails.
             Assert.That(
                 Entails("Bird(tweety)", "Antarctic(tweety)",
                         "Antarctic(x) => Penguin(x)",
@@ -187,8 +159,6 @@ namespace FolTests {
                 Is.False);
         }
 
-        // A variable occurring only under NAF reads "no derivable instance" (∄y) — no summary
-        // predicate needed for "has no children".
         [Test]
         public void Naf_FreeVariable_MeansNoInstance() {
             Assert.That(
@@ -203,8 +173,6 @@ namespace FolTests {
                 Is.False);
         }
 
-        // The closed-world assumption as a rule: non-derivability materialised into explicit ¬,
-        // range-restricted over a positively bound domain.
         [Test]
         public void Naf_ClosedWorldBridgeRule() {
             var closure = ForwardChaining.Saturate(Set(
@@ -214,9 +182,8 @@ namespace FolTests {
             Assert.That(closure, Has.No.Member(S("NOT Enrolled(Tom, math)")));
         }
 
-        // Strata evaluate in dependency order: Q is fully derived before NAF Q is asked, so R
-        // never fires. A single unordered pass could fire both. (NAF binds loosely like NOT —
-        // a bare NAF antecedent needs parentheses, else NAF swallows the implication.)
+        // NAF binds loosely like NOT: a bare NAF antecedent needs the parentheses,
+        // else NAF swallows the whole implication.
         [Test]
         public void Naf_StratifiedOrder() {
             var closure = ForwardChaining.Saturate(Set(
@@ -226,7 +193,6 @@ namespace FolTests {
             Assert.That(closure, Has.No.Member(S("R(a)")));
         }
 
-        // NAF through a cycle has no evaluation order that makes "not derivable" well-defined.
         [Test]
         public void Naf_CycleIsRejected() {
             Assert.That(
@@ -234,8 +200,6 @@ namespace FolTests {
                 Throws.ArgumentException);
         }
 
-        // NAF premises never bind variables — failure produces no substitution — so they cannot
-        // make a head variable safe.
         [Test]
         public void Naf_CannotBindHeadVariable() {
             Assert.That(
@@ -248,8 +212,6 @@ namespace FolTests {
             Assert.That(Rule.IsChainable(S("(Bird(x) AND NAF Penguin(x)) => Flies(x)")), Is.True);
         }
 
-        // NAF has no classical model semantics — the classical pipeline refuses it instead of
-        // treating it as ordinary negation.
         [Test]
         public void Naf_RejectedByCnf() {
             Assert.That(

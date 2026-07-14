@@ -29,7 +29,6 @@ namespace FirstOrderLogic {
             return new ComplexSentence(Connective.LogicSymbol.NEGATION, this);
         }
 
-        // Nullary constants (TRUE/FALSE) are always propositions.
         private static ISentence Constant(Connective.LogicSymbol symbol)
         {
             return new Proposition(Connective.SymbolToString(symbol));

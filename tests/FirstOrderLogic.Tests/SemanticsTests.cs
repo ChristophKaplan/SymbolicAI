@@ -5,7 +5,6 @@ using NUnit.Framework;
 
 namespace FolTests {
     public class SemanticsTests : TestBase {
-        // Domain {1,2,3,4}; Human and Mortal both hold of elements 1 and 2.
         private Interpretation BuildInterpretation() {
             IDomainOfDiscourse domain = new Domain(new Element(1), new Element(2), new Element(3), new Element(4));
             var relations = new Dictionary<string, Func<IElementOfDiscourse[], bool>>
@@ -43,7 +42,6 @@ namespace FolTests {
             Assert.That(BuildInterpretation().Evaluate(s), Is.False);
         }
 
-        // ── Propositional truth tables via PossibleWorld ──────────────────────────
         private static PossibleWorld World(bool a, bool b) => new(new Dictionary<IProposition, bool>
         {
             [new Proposition("A")] = a,
@@ -59,15 +57,12 @@ namespace FolTests {
             Assert.That(World(false, false).Evaluate(S("A <=> B")), Is.True);
         }
 
-        // Parsed TRUE/FALSE are Propositions with fixed truth values — they must evaluate
-        // without an assignment entry.
         [Test]
         public void World_EvaluatesParsedBooleanConstants() {
             var empty = new PossibleWorld(new Dictionary<IProposition, bool>());
             Assert.That(empty.Evaluate(S("TRUE")), Is.True);
             Assert.That(empty.Evaluate(S("FALSE")), Is.False);
 
-            // B is false and A is true here, so the outcome hinges on the constants themselves.
             Assert.That(World(true, false).Evaluate(S("B OR TRUE")), Is.True);
             Assert.That(World(true, false).Evaluate(S("A AND FALSE")), Is.False);
             Assert.That(World(true, false).Evaluate(S("NOT FALSE")), Is.True);
@@ -80,8 +75,6 @@ namespace FolTests {
                 Throws.TypeOf<InterpretationException>());
         }
 
-        // A genuine (non-constant) function symbol: succ over a small numeric domain,
-        // evaluated inside a predicate.
         [Test]
         public void Evaluate_FunctionSymbol_AppliedInsidePredicate() {
             IDomainOfDiscourse domain = new Domain(new Element(1), new Element(2), new Element(3));
@@ -104,8 +97,6 @@ namespace FolTests {
             Assert.That(interpretation.Evaluate(S("IsTwo(one)")), Is.False);
         }
 
-        // Detach skips rules whose symbols the model does not cover (InterpretationException)
-        // but must not swallow anything else.
         [Test]
         public void Detach_SkipsRulesOutsideTheModel_KeepsEvaluableOnes() {
             var interpretation = BuildInterpretationWithSokrates();

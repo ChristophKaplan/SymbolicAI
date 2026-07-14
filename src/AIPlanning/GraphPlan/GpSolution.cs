@@ -26,7 +26,6 @@ namespace AIPlanning.Planning.GraphPlan {
                     $"Solution index must be in [0, {_solutions.Count - 1}]");
             }
 
-            // SortedDictionary so step order is a property of the type, not of insertion order.
             var solution = new SortedDictionary<int, GpActionSet>();
             foreach (var solutionLayer in _solutions[index]) {
                 solution.Add(solutionLayer.Key, solutionLayer.Value.ActionSet);

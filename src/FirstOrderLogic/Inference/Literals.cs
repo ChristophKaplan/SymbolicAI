@@ -3,7 +3,6 @@ using System.Linq;
 
 namespace FirstOrderLogic
 {
-    // Helpers over literals (an atom or a negated atom) shared by the inference procedures.
     internal static class Literals
     {
         public static IEnumerable<Variable> VariablesOf(this ISentence literal)

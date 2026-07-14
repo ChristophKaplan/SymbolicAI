@@ -36,8 +36,7 @@ namespace FirstOrderLogic {
             }
         }
     
-        // Returns a new term with every occurrence of `target` replaced; returns the same
-    // instance (by reference) when nothing matched, so unchanged subterms are shared.
+        // Returns the same instance when nothing matched, so unchanged subterms are shared.
     public Term Substitute(Term target, Term replacement) {
         if (Equals(target)) {
             return replacement;

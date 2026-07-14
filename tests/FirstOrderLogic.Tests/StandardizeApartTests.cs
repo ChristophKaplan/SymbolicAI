@@ -3,9 +3,8 @@ using FirstOrderLogic;
 using NUnit.Framework;
 
 namespace FolTests {
-    // Variables are quantified per clause, so two clauses sharing a variable name must be
-    // standardized apart before unification. These cases all failed (returned false or never
-    // terminated) before GetResolvents renamed colliding variables — keep them green.
+    // These cases all failed (returned false or never terminated) before GetResolvents
+    // standardized shared variable names apart.
     public class StandardizeApartTests : TestBase {
         private void AssertResolves(string kb, string goal, bool expected) {
             Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: false),
@@ -13,8 +12,6 @@ namespace FolTests {
             Assert.That(Resolution.Resolve(S(kb), S(goal), useSubsumption: true),
                 Is.EqualTo(expected), $"[subsumption]    {kb}  =>  {goal}");
         }
-
-        // ── Entailed despite shared variable names ───────────────────────────────
 
         // KB ∀x P(x,A) entails ∃x P(B,x) via P(B,A); the negated goal clause {¬P(B,x)} reuses
         // the name x, which without renaming binds x→B and then fails on A vs x.
@@ -29,15 +26,11 @@ namespace FolTests {
             AssertResolves(kb, goal, expected: true);
         }
 
-        // ── Not entailed: renaming must not manufacture proofs ───────────────────
-
         [TestCase("P(A, x)", "P(B, x)")]
         [TestCase("P(x, A)", "P(x, B)")]
         public void NotEntailed_SharedVariableNames(string kb, string goal) {
             AssertResolves(kb, goal, expected: false);
         }
-
-        // ── Termination ──────────────────────────────────────────────────────────
 
         // {¬P(x), Q(y)} and {¬Q(x), P(y)} keep producing alpha-variants of each other's
         // resolvents. Without canonical variable renaming the seen-set never saturates and
@@ -47,8 +40,6 @@ namespace FolTests {
             RunWithin(TimeSpan.FromSeconds(10), "Resolution (standardize-apart regression guard)", () =>
                 AssertResolves("((NOT P(x)) OR Q(y)) AND ((NOT Q(x)) OR P(y))", "R", expected: false));
         }
-
-        // ── maxRounds escape hatch ───────────────────────────────────────────────
 
         // ∀x P(x)→P(f(x)) generates P(f(a)), P(f(f(a))), … forever; the budget must cut it off.
         [Test]

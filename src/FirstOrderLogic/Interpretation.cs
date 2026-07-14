@@ -59,8 +59,6 @@ namespace FirstOrderLogic {
         }
 
         private bool Evaluate(IProposition proposition) {
-            // The logical constants ⊤/⊥ have fixed truth values in every world; they never
-            // need (and never get) an entry in the assignment.
             if (proposition.Tautology) return true;
             if (proposition.Contradiction) return false;
 
@@ -110,9 +108,7 @@ namespace FirstOrderLogic {
         private readonly Dictionary<string, Func<Term[], IElementOfDiscourse>> _functions = new();
         private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment = new();
     
-        // The tables are copied (the propositional one by the base ctor): builders like
-        // Semantics reuse and Clear() their dictionaries between builds, which must not
-        // leak into a previously built interpretation.
+        // Tables are copied for the same reason as in the base ctor.
         public Interpretation(IDomainOfDiscourse domain,
             Dictionary<string, Func<IElementOfDiscourse[], bool>> relations,
             Dictionary<string, Func<Term[], IElementOfDiscourse>> functions,
@@ -136,8 +132,6 @@ namespace FirstOrderLogic {
         }
     
         protected override bool Evaluate(IComplexSentence complexSentence) {
-            // base.Evaluate skips the scope-conflict re-check: validation happens once at the
-            // public entry.
             return complexSentence.Connective.Symbol switch {
                 Connective.LogicSymbol.UNIVERSAL => Domain.Elements.All(element => EvaluateBoundTo(complexSentence, element)),
                 Connective.LogicSymbol.EXISTENTIAL => Domain.Elements.Any(element => EvaluateBoundTo(complexSentence, element)),
@@ -145,8 +139,6 @@ namespace FirstOrderLogic {
             };
         }
 
-        // Assignment semantics: bind the quantified variable to `element` only for the duration
-        // of the body evaluation, so ranging over the domain leaves the interpretation unchanged.
         // The finally is required: SemanticChaining.Detach catches evaluation exceptions and
         // keeps using the interpretation, so a binding must not survive a throwing body.
         private bool EvaluateBoundTo(IComplexSentence quantified, IElementOfDiscourse element) {

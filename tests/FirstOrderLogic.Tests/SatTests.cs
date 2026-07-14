@@ -23,7 +23,6 @@ namespace FolTests {
             Assert.That(model!.Evaluate(clauses), Is.True);
         }
 
-        // Unsatisfiable: no assignment can satisfy both A and ¬A.
         [Test]
         public void WalkSat_ReturnsNullForUnsatisfiable() {
             var clauses = S("A AND (NOT A)").GetClauseSet();
@@ -44,7 +43,6 @@ namespace FolTests {
             }
         }
 
-        // WalkSAT is propositional only; first-order clauses must be rejected.
         [Test]
         public void WalkSat_RejectsNonPropositional() {
             var clauses = S("P(a) AND Q(b)").GetClauseSet();

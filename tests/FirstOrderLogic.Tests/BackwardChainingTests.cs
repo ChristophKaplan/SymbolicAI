@@ -38,8 +38,6 @@ namespace FolTests {
                 Is.True);
         }
 
-        // Recursive rule with a shared intermediate variable: Ancestor via Parent + (Parent ∧ Ancestor).
-        // Exercises standardize-apart across recursion depth and a join on the middle term.
         [Test]
         public void RecursiveAncestor_IsProven() {
             Assert.That(
@@ -62,8 +60,6 @@ namespace FolTests {
                 Is.False);
         }
 
-        // A self-referential rule with no supporting fact must terminate (depth bound) and answer false,
-        // never loop forever — the Prolog left-recursion trap.
         [Test]
         public void CyclicRule_Terminates_NotEntailed() {
             Assert.That(Entails("P(x) => P(x)", "P(a)"), Is.False);
@@ -71,11 +67,8 @@ namespace FolTests {
 
         [Test]
         public void NegatedQuery_NotDerivable_NotEntailed() {
-            // ¬B is a legal goal now, but nothing derives it here.
             Assert.That(Entails("A", "A => B", "NOT B"), Is.False);
         }
-
-        // ── Literal clauses: negation as explicit falsehood ──────────────────────
 
         [Test]
         public void NegativeGoal_ProvenViaNegativeHead() {
@@ -90,7 +83,6 @@ namespace FolTests {
                 Is.True);
         }
 
-        // Explicit negation, not negation-as-failure: an absent positive fact proves nothing.
         [Test]
         public void NegativePremise_AbsenceIsNotNegation() {
             Assert.That(
@@ -99,7 +91,6 @@ namespace FolTests {
                 Is.False);
         }
 
-        // Polarity is part of the goal-head match: Work(x) never resolves a ¬Work goal or vice versa.
         [Test]
         public void PolarityMismatch_NotProven() {
             Assert.That(Entails("NOT Work(a)", "Work(x) => Tired(x)", "Tired(a)"), Is.False);

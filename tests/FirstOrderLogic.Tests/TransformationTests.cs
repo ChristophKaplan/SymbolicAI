@@ -9,13 +9,11 @@ namespace FolTests {
             return sentence;
         }
 
-        // ── Constant folding ──────────────────────────────────────────────────────
         [Test] public void Simplify_AndTrue() => Assert.That(Transform(TransformationFOL.EquivType.SimplifyConstants, "(A AND TRUE)"), Is.EqualTo(S("A")));
         [Test] public void Simplify_OrFalse() => Assert.That(Transform(TransformationFOL.EquivType.SimplifyConstants, "(A OR FALSE)"), Is.EqualTo(S("A")));
         [Test] public void Simplify_OrTrue() => Assert.That(Transform(TransformationFOL.EquivType.SimplifyConstants, "(A OR TRUE)"), Is.EqualTo(S("TRUE")));
         [Test] public void Simplify_AndFalse() => Assert.That(Transform(TransformationFOL.EquivType.SimplifyConstants, "(A AND FALSE)"), Is.EqualTo(S("FALSE")));
 
-        // ── Connective elimination ──────────────────────────────────────────────────
         [Test]
         public void DissolveImplication() {
             Assert.That(Transform(TransformationFOL.EquivType.DissolveImplication, "A => B"),
@@ -28,7 +26,6 @@ namespace FolTests {
                 Is.EqualTo(S("(A => B) AND (B => A)")));
         }
 
-        // ── Negation ────────────────────────────────────────────────────────────────
         [Test]
         public void PushNegation_DeMorganConjunction() {
             Assert.That(Transform(TransformationFOL.EquivType.PushNegation, "NOT (A AND B)"),
@@ -59,7 +56,6 @@ namespace FolTests {
                 Is.EqualTo(S("A")));
         }
 
-        // ── Absorption & idempotency ──────────────────────────────────────────────────
         [Test]
         public void Absorption_AndOverOr() {
             Assert.That(Transform(TransformationFOL.EquivType.Absorption, "A AND (A OR B)"), Is.EqualTo(S("A")));
@@ -76,13 +72,11 @@ namespace FolTests {
                 Is.EqualTo(S("B AND A")));
         }
 
-        // Plain idempotency: A AND A ≡ A (called out in the implementation's own comment).
         [Test]
         public void AssociationIdem_FlatDuplicate() {
             Assert.That(Transform(TransformationFOL.EquivType.AssociationAndIdem, "A AND A"), Is.EqualTo(S("A")));
         }
 
-        // ── Distribution ──────────────────────────────────────────────────────────────
         [Test]
         public void DistributionOfDisjunction_RightConjunction() {
             Assert.That(Transform(TransformationFOL.EquivType.DistributionOfDisjunction, "A OR (B AND C)"),
@@ -95,7 +89,6 @@ namespace FolTests {
                 Is.EqualTo(S("(A OR C) AND (B OR C)")));
         }
 
-        // ── Quantifiers ─────────────────────────────────────────────────────────────────
         [Test]
         public void RemoveDuplicateQuantifier() {
             Assert.That(Transform(TransformationFOL.EquivType.RemoveDuplicateQuantifier, "FORALL x (FORALL x P(x))"),
@@ -114,7 +107,6 @@ namespace FolTests {
             Assert.That(pnf, Is.EqualTo(S("FORALL x (P(x) AND Q(a))")));
         }
 
-        // ── Nested reassembly: a rewrite fires below the root and must be spliced back ──
         [Test]
         public void PushNegation_FiresUnderConjunction() {
             Assert.That(Transform(TransformationFOL.EquivType.PushNegation, "P AND (NOT (A AND B))"),

@@ -6,7 +6,6 @@ using FirstOrderLogic;
 using NUnit.Framework;
 
 namespace FolTests {
-    // Shared fixture: a fresh parser per test plus small parsing helpers.
     public abstract class TestBase {
         protected FirstOrderLogic.FirstOrderLogic Logic = null!;
 

@@ -5,8 +5,6 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // End-to-end tests on GraphPlanAlgo.Run via GpProblem.Solve.
-    // These guard against algorithmic regressions in the planner.
     [TestFixture]
     public class GraphPlanAlgorithmTests : PlanningTestBase {
         [Test]
@@ -48,7 +46,6 @@ namespace AIPlanningTests {
 
         [Test]
         public void UnsolvableProblem_TerminatesWithEmptySolution() {
-            // Goal asks for Have(Diamond) but no action can ever produce it.
             var initialState = Factory.StringToSentence(new() {
                 "Have(Apple)",
                 "Subject(Subject1)"
@@ -58,7 +55,6 @@ namespace AIPlanningTests {
 
             var problem = new GpProblem(initialState, goals, new() { noOp });
 
-            // Regression guard against the prior infinite loop.
             var solution = SolveWithGuard(problem, "unsolvable problem");
             Assert.That(solution.IsEmpty, Is.True,
                 "unsolvable problem must yield an empty solution, not a fake plan");
@@ -66,8 +62,6 @@ namespace AIPlanningTests {
 
         [Test]
         public void GoalsAlreadySatisfied_FindsPlanViaPersistence() {
-            // Initial state already contains the goal literal — a (possibly zero-step)
-            // plan must come back, not an endless loop.
             var initialState = Factory.StringToSentence(new() {
                 "Have(Apple)",
                 "Subject(Subject1)"
@@ -81,14 +75,9 @@ namespace AIPlanningTests {
             Assert.That(solution.IsEmpty, Is.False);
         }
 
-        // Reproducer for the Totalitaet "Chop never pursued" bug. Mirrors the smallest
-        // shape that should chain Move → Chop → Move → Work to satisfy Have(z, Wage):
-        //   - Work requires Carries(z, Wood) as input and consumes it.
-        //   - Chop produces Carries(z, Wood) when subject stands at a Tree.
-        //   - Move shuttles the subject between locations.
-        // Live game observed steps=3 with [0] (persists only) [1] (persists only) [2] Work,
-        // i.e. Work was deemed applicable WITHOUT any earlier Move/Chop. This test pins
-        // down the planner's expected behaviour.
+        // Reproducer for the Totalitaet "Chop never pursued" bug: the live game observed a
+        // 3-step plan of persists + Work, i.e. Work deemed applicable without any earlier
+        // Move/Chop ever producing Carries(z, Wood).
         [Test]
         public void ChopThenWork_FindsFourStepPlan() {
             var initialState = Factory.StringToSentence(new() {
@@ -131,10 +120,8 @@ namespace AIPlanningTests {
             }
         }
 
-        // Scaling micro-benchmark for the chop+work shape: how does Solve() time grow
-        // with the number of trees in the IsState? Game-side this maps to "how many
-        // trees does SubjectsController.BuildIsStateStrings emit per replan?". Used
-        // to pick the right cap (current game emits 10 → frame freeze in Unity).
+        // Game-side, tree count maps to how many trees SubjectsController.BuildIsStateStrings
+        // emits per replan; used to pick the cap (10 → frame freeze in Unity).
         [Test, Explicit("Benchmark — run manually")]
         public void ChopThenWork_ScalingByTreeCount() {
             foreach (var treeCount in new[] { 1, 2, 5, 10, 20 }) {
@@ -171,8 +158,7 @@ namespace AIPlanningTests {
             }
         }
 
-        // Re-running a solver instance must not be poisoned by leftover state from a
-        // previous run (regression guard for the static-cache problem in GpLayer).
+        // Regression guard for the static-cache problem in GpLayer.
         [Test]
         public void MultipleSolveCalls_AreIndependent() {
             var problem1 = BuildCakeProblem();

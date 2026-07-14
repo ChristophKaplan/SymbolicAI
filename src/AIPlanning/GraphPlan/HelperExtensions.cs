@@ -6,13 +6,11 @@ using FirstOrderLogic;
 namespace AIPlanning.Planning.GraphPlan {
     public static class HelperExtensions {
         public static bool Match(this ISentence sentence, ISentence other, [NotNullWhen(true)] out Unificator? unificator) {
-            // Delegates to the shared FOL matching primitive. Argument order is preserved so the
-            // returned unifier binds in the same direction callers (e.g. SpecifyAction) rely on.
+            // Argument order is deliberate: the returned unifier must bind in the direction
+            // callers (e.g. SpecifyAction) rely on.
             return Unificator.TryMatch(other, sentence, out unificator);
         }
 
-        // Multiset semantics (order-insensitive, duplicate counts matter):
-        // {P,P,Q} must NOT equal {P,Q,Q}, which a one-directional Contains check allows.
         public static bool MultisetEquals<T>(this IReadOnlyList<T> left, IReadOnlyList<T> right) where T : notnull {
             if (left.Count != right.Count) {
                 return false;
@@ -48,7 +46,6 @@ namespace AIPlanning.Planning.GraphPlan {
                 for (var j = i + 1; j < nodes.Count; j++) {
                     var nodeA = nodes[i];
                     var nodeB = nodes[j];
-                    // GetMutexType already returns None for equal nodes; no pre-check needed.
                     var mutexType = nodeA.GetMutexType(nodeB);
                     if (mutexType != MutexType.None) {
                         nodeA.TryAddMutexRelations(nodeB, mutexType);

@@ -12,7 +12,6 @@ namespace FolTests {
             Assert.Throws<ArgumentException>(() => new Clause(S("P(x)"), S("A => B")));
         }
 
-        // A clause is a set of literals: the constructor must dedup just like AddLiteral does.
         [Test]
         public void Constructor_DedupsLiterals() {
             var clause = new Clause(S("P(a)"), S("P(a)"));
@@ -20,7 +19,6 @@ namespace FolTests {
             Assert.That(clause.Literals[0], Is.EqualTo(S("P(a)")));
         }
 
-        // NAF has no classical semantics; silently stripping it would corrupt the clause set.
         [Test]
         public void GetClauseSet_RejectsNafSentences() {
             Assert.Throws<ArgumentException>(() => S("(NAF P(a)) AND Q(a)").GetClauseSet());

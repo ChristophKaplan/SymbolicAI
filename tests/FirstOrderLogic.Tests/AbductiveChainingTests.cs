@@ -38,7 +38,6 @@ namespace FolTests {
             Assert.That(keys.Any(k => k.SetEquals(new[] { K("Sprinkler") })), Is.True);
         }
 
-        // A directly contradicted assumption is no explanation.
         [Test]
         public void InconsistentAssumption_Discarded() {
             var keys = Keys(Explain("Wet", new[] { "Rain", "Sprinkler" },
@@ -47,7 +46,6 @@ namespace FolTests {
             Assert.That(keys[0].SetEquals(new[] { K("Sprinkler") }), Is.True);
         }
 
-        // An assumption whose consequences contradict the KB is no explanation either.
         [Test]
         public void IndirectlyInconsistentAssumption_Discarded() {
             var explanations = Explain("Wet", new[] { "Rain" },
@@ -87,7 +85,6 @@ namespace FolTests {
             Assert.That(explanations, Is.Empty);
         }
 
-        // Supersets of another explanation are pruned.
         [Test]
         public void Minimality_SupersetsPruned() {
             var keys = Keys(Explain("Wet", new[] { "Rain", "Storm" },

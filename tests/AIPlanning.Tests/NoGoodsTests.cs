@@ -2,8 +2,6 @@ using AIPlanning.Planning.GraphPlan;
 using FirstOrderLogic;
 
 namespace AIPlanningTests {
-    // Direct tests on NoGoods. Guards the B1 fix (set-per-level instead of one
-    // belief state per level), the B2 pruning contract, and the IsStable semantics.
     [TestFixture]
     public class NoGoodsTests : PlanningTestBase {
         [Test]
@@ -39,8 +37,6 @@ namespace AIPlanningTests {
             var stored = StateOf("Have(Apple)", "Subject(Subject1)");
             nogoods.Add(level: 1, stored);
 
-            // A separately-built belief state with the same literals (different order)
-            // must still hit the nogood entry.
             var probe = StateOf("Subject(Subject1)", "Have(Apple)");
             Assert.That(nogoods.Contains(1, probe), Is.True,
                 "belief states with the same literals must be considered equal nogoods");

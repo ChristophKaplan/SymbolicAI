@@ -3,16 +3,12 @@ using System.Linq;
 using AIPlanning.Planning.GraphPlan;
 
 namespace AIPlanningTests {
-    // Direct tests on GpPlanGraph.ExtractSolution: honoring the goal-reachability result
-    // and the first-solution (stopAtFirst) extraction mode.
     [TestFixture]
     public class GpPlanGraphTests : PlanningTestBase {
         [Test]
         public void ExtractSolution_ReturnsEmpty_WhenGoalsAreMutexAtTheLevel() {
             // A(K) and B(K) get inconsistent support at level 1 (their only supporters X and Y
-            // have inconsistent effects), while C(K) stays freely achievable. The conflict-free
-            // SUBSET of the goals is {C(K)} — extraction must NOT return a partial-goal plan
-            // built from that subset.
+            // have inconsistent effects), while C(K) stays freely achievable.
             var initialState = Factory.StringToSentence(new() { "P(K)" });
             var goals = Factory.StringToSentence(new() { "A(K)", "B(K)", "C(K)" });
             var x = Factory.Create("X", new() { "P(K)" }, new() { "A(K)", "-B(K)" });
@@ -34,8 +30,6 @@ namespace AIPlanningTests {
 
         [Test]
         public void ExtractSolution_StopAtFirst_ReturnsExactlyOneValidPlan() {
-            // Two interchangeable producers of the goal: exhaustive extraction enumerates both
-            // supporter choices, first-solution mode stops after one.
             var initialState = Factory.StringToSentence(new() { "P(K)" });
             var goals = Factory.StringToSentence(new() { "G(K)" });
             var m1 = Factory.Create("M1", new() { "P(K)" }, new() { "G(K)" });
@@ -63,8 +57,6 @@ namespace AIPlanningTests {
 
         [Test]
         public void Solve_SolvableProblem_FirstSolutionModeYieldsValidPlan() {
-            // End-to-end: GraphPlanAlgo.Run uses first-solution extraction; the returned plan
-            // must still be complete and valid.
             var initialState = Factory.StringToSentence(new() { "P(K)" });
             var goals = Factory.StringToSentence(new() { "R(K)" });
             var a1 = Factory.Create("A1", new() { "P(K)" }, new() { "Q(K)" });

@@ -51,7 +51,6 @@ namespace FirstOrderLogic {
 
             bool Compare(ISentence A, ISentence B) {
                 if (!onlyPredSignature) return A.Equals(B);
-                // Propositional atoms have no predicate; their "signature" is the bare symbol.
                 if (A is IProposition propA) return B is IProposition propB && propA.Symbol.Equals(propB.Symbol);
                 if (B is IProposition) return false;
                 return A.GetPredicate().EqualSignature(B.GetPredicate());
@@ -168,7 +167,6 @@ namespace FirstOrderLogic {
             };
         }
 
-        // No variables anywhere (distinct from IsPropositional, which is about zero-arity atoms).
         public bool IsGround() {
             if (this is IPredicate predicate) return predicate.GetVariables().Length == 0;
             return Children.All(child => child.IsGround());

@@ -9,7 +9,6 @@ namespace FolTests {
             Assert.That(u.IsUnifiable, Is.True);
         }
 
-        // Occurs check: x cannot unify with f(...) containing x.
         [Test]
         public void Unify_OccursCheckFails() {
             var u = new Unificator(S("P(x,y,y)"), S("P(f(y),y,x)"));
@@ -41,7 +40,6 @@ namespace FolTests {
             Assert.That(u.IsEmpty, Is.True);
         }
 
-        // Propositional atoms unify iff they are the same atom (no terms involved).
         [Test]
         public void Unify_PropositionsBySymbol() {
             Assert.That(new Unificator(S("A"), S("A")).IsUnifiable, Is.True);
@@ -53,7 +51,6 @@ namespace FolTests {
             Assert.That(new Unificator(S("P(a)"), S("P")).IsUnifiable, Is.False);
         }
 
-        // Applying a unifier to a clause substitutes its variables in place.
         [Test]
         public void Substitute_AppliesBindingsToClause() {
             var clause = new Clause(S("P(x)"), S("Q(y)"));

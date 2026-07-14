@@ -5,12 +5,6 @@ using System.Globalization;
 using FirstOrderLogic;
 
 namespace PerfBench {
-    // Micro-benchmark for the resolution saturation loop.
-    // Builds propositional CNF knowledge bases of varying size and times Resolution.Resolve.
-    //
-    // The goal is deliberately NOT entailed, so the resolver runs to full saturation with no
-    // early exit. That makes the total resolvent set identical run-to-run and isolates the cost
-    // we care about: how much redundant pair-resolution happens each saturation round.
     class Program {
         static string Clause(params string[] literals) {
             var s = literals[0];
@@ -24,8 +18,6 @@ namespace PerfBench {
             return s;
         }
 
-        // KB = P0 AND (¬P0∨P1) AND ... AND (¬P_{n-1}∨Pn) plus `noise` inert unit clauses
-        // plus `tautologies` clauses of the form (Ti ∨ ¬Ti), which are always-true and redundant.
         static string BuildChainKb(int chainLen, int noise, int tautologies) {
             var clauses = new List<string> { "P0" };
             for (var k = 1; k <= chainLen; k++)
@@ -69,9 +61,6 @@ namespace PerfBench {
                 label, chainLen, noise, tautologies, min, avg, result));
         }
 
-        // Belief base with multiple independent proof paths for S(a) plus `noise` irrelevant
-        // sentences. FindAllKernels revisits many heavily overlapping subsets, each triggering an
-        // entailment check.
         static void RunKernels(string label, int noise, int iterations) {
             var ks = new KernelSets();
             var b = new List<ISentence> {

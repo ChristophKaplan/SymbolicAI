@@ -13,12 +13,11 @@ namespace AIPlanning.Planning.GraphPlan {
             _literalNodes = nodes.Select(n => (GpLiteralNode)n).ToList();
         }
 
-        // Covariant cast via IReadOnlyList<T>: zero-allocation view onto the typed backing list.
         public IReadOnlyList<GpNode> GetNodes => _literalNodes;
         public List<GpLiteralNode> GetLiteralNodes => _literalNodes;
 
-        // Returns the canonical node stored in the belief state (existing or just-added).
-        // Callers MUST connect edges to the returned instance, not to their input.
+        // Returns the canonical node stored in the belief state; callers MUST connect edges to
+        // the returned instance, not to their input.
         public GpLiteralNode Add(GpLiteralNode literalNode) {
             var contained = _literalNodes.FirstOrDefault(literalNode.Equals);
             if (contained != null) {
@@ -29,7 +28,6 @@ namespace AIPlanning.Planning.GraphPlan {
             return literalNode;
         }
 
-        // Backward-compatible void overload (used by GpLayer dispatcher and Init).
         public void TryAdd(GpLiteralNode literalNode) => Add(literalNode);
 
         public List<GpNode>? GetSubSetOfNodesMatching(List<ISentence> literals) {
@@ -48,20 +46,19 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public bool EqualStateLiterals(GpBeliefState other) {
-            // Order-insensitive: check both subset relations.
             var aSubsetB = _literalNodes.All(a => other._literalNodes.Any(a.EqualLiteral));
             var bSubsetA = other._literalNodes.All(b => _literalNodes.Any(b.EqualLiteral));
             return aSubsetB && bSubsetA;
         }
 
-        // Same literals AND the same mutex relations between them. This is the fixed-point
-        // notion level-off detection needs: literal sets stabilise before mutexes do.
+        // Same literals AND the same mutex relations between them — the fixed-point notion
+        // level-off detection needs, since literal sets stabilise before mutexes do.
         public bool EqualState(GpBeliefState other) {
             if (!EqualStateLiterals(other)) {
                 return false;
             }
 
-            // Align the node lists once, not inside the pair loop (that made this O(L³)).
+            // Align the node lists once; aligning inside the pair loop is O(L³).
             var aligned = new GpLiteralNode[_literalNodes.Count];
             for (var i = 0; i < _literalNodes.Count; i++) {
                 aligned[i] = other._literalNodes.First(_literalNodes[i].EqualLiteral);
@@ -95,11 +92,9 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         // Blum & Furst §3.2: choose one supporting action per goal literal, never picking a
-        // supporter mutex with one already selected, and reusing a selection that also supports
-        // a later goal (minimality). This backtracking DFS prunes mutex partial selections as it
-        // goes, instead of materialising the full cartesian product of every goal's supporters
-        // and filtering afterwards — the eager product blew up exponentially with the number of
-        // supporters per goal (e.g. one Chop grounding per tree).
+        // supporter mutex with one already selected. The backtracking DFS prunes mutex partial
+        // selections as it goes; materialising the full cartesian product of every goal's
+        // supporters first blows up exponentially.
         public IEnumerable<GpActionSet> GetPossibleConflictFreeActionSets() {
             return SelectSupporters(0, new List<GpNode>());
         }
@@ -114,9 +109,8 @@ namespace AIPlanning.Planning.GraphPlan {
 
             var goalSupporters = _literalNodes[goalIndex].InEdges;
 
-            // Minimality: if something already selected supports this goal, reuse it rather than
-            // branching on every supporter. This is what stops redundant supersets — a real
-            // action plus the Persist of the same literal — from multiplying out.
+            // Minimality: reuse an already-selected supporter rather than branching on every one;
+            // this stops redundant supersets (a real action plus the same literal's Persist).
             if (chosen.Any(goalSupporters.Contains)) {
                 foreach (var set in SelectSupporters(goalIndex + 1, chosen)) {
                     yield return set;
@@ -138,7 +132,6 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public override int GetHashCode() {
-            // Order-insensitive: XOR of element hashes.
             var hash = _literalNodes.Count;
             foreach (var node in _literalNodes) {
                 hash ^= node.GetHashCode();

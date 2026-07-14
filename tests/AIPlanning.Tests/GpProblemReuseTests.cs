@@ -36,7 +36,6 @@ namespace AIPlanningTests {
             return new GpProblem(initialState, goals, actions);
         }
 
-        // The plan as one comparable shape: per step, the sorted non-persistence action names.
         private static List<string> PlanSignature(GpSolution solution) {
             var steps = solution.GetSolution(0);
             return steps.OrderBy(pair => pair.Key)

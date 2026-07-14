@@ -13,8 +13,6 @@ namespace FolTests
             .Constant("Sokrates")
             .Build();
 
-        // ── Signature: well-formedness over a vocabulary ──────────────────────────
-
         [Test]
         public void Covers_TrueWhenAllPredicatesDeclared() =>
             Assert.That(Sig().Covers(S("Human(Sokrates)")), Is.True);
@@ -47,8 +45,6 @@ namespace FolTests
             Assert.That(sig.HasPredicate("Loves", 2), Is.True);
             Assert.That(sig.HasPredicate("Loves", 1), Is.False);
         }
-
-        // ── Signature.Symbol: name + arity as a declared vocabulary entry ─────────
 
         [Test]
         public void Symbol_OfRendersConcreteSyntax()
@@ -102,10 +98,6 @@ namespace FolTests
             Assert.That(sig.Constants, Does.Contain("Money"));
         }
 
-        // ── Semantics base: enforces the signature ↔ interpretation contract ──────
-
-        // Declares Human + Role predicates + constant Sokrates, and interprets all of them: a
-        // first-order structure is total over its signature.
         private sealed class CoveringSemantics : Semantics
         {
             protected override Signature Signature => new Signature.Builder()
@@ -121,7 +113,7 @@ namespace FolTests
         private sealed class MissingRelationSemantics : Semantics
         {
             protected override Signature Signature => new Signature.Builder().Predicate("Human", 1).Build();
-            protected override void Define() { /* no relation for the declared Human */ }
+            protected override void Define() { }
         }
 
         private sealed class StrayRelationSemantics : Semantics
@@ -130,7 +122,7 @@ namespace FolTests
             protected override void Define()
             {
                 Relations["Human"] = _ => true;
-                Relations["Ghost"] = _ => true; // undeclared symbol
+                Relations["Ghost"] = _ => true;
             }
         }
 
@@ -138,7 +130,7 @@ namespace FolTests
         {
             protected override Signature Signature => new Signature.Builder()
                 .Predicate("Human", 1).Constant("Sokrates").Build();
-            protected override void Define() => Relations["Human"] = _ => true; // no function for Sokrates
+            protected override void Define() => Relations["Human"] = _ => true;
         }
 
         [Test]

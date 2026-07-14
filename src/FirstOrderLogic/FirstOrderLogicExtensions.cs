@@ -116,7 +116,6 @@ namespace FirstOrderLogic {
             return ToConjunctiveNormalFormCore(sentence, steps);
         }
 
-        // Trace-free overload — see ToPrenexForm(logic, sentence).
         public static ISentence ToConjunctiveNormalForm(this FirstOrderLogic logic, ISentence sentence) =>
             ToConjunctiveNormalFormCore(sentence, null);
 
@@ -148,10 +147,9 @@ namespace FirstOrderLogic {
         public static ISentence SkolemForm(this FirstOrderLogic logic, ISentence sentence) {
             var clone = sentence;
 
-            // Expects PNF. Each existential becomes a Skolem term over the universals enclosing
-            // it: sk$1 if none, sk$1(u, …) otherwise ('$' is unparseable, so a witness can never
-            // resolve against a user constant that happens to share its name). Free variables
-            // are implicitly universal at widest scope, so every witness depends on them too.
+            // Each existential becomes a Skolem term over the universals enclosing it ('$' is
+            // unparseable, so a witness can never resolve against a user constant). Free
+            // variables are implicitly universal at widest scope, so every witness depends on them.
             var prefix = new List<Quantifier>();
             var current = clone;
             while (current is IComplexSentence { IsQuantifier: true } quantified) {
@@ -228,7 +226,6 @@ namespace FirstOrderLogic {
 
             if(sentence.IsDisjunctionOfLiterals())
             {
-                // Only the clause leaves need a defensive copy; interior conjunction nodes don't.
                 var clauseList = sentence.GetLiterals();
                 clauseSet.Add(new Clause(clauseList.ToArray()));
                 return clauseSet;
