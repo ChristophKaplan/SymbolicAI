@@ -18,21 +18,21 @@ namespace AIPlanning.Planning.GraphPlan {
                 initialLayer.Add(new GpLiteralNode(sentence));
             }
 
-            initialLayer.BeliefState.Nodes.CheckMutexRelations();
+            initialLayer.BeliefState.Nodes.ComputeMutexRelations();
             _layers.Add(0, initialLayer);
         }
 
-        public bool StateNotMutex(int i, List<ISentence> sentences) {
-            return _layers[i].BeliefState.IsConflictFreeStateReachable(sentences, out _);
+        public bool AreGoalsReachable(int levelIndex, List<ISentence> sentences) {
+            return _layers[levelIndex].BeliefState.IsConflictFreeStateReachable(sentences, out _);
         }
 
         // stopAtFirst: return on the first complete plan instead of the exhaustive walk, which is
         // exponential in the number of interchangeable supporters. The early exit skips nogood
         // recording for unexplored branches — harmless, as that only happens on success, where
         // the nogood table is discarded anyway.
-        public GpSolution ExtractSolution(int levelIndex, NoGoods noGoods, bool stopAtFirst = false) {
+        public GpSolutionSet ExtractSolution(int levelIndex, NoGoods noGoods, bool stopAtFirst = false) {
             var lastState = _layers[levelIndex].BeliefState;
-            var solutions = new GpSolution();
+            var solutions = new GpSolutionSet();
 
             // Goals not jointly conflict-free here: the out-state is only the mutex-stripped
             // SUBSET of the goals — extracting from it would yield a partial plan.
@@ -44,7 +44,7 @@ namespace AIPlanning.Planning.GraphPlan {
             return solutions;
         }
 
-        private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolution solutions, bool stopAtFirst) {
+        private bool FindSolutions(int levelIndex, GpBeliefState curBeliefState, NoGoods noGoods, Dictionary<int, GpLayer> outcome, GpSolutionSet solutions, bool stopAtFirst) {
             if (levelIndex == 0) {
                 solutions.Add(outcome);
                 return true;
@@ -101,15 +101,15 @@ namespace AIPlanning.Planning.GraphPlan {
         // produce a transient identity and then grow again, hence TWO consecutive equalities.
         // The comparison must include mutex relations — literals stabilise before mutexes finish
         // relaxing, and declaring level-off on literals alone reports solvable problems unsolvable.
-        public bool Stable(int levelIndex) {
+        public bool IsStable(int levelIndex) {
             if (levelIndex < 2 || _layers.Count < 3) {
                 return false;
             }
 
-            var n0 = _layers[levelIndex].BeliefState;
-            var n1 = _layers[levelIndex - 1].BeliefState;
-            var n2 = _layers[levelIndex - 2].BeliefState;
-            return n0.EqualState(n1) && n1.EqualState(n2);
+            var current = _layers[levelIndex].BeliefState;
+            var previous = _layers[levelIndex - 1].BeliefState;
+            var twoBack = _layers[levelIndex - 2].BeliefState;
+            return current.HasEqualState(previous) && previous.HasEqualState(twoBack);
         }
 
         public void ExpandGraph() {
@@ -118,7 +118,7 @@ namespace AIPlanning.Planning.GraphPlan {
             var usableActions = curLayer.GetUsableActions(_operatorGraph);
 
             curLayer.ExpandActions(usableActions, _persistCache);
-            curLayer.ActionSet.Nodes.CheckMutexRelations();
+            curLayer.ActionSet.Nodes.ComputeMutexRelations();
             var nextLayer = curLayer.ExpandLayer();
             _layers.Add(nextLayer.Level, nextLayer);
         }

@@ -23,7 +23,7 @@ namespace AIPlanningTests {
         }
 
         private static GpProblem BuildCakeProblem(List<GpAction> actions) {
-            var initialState = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() {
                 "At(Subject1,mylocation)",
                 "-At(Subject1,Supermarket)",
                 "-At(Subject1,Work)",
@@ -32,15 +32,15 @@ namespace AIPlanningTests {
                 "Food(Cake)",
                 "Subject(Subject1)"
             });
-            var goals = Factory.StringToSentence(new() { "Have(Cake)", "At(Subject1,Home)" });
+            var goals = Factory.ParseSentences(new() { "Have(Cake)", "At(Subject1,Home)" });
             return new GpProblem(initialState, goals, actions);
         }
 
-        private static List<string> PlanSignature(GpSolution solution) {
+        private static List<string> PlanSignature(GpSolutionSet solution) {
             var steps = solution.GetSolution(0);
             return steps
                 .Select(step => string.Join("+", step.GetActions(ignorePersistence: true)
-                    .Select(action => action.Signifier).OrderBy(name => name)))
+                    .Select(action => action.Name).OrderBy(name => name)))
                 .ToList();
         }
 
@@ -59,7 +59,7 @@ namespace AIPlanningTests {
 
             Assert.That(problem.Actions, Has.Count.EqualTo(3),
                 "Solve() must not add actions to the problem");
-            Assert.That(problem.Actions.Select(a => a.Signifier),
+            Assert.That(problem.Actions.Select(a => a.Name),
                 Is.EquivalentTo(new[] { "Move", "Work", "BuyFood" }),
                 "the problem's action list must keep exactly the caller's actions");
         }

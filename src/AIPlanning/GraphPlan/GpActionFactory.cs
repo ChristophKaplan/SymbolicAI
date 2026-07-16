@@ -13,10 +13,10 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public GpAction Create(string name, List<string> preconditions, List<string> effects) {
-            return new GpAction(name, StringToSentence(preconditions), StringToSentence(effects));
+            return new GpAction(name, ParseSentences(preconditions), ParseSentences(effects));
         }
 
-        public List<ISentence> StringToSentence(List<string> strings) {
+        public List<ISentence> ParseSentences(List<string> strings) {
             return strings.Select(s => (ISentence)_logic.Parse(s)).ToList();
         }
     }

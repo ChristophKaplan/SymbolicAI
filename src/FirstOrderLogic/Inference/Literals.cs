@@ -16,7 +16,7 @@ namespace FirstOrderLogic
         }
 
         // Polarity is part of the tag, so a positive literal never matches a negated one.
-        public static string Signature(this ISentence literal)
+        public static string PolaritySignature(this ISentence literal)
         {
             var atom = literal.AtomOf();
             var tag = atom is IPredicate predicate

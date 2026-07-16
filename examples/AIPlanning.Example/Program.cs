@@ -5,7 +5,7 @@ namespace AIPlanningExample {
     class Program {
         static void Main(string[] args) {
             var factory = new GpActionFactory();
-            var initialState = factory.StringToSentence(new() {
+            var initialState = factory.ParseSentences(new() {
                 "At(Subject1,mylocation)",
                 "-At(Subject1,Supermarket)",
                 "-At(Subject1,Work)",
@@ -15,7 +15,7 @@ namespace AIPlanningExample {
                 "-Drink(Cake)",
                 "Subject(Subject1)"
             });
-            var goals = factory.StringToSentence(new() { "Have(Cake)", "At(Subject1,Home)" });
+            var goals = factory.ParseSentences(new() { "Have(Cake)", "At(Subject1,Home)" });
 
             var work = factory.Create("Work", new() { "At(z, Work)", "Subject(z)" }, new() { "Have(Money)" });
             var buyFood = factory.Create("BuyFood", new() { "At(z, Supermarket)", "Have(Money)", "Food(x)", "Subject(z)" }, new() { "Have(x)", "-Have(Money)" });

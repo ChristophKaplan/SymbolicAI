@@ -29,15 +29,15 @@ namespace FirstOrderLogic
                 .ToList();
 
             HashSet<string>? baseline = null;
-            var consistent = candidates.Where(h =>
+            var consistent = candidates.Where(hypothesis =>
             {
-                if (h.Count == 0)
+                if (hypothesis.Count == 0)
                 {
                     return true;
                 }
 
                 baseline ??= ConflictKeys(sentences);
-                return !ConflictKeys(sentences.Concat(h)).Except(baseline).Any();
+                return !ConflictKeys(sentences.Concat(hypothesis)).Except(baseline).Any();
             }).ToList();
 
             return Minimal(consistent);

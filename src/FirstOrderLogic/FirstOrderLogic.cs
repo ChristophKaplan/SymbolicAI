@@ -46,13 +46,13 @@ namespace FirstOrderLogic {
         // identifier becomes a variable when an enclosing quantifier binds it (see
         // BindConstantsToVariable). Quantified whitelist names work only because the term
         // rule already made them Variables and the rewrite skips Variables.
-        private static readonly string[] FreeVariableNames = { "x", "y", "z", "w" };
+        private static readonly string[] ImplicitVariableNames = { "x", "y", "z", "w" };
 
         // The single place a bare identifier becomes a term. Signature.Symbol.Ground builds atoms
         // that must be Equals-identical to their parsed counterparts, so it classifies through
         // this too rather than assuming every argument is a constant.
         internal static Term TermFor(string symbol) =>
-            FreeVariableNames.Contains(symbol) ? new Variable(symbol) : (Term)new Constant(symbol);
+            ImplicitVariableNames.Contains(symbol) ? new Variable(symbol) : (Term)new Constant(symbol);
 
         protected override TokenDefinition<Terminal>[] SetUpTokenDefinitions()
         {
@@ -76,7 +76,7 @@ namespace FirstOrderLogic {
             };
         }
 
-        private static Connective.LogicSymbol ToLogicalConstant(LexValue lexValue) {
+        private static Connective.LogicSymbol ToLogicSymbol(LexValue lexValue) {
             switch (lexValue.Value) {
                 case "OR":
                 case "||":
@@ -150,7 +150,7 @@ namespace FirstOrderLogic {
 
             AddRule(rhs =>
             {
-                var quantifierSymbol = ToLogicalConstant((LexValue)rhs[0].Attribute);
+                var quantifierSymbol = ToLogicSymbol((LexValue)rhs[0].Attribute);
                 var variable = new Variable(((LexValue)rhs[1].Attribute).Value);
                 var body = BindConstantsToVariable((ISentence)rhs[2].Attribute, variable);
                 return new ComplexSentence(new Quantifier(quantifierSymbol, variable), body);
@@ -162,7 +162,7 @@ namespace FirstOrderLogic {
             AddRule(rhs => rhs[0].Attribute, NonTerminal.PrimarySentence, NonTerminal.AtomicSentence);
             AddRule(rhs =>
             {
-                var boolean = ToLogicalConstant((LexValue)rhs[0].Attribute);
+                var boolean = ToLogicSymbol((LexValue)rhs[0].Attribute);
                 return new Proposition(Connective.SymbolToString(boolean));
             }, NonTerminal.PrimarySentence, Terminal.Boolean);
 
@@ -175,7 +175,7 @@ namespace FirstOrderLogic {
             AddRule(rhs =>
             {
                 var symbol = ((LexValue)rhs[0].Attribute).Value;
-                var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(lo => (Term)lo).ToArray();
+                var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(languageObject => (Term)languageObject).ToArray();
                 return new Predicate(symbol, terms);
             }, NonTerminal.AtomicSentence, Terminal.Identifier, Terminal.Open, NonTerminal.TermList, Terminal.Close);
 
@@ -192,7 +192,7 @@ namespace FirstOrderLogic {
             AddRule(rhs =>
             {
                 var symbol = ((LexValue)rhs[0].Attribute).Value;
-                var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(lo => (Term)lo).ToArray();
+                var terms = ((ArrayValue)rhs[2].Attribute).Value.Select(languageObject => (Term)languageObject).ToArray();
                 return new Function(symbol, terms);
             }, NonTerminal.Term, Terminal.Identifier, Terminal.Open, NonTerminal.TermList, Terminal.Close);
         }

@@ -16,8 +16,8 @@ namespace AIPlanningTests {
 
         [Test]
         public void GetUsableActions_MergesLiteralAnchoredAndPreconditionlessActions() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "G(Obj)", "S(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "G(Obj)", "S(Obj)" });
             var act = Factory.Create("Act", new() { "P(Obj)" }, new() { "G(Obj)" });
             var spawn = Factory.Create("Spawn", new List<string>(), new() { "S(Obj)" });
             var operatorGraph = new OperatorGraph(new GpProblem(initialState, goals, new() { act, spawn }));
@@ -25,7 +25,7 @@ namespace AIPlanningTests {
             var layer = LayerWithBelief("P(Obj)");
             var usable = layer.GetUsableActions(operatorGraph);
 
-            var names = usable.Select(a => a.Signifier).ToList();
+            var names = usable.Select(a => a.Name).ToList();
             Assert.That(names, Does.Contain("Act"),
                 "Act is anchored at the literal node P(Obj) held by the belief state");
             Assert.That(names, Does.Contain("Spawn"),
@@ -44,7 +44,7 @@ namespace AIPlanningTests {
                 new Dictionary<ISentence, GpAction>());
 
             var realActions = layer.ActionSet.GetActions(ignorePersistence: true);
-            Assert.That(realActions.Select(a => a.Signifier), Is.EqualTo(new[] { "Applicable" }),
+            Assert.That(realActions.Select(a => a.Name), Is.EqualTo(new[] { "Applicable" }),
                 "an action whose precondition Q(Obj) is absent from the belief state must not fire");
         }
 

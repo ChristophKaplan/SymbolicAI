@@ -7,15 +7,15 @@ namespace FirstOrderLogic
 {
     public class Theory : ITheory
     {
-        private readonly List<ISentence> _state;
+        private readonly List<ISentence> _sentences;
         
-        public int Count => _state.Count;
-        public ISentence this[int index] => _state[index];
-        public IEnumerator<ISentence> GetEnumerator() => _state.GetEnumerator();
+        public int Count => _sentences.Count;
+        public ISentence this[int index] => _sentences[index];
+        public IEnumerator<ISentence> GetEnumerator() => _sentences.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public Theory(List<ISentence> state) =>
-            _state = state.ToList();
+            _sentences = state.ToList();
 
         public Theory With(ISentence sentence) => With(new[] { sentence });
 
@@ -23,7 +23,7 @@ namespace FirstOrderLogic
         // answers "seen?"; the list beside it keeps insertion order, which callers rely on.
         public Theory With(IEnumerable<ISentence> sentences)
         {
-            var state = _state.ToList();
+            var state = _sentences.ToList();
             var seen = new HashSet<ISentence>(state);
             foreach (var sentence in sentences)
             {
@@ -36,7 +36,7 @@ namespace FirstOrderLogic
         }
 
         public Theory Without(Func<ISentence, bool> match) =>
-            new(_state.Where(s => !match(s)).ToList());
+            new(_sentences.Where(s => !match(s)).ToList());
 
         public List<ISentence> Inconsistencies() => Inconsistencies(null);
         

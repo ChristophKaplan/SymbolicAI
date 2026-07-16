@@ -10,7 +10,7 @@ namespace AIPlanning.Planning.GraphPlan {
         public GpBeliefState(IEnumerable<GpLiteralNode> nodes) : base(nodes) {
         }
 
-        public List<GpLiteralNode>? GetSubSetOfNodesMatching(List<ISentence> literals) {
+        public List<GpLiteralNode>? GetSubsetOfNodesMatching(List<ISentence> literals) {
             var subset = new List<GpLiteralNode>();
 
             foreach (var literal in literals) {
@@ -25,7 +25,7 @@ namespace AIPlanning.Planning.GraphPlan {
             return subset.Distinct().ToList();
         }
 
-        public bool EqualStateLiterals(GpBeliefState other) {
+        public bool HasEqualStateLiterals(GpBeliefState other) {
             var aSubsetB = Nodes.All(a => other.Nodes.Any(a.Equals));
             var bSubsetA = other.Nodes.All(b => Nodes.Any(b.Equals));
             return aSubsetB && bSubsetA;
@@ -33,8 +33,8 @@ namespace AIPlanning.Planning.GraphPlan {
 
         // Same literals AND the same mutex relations between them — the fixed-point notion
         // level-off detection needs, since literal sets stabilise before mutexes do.
-        public bool EqualState(GpBeliefState other) {
-            if (!EqualStateLiterals(other)) {
+        public bool HasEqualState(GpBeliefState other) {
+            if (!HasEqualStateLiterals(other)) {
                 return false;
             }
 
@@ -59,7 +59,7 @@ namespace AIPlanning.Planning.GraphPlan {
             // Duplicate goal literals map onto one node; comparing against the raw count would
             // make such goal lists unsatisfiable forever.
             var distinct = literals.Distinct().ToList();
-            var reachedSubState = GetSubSetOfNodesMatching(distinct);
+            var reachedSubState = GetSubsetOfNodesMatching(distinct);
 
             if (reachedSubState == null) {
                 conflictFreeState = null;

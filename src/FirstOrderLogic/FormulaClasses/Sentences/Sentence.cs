@@ -54,20 +54,20 @@ namespace FirstOrderLogic {
 
             // A non-atomic comparand has no predicate signature to compare, so it simply is not
             // the negation of anything — asking must answer false, not throw.
-            bool Compare(ISentence A, ISentence B) {
+            bool Compare(ISentence left, ISentence right) {
                 if (!onlyPredSignature)
                 {
-                    return A.Equals(B);
+                    return left.Equals(right);
                 }
 
-                if (A is IProposition propA)
+                if (left is IProposition propA)
                 {
-                    return B is IProposition propB && propA.Symbol.Equals(propB.Symbol);
+                    return right is IProposition propB && propA.Symbol.Equals(propB.Symbol);
                 }
 
-                if (A is IPredicate predA)
+                if (left is IPredicate predA)
                 {
-                    return B is IPredicate predB && predA.EqualSignature(predB);
+                    return right is IPredicate predB && predA.EqualSignature(predB);
                 }
 
                 return false;

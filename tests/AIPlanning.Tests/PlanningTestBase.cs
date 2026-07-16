@@ -15,9 +15,9 @@ namespace AIPlanningTests {
         protected static readonly TimeSpan SolveBound = TimeSpan.FromSeconds(30);
 
         protected static ISentence L(string s) =>
-            Factory.StringToSentence(new List<string> { s }).Single();
+            Factory.ParseSentences(new List<string> { s }).Single();
 
-        protected static GpSolution SolveWithGuard(GpProblem problem, string label = "Solve()") {
+        protected static GpSolutionSet SolveWithGuard(GpProblem problem, string label = "Solve()") {
             var task = Task.Run(problem.Solve);
             Assert.That(task.Wait(SolveBound), Is.True,
                 $"{label} did not terminate within {SolveBound.TotalSeconds:F0} s — runaway regression");
@@ -25,7 +25,7 @@ namespace AIPlanningTests {
         }
 
         // Guards against "non-empty but wrong" plans that a bare IsEmpty assertion waves through.
-        protected static void AssertPlanIsValid(GpProblem problem, GpSolution solution) {
+        protected static void AssertPlanIsValid(GpProblem problem, GpSolutionSet solution) {
             Assert.That(solution.IsEmpty, Is.False, "expected a plan to validate");
 
             var plan = solution.GetSolution(0);
@@ -36,7 +36,7 @@ namespace AIPlanningTests {
                 foreach (var action in actions) {
                     foreach (var precondition in action.Preconditions.Distinct()) {
                         Assert.That(state, Does.Contain(precondition),
-                            $"layer {layer}: precondition {precondition} of {action.Signifier} " +
+                            $"layer {layer}: precondition {precondition} of {action.Name} " +
                             "does not hold in the simulated state");
                     }
                 }

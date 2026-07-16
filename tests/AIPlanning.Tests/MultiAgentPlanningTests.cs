@@ -76,9 +76,9 @@ namespace AIPlanningTests {
                 }
             }
 
-            var initialState = Factory.StringToSentence(state.ToList());
+            var initialState = Factory.ParseSentences(state.ToList());
             var goals        = agents.Select(a => $"Have({a}, Wage)").ToList();
-            var goalSentences = Factory.StringToSentence(goals);
+            var goalSentences = Factory.ParseSentences(goals);
 
             return new GpProblem(initialState, goalSentences,
                 new() { MakeMove(), MakeChop(), MakeWork() });
@@ -115,7 +115,7 @@ namespace AIPlanningTests {
                     .Any(p => p.ToString() == "Subject(Alice)" || p.ToString() == "Subject(Bob)");
 
                 Assert.That(hasSubjectPrecondition, Is.True,
-                    $"action '{node.GpAction.Signifier}' must carry Subject(Alice) or " +
+                    $"action '{node.GpAction.Name}' must carry Subject(Alice) or " +
                     $"Subject(Bob) in its grounded preconditions so the plan can be split per agent. " +
                     $"Preconditions: [{string.Join(", ", node.GpAction.Preconditions)}]");
             }
@@ -136,8 +136,8 @@ namespace AIPlanningTests {
             var goals = new List<string> { "Have(Alice, Wage)", "Have(Bob, Energy)" };
 
             var problem = new GpProblem(
-                Factory.StringToSentence(state),
-                Factory.StringToSentence(goals),
+                Factory.ParseSentences(state),
+                Factory.ParseSentences(goals),
                 new() { MakeMove(), MakeChop(), MakeWork(), MakeRest() });
 
             var solution = problem.Solve();
@@ -159,11 +159,11 @@ namespace AIPlanningTests {
                 "At(Bob,   TreeA)", "Subject(Bob)",   "-HasItem(Bob,   Wood)", "HasItem(Bob,   Axe)",
                 "-At(Bob,   YardA)",
             };
-            var goals = Factory.StringToSentence(
+            var goals = Factory.ParseSentences(
                 new() { "Have(Alice, Wage)", "Have(Bob, Wage)" });
 
             var problem = new GpProblem(
-                Factory.StringToSentence(state),
+                Factory.ParseSentences(state),
                 goals,
                 new() { MakeMove(), MakeChop(), MakeWork() });
 

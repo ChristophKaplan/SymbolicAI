@@ -11,15 +11,15 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public IReadOnlyList<GpNode> InEdges => _inEdges;
         public IReadOnlyList<GpNode> OutEdges => _outEdges;
-        public HashSet<MutexRel> MutexRelation { get; } = new();
+        public HashSet<MutexEdge> MutexRelations { get; } = new();
 
-        public void ConnectTo(GpNode connectToMe) {
-            if (_outEdgeSet.Add(connectToMe)) {
-                _outEdges.Add(connectToMe);
+        public void ConnectTo(GpNode target) {
+            if (_outEdgeSet.Add(target)) {
+                _outEdges.Add(target);
             }
 
-            if (connectToMe._inEdgeSet.Add(this)) {
-                connectToMe._inEdges.Add(this);
+            if (target._inEdgeSet.Add(this)) {
+                target._inEdges.Add(this);
             }
         }
 
@@ -41,7 +41,7 @@ namespace AIPlanning.Planning.GraphPlan {
             return _outEdgeSet.Contains(node);
         }
 
-        // Mutex is recorded symmetrically (TryAddMutexRelations), so checking one side suffices.
+        // Mutex is recorded symmetrically (AddMutexRelation), so checking one side suffices.
         public bool IsMutexWith(GpNode other) {
             return _mutexPartners.Contains(other);
         }
@@ -75,10 +75,10 @@ namespace AIPlanning.Planning.GraphPlan {
             return MutexType.None;
         }
 
-        public void TryAddMutexRelations(GpNode other, MutexType type) {
-            MutexRelation.Add(new MutexRel(type, other));
+        public void AddMutexRelation(GpNode other, MutexType type) {
+            MutexRelations.Add(new MutexEdge(type, other));
             _mutexPartners.Add(other);
-            other.MutexRelation.Add(new MutexRel(type, this));
+            other.MutexRelations.Add(new MutexEdge(type, this));
             other._mutexPartners.Add(this);
         }
     }

@@ -11,14 +11,14 @@ namespace AIPlanningTests {
     [Category("OpenIssue")]
     public class OpenIssueTests : PlanningTestBase {
 
-        // Finding 2 — IsEffectsApplicable adds the effect-vs-precondition binding to the
+        // Finding 2 — TryBindEffects adds the effect-vs-precondition binding to the
         // PRODUCER's unificator set, so a consumer variable that occurs only in preconditions
         // and is instantiable only via another action's effect is never bound; every consumer
         // instance is dropped as non-ground and the planner reports "no plan".
         [Test]
         public void Finding02_PreconditionOnlyVariable_BoundViaProducerEffect_IsSolvable() {
-            var initialState = Factory.StringToSentence(new() { "Subject(Bob)" });
-            var goals = Factory.StringToSentence(new() { "Fed(Bob)" });
+            var initialState = Factory.ParseSentences(new() { "Subject(Bob)" });
+            var goals = Factory.ParseSentences(new() { "Fed(Bob)" });
 
             var bake = Factory.Create("Bake", new() { "Subject(z)" }, new() { "Have(Bread)" });
             var eat = Factory.Create("Eat", new() { "Have(x)", "Subject(z)" }, new() { "Fed(z)" });
@@ -37,8 +37,8 @@ namespace AIPlanningTests {
         // makes the action permanently inapplicable (mirror of the fixed duplicate-goals bug).
         [Test]
         public void Finding05_DuplicatePreconditionLiterals_ActionStillFires() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "G(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "G(Obj)" });
 
             var act = Factory.Create("Act", new() { "P(Obj)", "P(Obj)" }, new() { "G(Obj)" });
 
@@ -53,8 +53,8 @@ namespace AIPlanningTests {
         // duplicates when two distinct precondition variables ground to the same literal.
         [Test]
         public void Finding05_PreconditionsCollapsingUnderGrounding_ActionStillFires() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "G(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "G(Obj)" });
 
             var act = Factory.Create("Act", new() { "P(x)", "P(y)" }, new() { "G(x)" });
 
@@ -71,8 +71,8 @@ namespace AIPlanningTests {
         // Solve with ArgumentException instead of being deduplicated.
         [Test]
         public void Finding06_ContentEqualDuplicateActions_AreTolerated() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
             var act = Factory.Create("Act", new() { "P(K)" }, new() { "G(K)" });
             var duplicate = Factory.Create("Act", new() { "P(K)" }, new() { "G(K)" });
 
@@ -89,8 +89,8 @@ namespace AIPlanningTests {
         // satisfied empty goal set extracts as "no plan exists".
         [Test]
         public void Finding07_EmptyGoals_AtHigherLevel_AreTriviallySatisfied() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new());
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new());
             var act = Factory.Create("X", new() { "P(K)" }, new() { "Q(K)" });
             var problem = new GpProblem(initialState, goals, new() { act });
 
@@ -126,8 +126,8 @@ namespace AIPlanningTests {
         // that node, and solvability depends on action declaration order.
         [Test]
         public void Finding09_GeneralPrecondition_AfterSpecificOne_KeepsItsOwnGroundings() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
 
             var specific = Factory.Create("ASpec", new() { "Q(Home)" }, new() { "G(K)" });
             var general = Factory.Create("AGen", new() { "Q(y)" }, new() { "G(K)" });
@@ -144,8 +144,8 @@ namespace AIPlanningTests {
 
         [Test]
         public void Finding09_ControlCase_GeneralDeclaredFirst_IsSolvable() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
 
             var general = Factory.Create("AGen", new() { "Q(y)" }, new() { "G(K)" });
             var specific = Factory.Create("ASpec", new() { "Q(Home)" }, new() { "G(K)" });
@@ -166,8 +166,8 @@ namespace AIPlanningTests {
         // anchor, so the constant binding y→K was never learned.
         [Test]
         public void Finding10_VariableToVariableProducerBinding_ResolvedViaGroundInstances() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
 
             var maker = Factory.Create("Maker", new() { "P(w)" }, new() { "Q(w)" });
             var user = Factory.Create("User", new() { "Q(y)" }, new() { "G(K)" });
@@ -186,8 +186,8 @@ namespace AIPlanningTests {
         // ground M1 instance reveals v=K for M2, and only the ground M2 instance reveals y=K.
         [Test]
         public void Finding10_ChainedVariableToVariableBindings_ResolvedAcrossTwoLinks() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
 
             var m1 = Factory.Create("M1", new() { "P(w)" }, new() { "Q(w)" });
             var m2 = Factory.Create("M2", new() { "Q(z)" }, new() { "R(z)" });
@@ -204,8 +204,8 @@ namespace AIPlanningTests {
 
         [Test]
         public void Finding10_ControlCase_GroundProducerEffect_StillSolvable() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
 
             var maker = Factory.Create("Maker", new() { "P(w)" }, new() { "Q(K)" });
             var user = Factory.Create("User", new() { "Q(y)" }, new() { "G(K)" });
@@ -221,8 +221,8 @@ namespace AIPlanningTests {
 
         [Test]
         public void Finding10_ControlCase_ConsumerVariableFlowsIntoEffect_StillSolvable() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "G(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "G(K)" });
 
             var maker = Factory.Create("Maker", new() { "P(w)" }, new() { "Q(w)" });
             var user = Factory.Create("User", new() { "Q(y)" }, new() { "G(y)" });
@@ -244,7 +244,7 @@ namespace AIPlanningTests {
             var layer = new GpLayer(0);
             var p = layer.BeliefState.Add(new GpLiteralNode(L("P(Obj)")));
             var q = layer.BeliefState.Add(new GpLiteralNode(L("Q(Obj)")));
-            p.TryAddMutexRelations(q, MutexType.InconsistentSupport);
+            p.AddMutexRelation(q, MutexType.InconsistentSupport);
 
             var needsBoth = new GpAction("NeedsBoth",
                 new() { L("P(Obj)"), L("Q(Obj)") },
@@ -261,14 +261,14 @@ namespace AIPlanningTests {
         // self-contradictory effects into the operator graph.
         [Test]
         public void Finding12_GroundActionWithContradictoryEffects_IsFilteredFromGraph() {
-            var initialState = Factory.StringToSentence(new() { "P(K)" });
-            var goals = Factory.StringToSentence(new() { "Q(K)" });
+            var initialState = Factory.ParseSentences(new() { "P(K)" });
+            var goals = Factory.ParseSentences(new() { "Q(K)" });
             var broken = Factory.Create("Broken", new() { "P(K)" }, new() { "Q(K)", "-Q(K)" });
 
             var graph = new OperatorGraph(new GpProblem(initialState, goals, new() { broken }));
 
             var actions = graph.GetActionsForLiteral(L("P(K)"));
-            Assert.That(actions.Select(a => a.Signifier), Does.Not.Contain("Broken"),
+            Assert.That(actions.Select(a => a.Name), Does.Not.Contain("Broken"),
                 "an action whose effects contain Q(K) and -Q(K) is inconsistent and must be " +
                 "filtered on the direct (no-unificator) instantiation path too");
         }
@@ -277,8 +277,8 @@ namespace AIPlanningTests {
         // ground-literals-only, so the GpProblem boundary must reject it loudly.
         [Test]
         public void Finding13_NonGroundGoal_ThrowsAtProblemBoundary() {
-            var initialState = Factory.StringToSentence(new() { "Have(Cake)" });
-            var goals = Factory.StringToSentence(new() { "Have(x)" });
+            var initialState = Factory.ParseSentences(new() { "Have(Cake)" });
+            var goals = Factory.ParseSentences(new() { "Have(x)" });
 
             Assert.That(() => new GpProblem(initialState, goals, new List<GpAction>()),
                 Throws.ArgumentException,
@@ -288,8 +288,8 @@ namespace AIPlanningTests {
 
         [Test]
         public void Finding13_NonGroundInitialStateLiteral_ThrowsAtProblemBoundary() {
-            var initialState = Factory.StringToSentence(new() { "Have(x)" });
-            var goals = Factory.StringToSentence(new() { "Have(Cake)" });
+            var initialState = Factory.ParseSentences(new() { "Have(x)" });
+            var goals = Factory.ParseSentences(new() { "Have(Cake)" });
 
             Assert.That(() => new GpProblem(initialState, goals, new List<GpAction>()),
                 Throws.ArgumentException,
@@ -297,18 +297,18 @@ namespace AIPlanningTests {
                 "rejected at the boundary");
         }
 
-        // Finding 14 — SpecifyAction mutated the instance and recomputed its hash while GpAction
+        // Finding 14 — Substitute mutated the instance and recomputed its hash while GpAction
         // is used as a Dictionary/HashSet key; it must return a new instance and leave the
         // original (and its hash) untouched.
         [Test]
-        public void Finding14_SpecifyAction_ReturnsNewInstance_AndLeavesOriginalUntouched() {
+        public void Finding14_Substitute_ReturnsNewInstance_AndLeavesOriginalUntouched() {
             var action = Factory.Create("Act", new() { "P(x)" }, new() { "Q(x)" });
             var originalHash = action.GetHashCode();
 
             var unificator = new Unificator(L("P(x)"), L("P(K)"));
             Assert.That(unificator.IsUnifiable, Is.True, "sanity: P(x) and P(K) must unify");
 
-            var grounded = action.SpecifyAction(unificator);
+            var grounded = action.Substitute(unificator);
 
             Assert.That(grounded, Is.Not.SameAs(action),
                 "specifying must produce a new instance, not mutate a potential hash-set key");

@@ -30,7 +30,7 @@ namespace FirstOrderLogic {
     
         public virtual Connective Clone() => new Connective(this);
     
-        public static implicit operator LogicSymbol(Connective constant) => constant.Symbol; 
+        public static implicit operator LogicSymbol(Connective connective) => connective.Symbol;
     
         public static string SymbolToString(LogicSymbol symbol) {
             return symbol switch {

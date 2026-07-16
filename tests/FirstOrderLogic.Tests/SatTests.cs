@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace FolTests {
     public class SatTests : TestBase {
-        private static readonly SatSolvers Sat = new();
+        private static readonly SatSolver Sat = new();
 
         [Test]
         public void WalkSat_FindsModelForSatisfiableFormula() {

@@ -8,8 +8,8 @@ namespace AIPlanningTests {
     public class OperatorGraphTests : PlanningTestBase {
         [Test]
         public void GetActionsForLiteral_GroundLiteral_FindsActionAnchoredAtVariableNode() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "R(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "R(Obj)" });
             var a1 = Factory.Create("A1", new() { "P(x)" }, new() { "Q(x)" });
             var a2 = Factory.Create("A2", new() { "Q(x)" }, new() { "R(x)" });
 
@@ -17,16 +17,16 @@ namespace AIPlanningTests {
 
             var actions = graph.GetActionsForLiteral(L("Q(Obj)"));
 
-            Assert.That(actions.Select(a => a.Signifier), Does.Contain("A2"),
+            Assert.That(actions.Select(a => a.Name), Does.Contain("A2"),
                 "the ground literal Q(Obj) must unify with the operator-graph node Q(x)");
-            Assert.That(actions.Where(a => a.Signifier == "A2").All(a => a.IsGround()),
+            Assert.That(actions.Where(a => a.Name == "A2").All(a => a.IsGround()),
                 Is.True, "surfaced instances must be fully ground");
         }
 
         [Test]
         public void GetActionsForLiteral_ReturnsNoNonGroundInstances() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "R(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "R(Obj)" });
             var a1 = Factory.Create("A1", new() { "P(x)" }, new() { "Q(x)" });
             var a2 = Factory.Create("A2", new() { "Q(x)" }, new() { "R(x)" });
 
@@ -43,13 +43,13 @@ namespace AIPlanningTests {
 
         [Test]
         public void GetActionsWithoutPreconditions_SurfacesPreconditionlessAction_ButNotStart() {
-            var initialState = Factory.StringToSentence(new() { "Unrelated(Thing)" });
-            var goals = Factory.StringToSentence(new() { "R(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "Unrelated(Thing)" });
+            var goals = Factory.ParseSentences(new() { "R(Obj)" });
             var spawn = Factory.Create("Spawn", new List<string>(), new() { "R(Obj)" });
 
             var graph = new OperatorGraph(new GpProblem(initialState, goals, new() { spawn }));
 
-            var names = graph.GetActionsWithoutPreconditions().Select(a => a.Signifier).ToList();
+            var names = graph.GetActionsWithoutPreconditions().Select(a => a.Name).ToList();
             Assert.That(names, Does.Contain("Spawn"));
             Assert.That(names, Does.Not.Contain("Start"),
                 "the synthetic Start action must never surface as a usable action");
@@ -58,17 +58,17 @@ namespace AIPlanningTests {
 
         [Test]
         public void GetActionsForLiteral_NeverReturnsSyntheticStartOrFinish() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "G(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "G(Obj)" });
             var make = Factory.Create("Make", new() { "P(Obj)" }, new() { "G(Obj)" });
 
             var graph = new OperatorGraph(new GpProblem(initialState, goals, new() { make }));
 
             var forInitial = graph.GetActionsForLiteral(L("P(Obj)"));
-            Assert.That(forInitial.Select(a => a.Signifier), Does.Contain("Make"));
+            Assert.That(forInitial.Select(a => a.Name), Does.Contain("Make"));
 
             var forGoal = graph.GetActionsForLiteral(L("G(Obj)"));
-            var allNames = forInitial.Concat(forGoal).Select(a => a.Signifier).ToList();
+            var allNames = forInitial.Concat(forGoal).Select(a => a.Name).ToList();
             Assert.That(allNames, Does.Not.Contain("Finish"),
                 "Finish is attached to the goal literal during construction and must be filtered");
             Assert.That(allNames, Does.Not.Contain("Start"));

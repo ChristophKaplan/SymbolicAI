@@ -20,7 +20,7 @@ namespace FirstOrderLogic
             public static implicit operator string(Symbol symbol) => symbol.Name;
             public override string ToString() => Name;
 
-            public string Of(params string[] args)
+            public string Format(params string[] args)
             {
                 RequireArity(args);
                 return args.Length == 0 ? Name : $"{Name}({string.Join(", ", args)})";

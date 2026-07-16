@@ -2,15 +2,15 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace AIPlanning.Planning.GraphPlan {
-    public class GpSolution {
+    public class GpSolutionSet {
         private readonly List<Dictionary<int, GpLayer>> _solutions = new();
         public bool IsEmpty => _solutions.Count == 0;
         public int Count => _solutions.Count;
 
-        public static GpSolution EmptyPlan() {
-            var s = new GpSolution();
-            s.Add(new Dictionary<int, GpLayer>());
-            return s;
+        public static GpSolutionSet EmptyPlan() {
+            var solutionSet = new GpSolutionSet();
+            solutionSet.Add(new Dictionary<int, GpLayer>());
+            return solutionSet;
         }
 
         public void Add(Dictionary<int, GpLayer> solution)

@@ -24,13 +24,13 @@ namespace FirstOrderLogic {
                         continue;
                     }
 
-                    var unify = new Unificator(lit1, lit2);
-                    if (!unify.IsUnifiable)
+                    var unifier = new Unificator(lit1, lit2);
+                    if (!unifier.IsUnifiable)
                     {
                         continue;
                     }
 
-                    var mgu = new Substitution(unify.Substitutions);
+                    var mgu = new Substitution(unifier.Substitutions);
                     var kept = new List<ISentence>(clause1.Literals.Count + literals2.Count - 2);
                     for (var k = 0; k < clause1.Literals.Count; k++)
                     {
@@ -61,7 +61,7 @@ namespace FirstOrderLogic {
             return resolvents;
         }
 
-        // Binary resolution is refutation-complete only together with factoring: unifying two
+        // Binary resolution is refutation-complete only together with factoring: unifiering two
         // same-polarity literals of one clause and collapsing them. Without it, e.g.
         // {P(x) ∨ P(y)} ∪ {¬P(u) ∨ ¬P(v)} saturates without ever deriving ⊥.
         private static List<Clause> GetFactors(Clause clause)
@@ -78,13 +78,13 @@ namespace FirstOrderLogic {
                         continue;
                     }
 
-                    var unify = new Unificator(literals[i], literals[j]);
-                    if (!unify.IsUnifiable)
+                    var unifier = new Unificator(literals[i], literals[j]);
+                    if (!unifier.IsUnifiable)
                     {
                         continue;
                     }
 
-                    var mgu = new Substitution(unify.Substitutions);
+                    var mgu = new Substitution(unifier.Substitutions);
                     var applied = new List<ISentence>(literals.Count);
                     foreach (var literal in literals)
                     {
@@ -253,7 +253,7 @@ namespace FirstOrderLogic {
             // TRUE/FALSE are truth values, not resolvable atoms; fold them away so already-CNF
             // input cannot smuggle them into the clause set (a clause holding ⊤ is satisfied,
             // {⊥} is the empty clause — the loop below knows neither).
-            TransformationFOL.Transform(TransformationFOL.EquivType.SimplifyConstants, ref sentence);
+            Transformations.Transform(Transformations.RewriteRule.SimplifyConstants, ref sentence);
             if (sentence is IAtomicSentence { Contradiction: true })
             {
                 return true;

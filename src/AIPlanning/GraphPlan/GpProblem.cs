@@ -27,8 +27,8 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        public GpSolution Solve() {
-            return GraphPlanAlgo.Run(this);
+        public GpSolutionSet Solve() {
+            return GraphPlanSolver.Run(this);
         }
     }
 }

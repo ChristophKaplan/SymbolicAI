@@ -4,10 +4,10 @@ using System.Linq;
 using FirstOrderLogic;
 
 namespace AIPlanning.Planning.GraphPlan {
-    internal static class HelperExtensions {
+    internal static class GraphPlanExtensions {
         public static bool Match(this ISentence sentence, ISentence other, [NotNullWhen(true)] out Unificator? unificator) {
             // Argument order is deliberate: the returned unifier must bind in the direction
-            // callers (e.g. SpecifyAction) rely on.
+            // callers (e.g. Substitute) rely on.
             return Unificator.TryMatch(other, sentence, out unificator);
         }
 
@@ -44,17 +44,17 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         private static bool HasConflictIn(this GpNode node, HashSet<GpNode> nodes) {
-            return node.MutexRelation.Any(mutexTo => nodes.Contains(mutexTo.ToNode));
+            return node.MutexRelations.Any(mutexTo => nodes.Contains(mutexTo.ToNode));
         }
 
-        public static void CheckMutexRelations(this IReadOnlyList<GpNode> nodes) {
+        public static void ComputeMutexRelations(this IReadOnlyList<GpNode> nodes) {
             for (var i = 0; i < nodes.Count; i++) {
                 for (var j = i + 1; j < nodes.Count; j++) {
                     var nodeA = nodes[i];
                     var nodeB = nodes[j];
                     var mutexType = nodeA.GetMutexType(nodeB);
                     if (mutexType != MutexType.None) {
-                        nodeA.TryAddMutexRelations(nodeB, mutexType);
+                        nodeA.AddMutexRelation(nodeB, mutexType);
                     }
                 }
             }

@@ -17,11 +17,11 @@ namespace AIPlanning.Planning.GraphPlan {
         // is infeasible at this layer, and the caller MUST try another set. Filtering the mutex
         // literals out instead would let extraction recurse with an under-constrained sub-goal.
         public GpBeliefState? GetJointPreconditionsIfConflictFree() {
-            var incomingLitNodes = Nodes.SelectMany(node => node.InEdges).Cast<GpLiteralNode>().Distinct().ToList();
-            if (!incomingLitNodes.IsConflictFree()) {
+            var incomingLiteralNodes = Nodes.SelectMany(node => node.InEdges).Cast<GpLiteralNode>().Distinct().ToList();
+            if (!incomingLiteralNodes.IsConflictFree()) {
                 return null;
             }
-            return new GpBeliefState(incomingLitNodes);
+            return new GpBeliefState(incomingLiteralNodes);
         }
 
         public GpBeliefState ExpandBeliefState() {
@@ -34,7 +34,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
             }
 
-            beliefState.Nodes.CheckMutexRelations();
+            beliefState.Nodes.ComputeMutexRelations();
             return beliefState;
         }
 

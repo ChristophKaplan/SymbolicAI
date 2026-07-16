@@ -85,7 +85,7 @@ namespace AIPlanningTests {
 
         private static GpBeliefState StateOf(params string[] literals) {
             var state = new GpBeliefState();
-            foreach (var s in Factory.StringToSentence(new System.Collections.Generic.List<string>(literals))) {
+            foreach (var s in Factory.ParseSentences(new System.Collections.Generic.List<string>(literals))) {
                 state.Add(new GpLiteralNode((ISentence)s));
             }
             return state;

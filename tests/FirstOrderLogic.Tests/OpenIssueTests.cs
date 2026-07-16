@@ -108,7 +108,7 @@ namespace FolTests {
         [Test]
         public void Finding08_PushNegation_OverImplication_IsEquivalencePreserving() {
             var sentence = S("NOT (A => B)");
-            TransformationFOL.Transform(TransformationFOL.EquivType.PushNegation, ref sentence);
+            Transformations.Transform(Transformations.RewriteRule.PushNegation, ref sentence);
             Assert.That(sentence,
                 Is.EqualTo(S("A AND (NOT B)")).Or.EqualTo(S("NOT (A => B)")),
                 $"NOT (A => B) is equivalent to A AND (NOT B); got: {sentence}");
@@ -119,7 +119,7 @@ namespace FolTests {
         [Test]
         public void Finding08_PullQuantifier_FromAntecedent_FlipsTheQuantifier() {
             var sentence = S("(FORALL x (P(x))) => Q(a)");
-            TransformationFOL.Transform(TransformationFOL.EquivType.PullQuantifier, ref sentence);
+            Transformations.Transform(Transformations.RewriteRule.PullQuantifier, ref sentence);
             Assert.That(sentence,
                 Is.EqualTo(S("EXISTS x (P(x) => Q(a))")).Or.EqualTo(S("(FORALL x (P(x))) => Q(a)")),
                 $"pulling FORALL out of an antecedent must flip it to EXISTS; got: {sentence}");
@@ -262,7 +262,7 @@ namespace FolTests {
         public void Finding19_WalkSat_EmptyClause_ReportsUnsatInsteadOfCrashing() {
             var clauses = new List<Clause> { new Clause() };
             PossibleWorld? model = null;
-            Assert.That(() => model = new SatSolvers().WalkSAT(clauses, 1f, 100), Throws.Nothing,
+            Assert.That(() => model = new SatSolver().WalkSAT(clauses, 1f, 100), Throws.Nothing,
                 "the empty clause is a legal Clause value and must not crash the walk");
             Assert.That(model, Is.Null, "no assignment satisfies the empty clause");
         }
@@ -384,7 +384,7 @@ namespace FolTests {
         }
 
         // Finding 26 — the public ISentence.Substitute is raw (not capture-avoiding) under
-        // quantifiers, while the capture-safe variant is private to TransformationFOL.
+        // quantifiers, while the capture-safe variant is private to Transformations.
         [Test]
         public void Finding26_PublicSubstitute_UnderAQuantifier_IsCaptureAvoiding() {
             var result = S("FORALL x (P(x,y))").Substitute(new Variable("y"), new Variable("x"));

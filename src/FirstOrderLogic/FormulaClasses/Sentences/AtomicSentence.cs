@@ -26,18 +26,18 @@ namespace FirstOrderLogic {
         {
             if (Tautology)
             {
-                return Constant(Connective.LogicSymbol.FALSE);
+                return BooleanConstant(Connective.LogicSymbol.FALSE);
             }
 
             if (Contradiction)
             {
-                return Constant(Connective.LogicSymbol.TRUE);
+                return BooleanConstant(Connective.LogicSymbol.TRUE);
             }
 
             return new ComplexSentence(Connective.LogicSymbol.NEGATION, this);
         }
 
-        private static ISentence Constant(Connective.LogicSymbol symbol)
+        private static ISentence BooleanConstant(Connective.LogicSymbol symbol)
         {
             return new Proposition(Connective.SymbolToString(symbol));
         }

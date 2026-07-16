@@ -13,8 +13,8 @@ namespace AIPlanning.Planning.GraphPlan {
         public bool IsPersistenceAction { get; }
         public GpAction GpAction { get; }
 
-        public bool TryIncreaseUseCount(int useCountStop) {
-            if (_useCount >= useCountStop) {
+        public bool TryIncreaseUseCount(int maxUseCount) {
+            if (_useCount >= maxUseCount) {
                 return false;
             }
 
@@ -37,7 +37,7 @@ namespace AIPlanning.Planning.GraphPlan {
         // relations on the precondition nodes via InEdges instead of re-checking literal pairs.
         public bool IsCompetingNeeds(GpActionNode other) {
             foreach (var inNode in InEdges) {
-                foreach (var mutex in inNode.MutexRelation) {
+                foreach (var mutex in inNode.MutexRelations) {
                     if (other.HasInEdge(mutex.ToNode)) {
                         return true;
                     }

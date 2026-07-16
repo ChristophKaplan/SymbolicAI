@@ -15,8 +15,8 @@ namespace AIPlanningTests {
         // non-ground chained precondition — the second action in the chain never fires.
         [Test]
         public void Issue01_ChainedNonGroundPreconditions_TwoStepChainIsSolved() {
-            var initialState = Factory.StringToSentence(new() { "P(Obj)" });
-            var goals = Factory.StringToSentence(new() { "R(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "P(Obj)" });
+            var goals = Factory.ParseSentences(new() { "R(Obj)" });
 
             var a1 = Factory.Create("A1", new() { "P(x)" }, new() { "Q(x)" });
             var a2 = Factory.Create("A2", new() { "Q(x)" }, new() { "R(x)" });
@@ -35,11 +35,11 @@ namespace AIPlanningTests {
         // one-step persist plan instead of a zero-step plan.
         [Test]
         public void Issue02_GoalsAlreadySatisfiedInInitialState_YieldZeroStepPlan() {
-            var initialState = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() {
                 "Have(Cake)",
                 "Subject(Subject1)"
             });
-            var goals = Factory.StringToSentence(new() { "Have(Cake)" });
+            var goals = Factory.ParseSentences(new() { "Have(Cake)" });
             var noOp = Factory.Create("NoOp", new() { "Subject(z)" }, new() { "Subject(z)" });
 
             var problem = new GpProblem(initialState, goals, new() { noOp });
@@ -65,8 +65,8 @@ namespace AIPlanningTests {
         // returned by GetActionsForLiteral and can never fire.
         [Test]
         public void Issue03_ActionWithEmptyPreconditions_CanFire() {
-            var initialState = Factory.StringToSentence(new() { "Unrelated(Thing)" });
-            var goals = Factory.StringToSentence(new() { "R(Obj)" });
+            var initialState = Factory.ParseSentences(new() { "Unrelated(Thing)" });
+            var goals = Factory.ParseSentences(new() { "R(Obj)" });
 
             var spawn = Factory.Create("Spawn", new List<string>(), new() { "R(Obj)" });
 
@@ -79,13 +79,13 @@ namespace AIPlanningTests {
                 "operator graph");
         }
 
-        // Fixed defect: GpBeliefState.GetSubSetOfNodesMatching (GpBeliefState.cs) applies
+        // Fixed defect: GpBeliefState.GetSubsetOfNodesMatching (GpBeliefState.cs) applies
         // Distinct() and callers compare the count against literals.Count, so duplicate goal
         // literals make a trivially solvable problem unsolvable.
         [Test]
         public void Issue04_DuplicateGoalLiterals_ProblemStaysSolvable() {
-            var initialState = Factory.StringToSentence(new() { "Subject(Subject1)" });
-            var goals = Factory.StringToSentence(new() { "Have(Cake)", "Have(Cake)" });
+            var initialState = Factory.ParseSentences(new() { "Subject(Subject1)" });
+            var goals = Factory.ParseSentences(new() { "Have(Cake)", "Have(Cake)" });
 
             var bake = Factory.Create("Bake", new() { "Subject(z)" }, new() { "Have(Cake)" });
 
@@ -99,15 +99,15 @@ namespace AIPlanningTests {
 
         // Fixed defect: NoGoods.IsStable (NoGoods.cs) compares the TOTAL nogood count across
         // expansions, but every failed extraction at a NEW level adds a nogood keyed by that
-        // level, so the count grows strictly and the termination branch in GraphPlanAlgo.cs
+        // level, so the count grows strictly and the termination branch in GraphPlanSolver.cs
         // never fires -> infinite loop on unsolvable problems whose goals stay pairwise non-mutex.
         [Test]
         public void Issue05_UnsolvableThreeWayConflict_TerminatesWithEmptySolution() {
             // One-shot resource Res(Token): each Make consumes it and produces two of the three
             // goods, so any PAIR of goals is achievable (goals stay pairwise non-mutex at
             // level-off, blocking the goalsReachable/level-off exit) but all three jointly are not.
-            var initialState = Factory.StringToSentence(new() { "Res(Token)" });
-            var goals = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() { "Res(Token)" });
+            var goals = Factory.ParseSentences(new() {
                 "Have(GoodA)", "Have(GoodB)", "Have(GoodC)"
             });
 
@@ -129,7 +129,7 @@ namespace AIPlanningTests {
                 "recognise the problem as unsolvable and return an empty solution");
         }
 
-        // Fixed defect: GpAction.SpecifyAction (GpAction.cs) applies Unificator.Apply, which
+        // Fixed defect: GpAction.Substitute (GpAction.cs) applies Unificator.Apply, which
         // substitutes sequentially without resolving triangular substitutions like
         // {x->Obj, z->f(x)}, leaving under-instantiated (non-ground) literals in the action.
         [Test]
@@ -138,12 +138,12 @@ namespace AIPlanningTests {
 
             // Unifying P(x, z) with P(Obj, f(x)) yields the triangular substitution
             // {x -> Obj, z -> f(x)}; its correct resolved form is {x -> Obj, z -> f(Obj)}.
-            var pattern = (ISentence)Factory.StringToSentence(new() { "P(x, z)" })[0];
-            var target = (ISentence)Factory.StringToSentence(new() { "P(Obj, f(x))" })[0];
+            var pattern = (ISentence)Factory.ParseSentences(new() { "P(x, z)" })[0];
+            var target = (ISentence)Factory.ParseSentences(new() { "P(Obj, f(x))" })[0];
             var unificator = new Unificator(pattern, target);
             Assert.That(unificator.IsUnifiable, Is.True, "sanity: the two literals must unify");
 
-            var grounded = action.SpecifyAction(unificator);
+            var grounded = action.Substitute(unificator);
 
             var nonGround = grounded.Preconditions.Concat(grounded.Effects)
                 .Where(literal => !literal.IsGround())

@@ -16,20 +16,20 @@ namespace FirstOrderLogic {
             return sentences.Aggregate((a, b) => (ISentence)new ComplexSentence(a, connective, b));
         }
 
-        private static readonly TransformationFOL.EquivType[] PrenexPipeline = {
-            TransformationFOL.EquivType.SimplifyConstants,
-            TransformationFOL.EquivType.DissolveBiconditional,
-            TransformationFOL.EquivType.DissolveImplication,
-            TransformationFOL.EquivType.PushNegation,
-            TransformationFOL.EquivType.DoubleNegation,
-            TransformationFOL.EquivType.Absorption,
-            TransformationFOL.EquivType.AssociationAndIdem,
-            TransformationFOL.EquivType.PullQuantifier,
-            TransformationFOL.EquivType.RemoveDuplicateQuantifier,
+        private static readonly Transformations.RewriteRule[] PrenexPipeline = {
+            Transformations.RewriteRule.SimplifyConstants,
+            Transformations.RewriteRule.DissolveBiconditional,
+            Transformations.RewriteRule.DissolveImplication,
+            Transformations.RewriteRule.PushNegation,
+            Transformations.RewriteRule.DoubleNegation,
+            Transformations.RewriteRule.Absorption,
+            Transformations.RewriteRule.AssociationAndIdem,
+            Transformations.RewriteRule.PullQuantifier,
+            Transformations.RewriteRule.RemoveDuplicateQuantifier,
         };
 
-        private static readonly TransformationFOL.EquivType[] CnfPipeline = {
-            TransformationFOL.EquivType.DistributionOfDisjunction,
+        private static readonly Transformations.RewriteRule[] CnfPipeline = {
+            Transformations.RewriteRule.DistributionOfDisjunction,
         };
 
         public static ISentence ToPrenexForm(this ISentence sentence, out List<ISentence> steps) {
@@ -37,25 +37,25 @@ namespace FirstOrderLogic {
             return ToPrenexFormCore(sentence, steps);
         }
 
-        // Trace-free overload: skips the per-step clones that dominate normalisation cost.
+        // Trace-free overload: skips the per-step workings that dominate normalisation cost.
         public static ISentence ToPrenexForm(this ISentence sentence) =>
             ToPrenexFormCore(sentence, null);
 
         private static ISentence ToPrenexFormCore(ISentence sentence, List<ISentence>? steps) {
-            var clone = sentence;
-            ApplyUntilStable(ref clone, PrenexPipeline, steps);
-            return clone;
+            var working = sentence;
+            ApplyUntilStable(ref working, PrenexPipeline, steps);
+            return working;
         }
 
         private static void ApplyUntilStable(
-            ref ISentence clone, TransformationFOL.EquivType[] transformations, List<ISentence>? steps) {
+            ref ISentence working, Transformations.RewriteRule[] transformations, List<ISentence>? steps) {
             while (true) {
-                var start = clone;
+                var start = working;
                 foreach (var transform in transformations) {
-                    TransformationFOL.Transform(transform, ref clone);
-                    steps?.Add(clone);
+                    Transformations.Transform(transform, ref working);
+                    steps?.Add(working);
                 }
-                if (start.Equals(clone)) {
+                if (start.Equals(working)) {
                     break;
                 }
             }
@@ -72,12 +72,12 @@ namespace FirstOrderLogic {
         private static ISentence ToConjunctiveNormalFormCore(ISentence sentence, List<ISentence>? steps) {
             RequireClassical(sentence);
 
-            var clone = DropUniversalPrefix(ToPrenexFormCore(sentence, steps), sentence);
-            steps?.Add(clone);
-            ApplyUntilStable(ref clone, CnfPipeline, steps);
+            var working = DropUniversalPrefix(ToPrenexFormCore(sentence, steps), sentence);
+            steps?.Add(working);
+            ApplyUntilStable(ref working, CnfPipeline, steps);
 
-            if(!clone.IsCNF()) { throw new InvalidOperationException($"'{clone}' is not in CNF"); }
-            return clone;
+            if(!working.IsCNF()) { throw new InvalidOperationException($"'{working}' is not in CNF"); }
+            return working;
         }
 
         // CNF is an equivalence, so the prefix may only be dropped where dropping it preserves
@@ -111,13 +111,13 @@ namespace FirstOrderLogic {
         public static ISentence SkolemForm(this ISentence sentence) {
             RequireClassical(sentence);
 
-            var clone = sentence;
+            var working = sentence;
 
             // Each existential becomes a Skolem term over the universals enclosing it ('$' is
             // unparseable, so a witness can never resolve against a user constant). Free
             // variables are implicitly universal at widest scope, so every witness depends on them.
             var prefix = new List<Quantifier>();
-            var current = clone;
+            var current = working;
             while (current is IComplexSentence { IsQuantifier: true } quantified) {
                 prefix.Add((Quantifier)quantified.Connective);
                 current = quantified.Children[0];
@@ -164,13 +164,13 @@ namespace FirstOrderLogic {
             // the variable being replaced, so the witnesses only reach the matrix once its
             // variables are free. Shadowed-binder occurrences all belong to the innermost binder
             // (the only one that skolemizes), so substituting after removal is exact.
-            TransformationFOL.Transform(TransformationFOL.EquivType.RemoveQuantifier, ref clone);
+            Transformations.Transform(Transformations.RewriteRule.RemoveQuantifier, ref working);
 
             foreach (var variable in substitution.Keys) {
-                clone = clone.Substitute(variable, substitution[variable]);
+                working = working.Substitute(variable, substitution[variable]);
             }
 
-            return clone;
+            return working;
         }
 
         // Every variable of the matrix, in first-occurrence order. Deliberately not GetLiterals:
@@ -189,8 +189,8 @@ namespace FirstOrderLogic {
 
             if(sentence.IsDisjunctionOfLiterals())
             {
-                var clauseList = sentence.GetLiterals();
-                clauseSet.Add(new Clause(clauseList.ToArray()));
+                var literals = sentence.GetLiterals();
+                clauseSet.Add(new Clause(literals.ToArray()));
                 return clauseSet;
             }
         

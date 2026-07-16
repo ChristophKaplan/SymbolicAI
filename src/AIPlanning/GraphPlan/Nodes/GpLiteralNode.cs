@@ -12,7 +12,7 @@ namespace AIPlanning.Planning.GraphPlan {
         public ISentence Literal { get; }
 
         public override string ToString() {
-            return $"{Literal} [m:{MutexRelation.Aggregate("", (s, m) => $"{s}{m}, ")}]";
+            return $"{Literal} [m:{MutexRelations.Aggregate("", (s, m) => $"{s}{m}, ")}]";
         }
 
         public override int GetHashCode() {
@@ -24,19 +24,19 @@ namespace AIPlanning.Planning.GraphPlan {
                 return true;
             }
 
-            return obj is GpLiteralNode stateNode && Literal.Equals(stateNode.Literal);
+            return obj is GpLiteralNode otherLiteral && Literal.Equals(otherLiteral.Literal);
         }
 
         // Inconsistent support (Blum & Furst): every pair of supporting actions is mutex.
-        // A lookup on recorded relations suffices because CheckMutexRelations runs on the action
+        // A lookup on recorded relations suffices because ComputeMutexRelations runs on the action
         // layer BEFORE this literal layer is checked (see ExpandGraph / ExpandBeliefState).
         public bool IsInconsistentSupport(GpLiteralNode other) {
             if (InEdges.Count == 0 || other.InEdges.Count == 0) {
                 return false;
             }
 
-            var isAPossibleWay = InEdges.Any(inNode => other.InEdges.Any(otherInNode => !inNode.IsMutexWith(otherInNode)));
-            return !isAPossibleWay;
+            var hasNonMutexSupporterPair = InEdges.Any(inNode => other.InEdges.Any(otherInNode => !inNode.IsMutexWith(otherInNode)));
+            return !hasNonMutexSupporterPair;
         }
     }
 }

@@ -20,7 +20,7 @@ namespace FirstOrderLogic {
             _propositionalAssignment = new Dictionary<IProposition, bool>(propositionalAssignment);
         }
     
-        public void Switch(IProposition proposition) {
+        public void Toggle(IProposition proposition) {
             _propositionalAssignment[proposition] = !_propositionalAssignment[proposition];
         }
     
@@ -99,19 +99,19 @@ namespace FirstOrderLogic {
         private IDomainOfDiscourse Domain { get; }
         private readonly Dictionary<string, Func<IElementOfDiscourse[], bool>> _relations;
         private readonly Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>> _functions;
-        private readonly Dictionary<string, IElementOfDiscourse> _variableAssigment;
+        private readonly Dictionary<string, IElementOfDiscourse> _variableAssignment;
 
         // Tables are copied for the same reason as in the base ctor.
         public Interpretation(IDomainOfDiscourse domain,
             Dictionary<string, Func<IElementOfDiscourse[], bool>> relations,
             Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>> functions,
-            Dictionary<string, IElementOfDiscourse> variableAssigment,
+            Dictionary<string, IElementOfDiscourse> variableAssignment,
             Dictionary<IProposition, bool> propositionalAssignment) : base(propositionalAssignment) {
 
             Domain = domain;
             _relations = new Dictionary<string, Func<IElementOfDiscourse[], bool>>(relations);
             _functions = new Dictionary<string, Func<IElementOfDiscourse[], IElementOfDiscourse>>(functions);
-            _variableAssigment = new Dictionary<string, IElementOfDiscourse>(variableAssigment);
+            _variableAssignment = new Dictionary<string, IElementOfDiscourse>(variableAssignment);
         }
     
         public IElementOfDiscourse EvaluateTerm(Term term) => Evaluate(term);
@@ -136,17 +136,17 @@ namespace FirstOrderLogic {
         // keeps using the interpretation, so a binding must not survive a throwing body.
         private bool EvaluateBoundTo(IComplexSentence quantified, IElementOfDiscourse element) {
             var variable = ((Quantifier)quantified.Connective).Variable;
-            var hadOuter = _variableAssigment.TryGetValue(variable.TermSymbol, out var outer);
-            _variableAssigment[variable.TermSymbol] = element;
+            var hadOuter = _variableAssignment.TryGetValue(variable.TermSymbol, out var outer);
+            _variableAssignment[variable.TermSymbol] = element;
             try {
                 return base.Evaluate(quantified.Children[0]);
             }
             finally {
                 if (hadOuter) {
-                    _variableAssigment[variable.TermSymbol] = outer!;
+                    _variableAssignment[variable.TermSymbol] = outer!;
                 }
                 else {
-                    _variableAssigment.Remove(variable.TermSymbol);
+                    _variableAssignment.Remove(variable.TermSymbol);
                 }
             }
         }
@@ -180,7 +180,7 @@ namespace FirstOrderLogic {
                 // so an interpreted function never has to resolve a variable binding itself.
                 // Constants are arity-0 functions: function.Terms is empty for them.
                 Function function =>  _functions.TryGetValue(function.TermSymbol, out var func) ? func(function.Terms.Select(Evaluate).ToArray()) : throw new InterpretationException("Error: function not found in interpretation."),
-                Variable variable => _variableAssigment.TryGetValue(variable.TermSymbol, out var domain) ? domain : throw new InterpretationException("Error: variable not found in interpretation."),
+                Variable variable => _variableAssignment.TryGetValue(variable.TermSymbol, out var element) ? element : throw new InterpretationException("Error: variable not found in interpretation."),
                 _ => throw new InterpretationException($"Error: {term} not found in interpretation.")
             };
         }

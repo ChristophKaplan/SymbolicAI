@@ -8,7 +8,7 @@ namespace AIPlanning.Planning.GraphPlan {
     public class GpAction : IEquatable<GpAction> {
         private readonly int _hashcode;
         private readonly HashSet<Unificator> _unificators = new();
-        public string Signifier { get; }
+        public string Name { get; }
         public IReadOnlyList<ISentence> Preconditions { get; }
         public IReadOnlyList<ISentence> Effects { get; }
         public IReadOnlyCollection<Unificator> Unificators => _unificators;
@@ -19,14 +19,14 @@ namespace AIPlanning.Planning.GraphPlan {
 
         public GpAction(string name, List<ISentence> preconditions, List<ISentence> effects, bool isSynthetic = false)
         {
-            Signifier = name;
+            Name = name;
             Preconditions = preconditions;
             Effects = effects;
             IsSynthetic = isSynthetic;
             _hashcode = ComputeHashCode();
         }
 
-        public GpAction Clone() => new GpAction(Signifier, Preconditions.ToList(), Effects.ToList(), IsSynthetic);
+        public GpAction Clone() => new GpAction(Name, Preconditions.ToList(), Effects.ToList(), IsSynthetic);
 
         // Belief-state matching is exact over ground literals, so only a fully ground action can fire.
         public bool IsGround() => Preconditions.All(p => p.IsGround()) && Effects.All(e => e.IsGround());
@@ -42,16 +42,16 @@ namespace AIPlanning.Planning.GraphPlan {
             return added;
         }
 
-        public bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpLiteralNode>? satisfied) {
+        public bool IsApplicableToPreconditions(GpBeliefState beliefState, [NotNullWhen(true)] out List<GpLiteralNode>? satisfyingNodes) {
             // Duplicate precondition literals map onto one node; comparing against the raw count
             // would make the action permanently inapplicable.
             var distinct = Preconditions.Distinct().ToList();
-            satisfied = beliefState.GetSubSetOfNodesMatching(distinct);
-            return satisfied != null && satisfied.Count == distinct.Count;
+            satisfyingNodes = beliefState.GetSubsetOfNodesMatching(distinct);
+            return satisfyingNodes != null && satisfyingNodes.Count == distinct.Count;
         }
 
-        public HashSet<Unificator> GetConflictFreeUnificatorPossibilities() {
-            var substitutions = ArrangeSubstitutionsAsTrees(_unificators);
+        public HashSet<Unificator> GetConflictFreeUnifiers() {
+            var substitutions = GroupSubstitutionsByVariable(_unificators);
 
             var variables = substitutions.Keys.ToList();
             var termLists = substitutions.Values.ToList();
@@ -103,8 +103,8 @@ namespace AIPlanning.Planning.GraphPlan {
             return true;
         }
 
-        private static Dictionary<Variable, List<Term>> ArrangeSubstitutionsAsTrees(HashSet<Unificator> unificators) {
-            var collectPossibilities = new Dictionary<Variable, List<Term>>();
+        private static Dictionary<Variable, List<Term>> GroupSubstitutionsByVariable(HashSet<Unificator> unificators) {
+            var substitutionsByVariable = new Dictionary<Variable, List<Term>>();
 
             foreach (var unificator in unificators) {
                 if (unificator.IsEmpty) {
@@ -112,8 +112,8 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
 
                 foreach (var substitution in unificator.Substitutions) {
-                    if (!collectPossibilities.TryGetValue(substitution.Key, out var terms)) {
-                        collectPossibilities.Add(substitution.Key, new List<Term> { substitution.Value });
+                    if (!substitutionsByVariable.TryGetValue(substitution.Key, out var terms)) {
+                        substitutionsByVariable.Add(substitution.Key, new List<Term> { substitution.Value });
                     }
                     else if (!terms.Contains(substitution.Value)) {
                         terms.Add(substitution.Value);
@@ -121,13 +121,13 @@ namespace AIPlanning.Planning.GraphPlan {
                 }
             }
 
-            return collectPossibilities;
+            return substitutionsByVariable;
         }
 
         // Returns a new instance: the hash covers the literals, and actions live in hash-keyed
         // collections — substituting in place would corrupt those.
-        public GpAction SpecifyAction(Unificator unificator) {
-            return new GpAction(Signifier,
+        public GpAction Substitute(Unificator unificator) {
+            return new GpAction(Name,
                 Preconditions.Select(unificator.Apply).ToList(),
                 Effects.Select(unificator.Apply).ToList(),
                 IsSynthetic);
@@ -159,7 +159,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 return hash;
             }
 
-            return HashCode.Combine(Signifier, Preconditions.Count, Effects.Count, SumHashes(Preconditions), SumHashes(Effects));
+            return HashCode.Combine(Name, Preconditions.Count, Effects.Count, SumHashes(Preconditions), SumHashes(Effects));
         }
 
         public bool Equals(GpAction? other)
@@ -179,7 +179,7 @@ namespace AIPlanning.Planning.GraphPlan {
                 return false;
             }
 
-            if (Signifier != other.Signifier)
+            if (Name != other.Name)
             {
                 return false;
             }
@@ -194,7 +194,7 @@ namespace AIPlanning.Planning.GraphPlan {
         }
 
         public override string ToString() {
-            return $"{Signifier} {string.Join(",", Preconditions)} -> {string.Join(",", Effects)}";
+            return $"{Name} {string.Join(",", Preconditions)} -> {string.Join(",", Effects)}";
         }
     }
 }

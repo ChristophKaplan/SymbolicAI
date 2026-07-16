@@ -1,8 +1,8 @@
 namespace AIPlanning.Planning.GraphPlan {
-    public static class GraphPlanAlgo {
-        public static GpSolution Run(GpProblem problem) {
+    public static class GraphPlanSolver {
+        public static GpSolutionSet Run(GpProblem problem) {
             if (problem.Goals.Count == 0) {
-                return GpSolution.EmptyPlan();
+                return GpSolutionSet.EmptyPlan();
             }
 
             var graph = new GpPlanGraph(problem);
@@ -11,9 +11,9 @@ namespace AIPlanning.Planning.GraphPlan {
             var levelledOffAt = -1;
 
             while (true) {
-                var goalsReachable = graph.StateNotMutex(levelIndex, problem.Goals);
+                var goalsReachable = graph.AreGoalsReachable(levelIndex, problem.Goals);
                 // Level-off is permanent, so stop re-comparing layers once it is known.
-                var graphStable = levelledOffAt >= 0 || graph.Stable(levelIndex);
+                var graphStable = levelledOffAt >= 0 || graph.IsStable(levelIndex);
                 if (graphStable && levelledOffAt < 0) {
                     levelledOffAt = levelIndex;
                 }
@@ -30,14 +30,14 @@ namespace AIPlanning.Planning.GraphPlan {
                     if (levelledOffAt >= 0) {
                         noGoods.MarkExpansion(levelledOffAt);
                         if (noGoods.IsStable()) {
-                            return new GpSolution();
+                            return new GpSolutionSet();
                         }
                     }
                 }
                 else if (graphStable) {
                     // The graph can produce no new literals and relax no mutexes, and the goals
                     // are not jointly reachable here — they never will be.
-                    return new GpSolution();
+                    return new GpSolutionSet();
                 }
 
                 graph.ExpandGraph();

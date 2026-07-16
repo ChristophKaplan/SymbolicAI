@@ -49,13 +49,13 @@ namespace FolTests
         [Test]
         public void Symbol_OfRendersConcreteSyntax()
         {
-            Assert.That(new Signature.Symbol("Owns", 2).Of("z", "y"), Is.EqualTo("Owns(z, y)"));
-            Assert.That(new Signature.Symbol("Subject", 1).Of("y"), Is.EqualTo("Subject(y)"));
+            Assert.That(new Signature.Symbol("Owns", 2).Format("z", "y"), Is.EqualTo("Owns(z, y)"));
+            Assert.That(new Signature.Symbol("Subject", 1).Format("y"), Is.EqualTo("Subject(y)"));
         }
 
         [Test]
         public void Symbol_OfThrowsOnArityMismatch() =>
-            Assert.That(() => new Signature.Symbol("Owns", 2).Of("z"), Throws.TypeOf<ArgumentException>());
+            Assert.That(() => new Signature.Symbol("Owns", 2).Format("z"), Throws.TypeOf<ArgumentException>());
 
         // Ground-built atoms must be Equals-identical to their parsed counterparts — Theory,
         // Holds and Compare all rely on structural equality between the two construction paths.

@@ -23,14 +23,14 @@ namespace AIPlanningTests {
                 var stepActions = actions[step].GetActions(ignorePersistence: true);
                 Assert.That(stepActions, Has.Count.EqualTo(1),
                     $"step {step} must contain exactly one non-persistence action");
-                Assert.That(stepActions[0].Signifier, Is.EqualTo(expectedNames[step]),
+                Assert.That(stepActions[0].Name, Is.EqualTo(expectedNames[step]),
                     $"step {step} should be a {expectedNames[step]} action");
             }
         }
 
         [Test]
         public void EmptyGoals_ReturnsZeroStepPlan() {
-            var initialState = Factory.StringToSentence(new() { "Subject(Subject1)" });
+            var initialState = Factory.ParseSentences(new() { "Subject(Subject1)" });
             var emptyGoals = new List<ISentence>();
             var problem = new GpProblem(initialState, emptyGoals, new List<GpAction>());
 
@@ -44,11 +44,11 @@ namespace AIPlanningTests {
 
         [Test]
         public void UnsolvableProblem_TerminatesWithEmptySolution() {
-            var initialState = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() {
                 "Have(Apple)",
                 "Subject(Subject1)"
             });
-            var goals = Factory.StringToSentence(new() { "Have(Diamond)" });
+            var goals = Factory.ParseSentences(new() { "Have(Diamond)" });
             var noOp = Factory.Create("NoOp", new() { "Subject(z)" }, new() { "Subject(z)" });
 
             var problem = new GpProblem(initialState, goals, new() { noOp });
@@ -60,11 +60,11 @@ namespace AIPlanningTests {
 
         [Test]
         public void GoalsAlreadySatisfied_FindsPlanViaPersistence() {
-            var initialState = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() {
                 "Have(Apple)",
                 "Subject(Subject1)"
             });
-            var goals = Factory.StringToSentence(new() { "Have(Apple)" });
+            var goals = Factory.ParseSentences(new() { "Have(Apple)" });
             var noOp = Factory.Create("NoOp", new() { "Subject(z)" }, new() { "Subject(z)" });
 
             var problem = new GpProblem(initialState, goals, new() { noOp });
@@ -78,7 +78,7 @@ namespace AIPlanningTests {
         // Move/Chop ever producing Carries(z, Wood).
         [Test]
         public void ChopThenWork_FindsFourStepPlan() {
-            var initialState = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() {
                 "At(Bob, MyLocation)",
                 "-At(Bob, TreeA)",
                 "-At(Bob, Yarda)",
@@ -87,7 +87,7 @@ namespace AIPlanningTests {
                 "Subject(Bob)",
                 "-Carries(Bob, Wood)"
             });
-            var goals = Factory.StringToSentence(new() { "Have(Bob, Wage)" });
+            var goals = Factory.ParseSentences(new() { "Have(Bob, Wage)" });
 
             var move = Factory.Create("Move",
                 new() { "-At(z, x)", "At(z, y)", "Subject(z)" },
@@ -113,7 +113,7 @@ namespace AIPlanningTests {
                 var stepActions = actions[step].GetActions(ignorePersistence: true);
                 Assert.That(stepActions, Has.Count.EqualTo(1),
                     $"step {step} must contain exactly one non-persistence action");
-                Assert.That(stepActions[0].Signifier, Is.EqualTo(expectedNames[step]),
+                Assert.That(stepActions[0].Name, Is.EqualTo(expectedNames[step]),
                     $"step {step} should be {expectedNames[step]}");
             }
         }
@@ -133,7 +133,7 @@ namespace AIPlanningTests {
         }
 
         private static GpProblem BuildCakeProblem() {
-            var initialState = Factory.StringToSentence(new() {
+            var initialState = Factory.ParseSentences(new() {
                 "At(Subject1,mylocation)",
                 "-At(Subject1,Supermarket)",
                 "-At(Subject1,Work)",
@@ -143,7 +143,7 @@ namespace AIPlanningTests {
                 "-Drink(Cake)",
                 "Subject(Subject1)"
             });
-            var goals = Factory.StringToSentence(new() { "Have(Cake)", "At(Subject1,Home)" });
+            var goals = Factory.ParseSentences(new() { "Have(Cake)", "At(Subject1,Home)" });
 
             var work = Factory.Create("Work",
                 new() { "At(z, Work)", "Subject(z)" },

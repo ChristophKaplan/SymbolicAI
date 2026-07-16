@@ -11,21 +11,21 @@ namespace AIPlanning.Planning.GraphPlan {
         InconsistentEffects
     }
 
-    public readonly struct MutexRel : IEquatable<MutexRel> {
+    public readonly struct MutexEdge : IEquatable<MutexEdge> {
         public readonly MutexType Type;
         public readonly GpNode ToNode;
 
-        public MutexRel(MutexType type, GpNode toNode) : this() {
+        public MutexEdge(MutexType type, GpNode toNode) : this() {
             Type = type;
             ToNode = toNode;
         }
 
-        public bool Equals(MutexRel other) {
+        public bool Equals(MutexEdge other) {
             return Type == other.Type && ToNode.Equals(other.ToNode);
         }
 
         public override bool Equals([NotNullWhen(true)] object? obj) {
-            return obj is MutexRel other && Equals(other);
+            return obj is MutexEdge other && Equals(other);
         }
 
         public override int GetHashCode() {

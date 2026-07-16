@@ -11,7 +11,7 @@ namespace AIPlanning.Planning.GraphPlan {
 
         // Caps revisits of one action node during the backward construction; mutually-supporting
         // actions (A enables B enables A ...) would otherwise recurse forever.
-        private const int UseCountStop = 10;
+        private const int MaxUseCount = 10;
 
         public OperatorGraph(GpProblem problem)
         {
@@ -137,9 +137,9 @@ namespace AIPlanning.Planning.GraphPlan {
                 return possibleInstances;
             }
 
-            foreach (var unificator in action.GetConflictFreeUnificatorPossibilities())
+            foreach (var unificator in action.GetConflictFreeUnifiers())
             {
-                var instance = action.SpecifyAction(unificator);
+                var instance = action.Substitute(unificator);
                 if (instance.IsConsistent() && instance.IsGround())
                 {
                     possibleInstances.Add(instance);
@@ -224,15 +224,15 @@ namespace AIPlanning.Planning.GraphPlan {
                 foreach (var literalNode in literalNodes)
                 {
                     literalNode.ConnectTo(curAction);
-                    FindApplicableAction(literalNode, operatorNodes);
+                    ConnectApplicableActions(literalNode, operatorNodes);
                 }
             }
         }
 
-        private void GetMatchingLiteralNodes(ISentence literal, out List<GpLiteralNode> preConNodes, out List<Unificator> unificators)
+        private void GetMatchingLiteralNodes(ISentence literal, out List<GpLiteralNode> matchingLiteralNodes, out List<Unificator> unificators)
         {
             unificators = new List<Unificator>();
-            preConNodes = new List<GpLiteralNode>();
+            matchingLiteralNodes = new List<GpLiteralNode>();
 
             foreach (var node in _literalNodes)
             {
@@ -241,16 +241,16 @@ namespace AIPlanning.Planning.GraphPlan {
                     continue;
                 }
 
-                preConNodes.Add(node);
+                matchingLiteralNodes.Add(node);
                 unificators.Add(uni);
             }
         }
 
-        private void FindApplicableAction(GpLiteralNode curLiteral, Dictionary<GpAction, GpActionNode> operatorNodes)
+        private void ConnectApplicableActions(GpLiteralNode curLiteral, Dictionary<GpAction, GpActionNode> operatorNodes)
         {
             foreach (var action in _actions)
             {
-                if (!IsEffectsApplicable(action, curLiteral))
+                if (!TryBindEffects(action, curLiteral))
                 {
                     continue;
                 }
@@ -260,7 +260,7 @@ namespace AIPlanning.Planning.GraphPlan {
                     operatorNode = new GpActionNode(action);
                     operatorNodes.Add(action, operatorNode);
                 }
-                else if (!operatorNode.TryIncreaseUseCount(UseCountStop))
+                else if (!operatorNode.TryIncreaseUseCount(MaxUseCount))
                 {
                     continue;
                 }
@@ -270,7 +270,7 @@ namespace AIPlanning.Planning.GraphPlan {
             }
         }
 
-        private bool IsEffectsApplicable(GpAction action, GpLiteralNode literalNode)
+        private bool TryBindEffects(GpAction action, GpLiteralNode literalNode)
         {
             var literal = literalNode.Literal;
             var producerBindings = new List<Unificator>();

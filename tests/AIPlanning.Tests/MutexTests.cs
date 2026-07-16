@@ -37,7 +37,7 @@ namespace AIPlanningTests {
 
             var litP = new GpLiteralNode(L("P(Obj)"));
             var litNotP = new GpLiteralNode(L("-P(Obj)"));
-            litP.TryAddMutexRelations(litNotP, MutexType.LiteralNegation);
+            litP.AddMutexRelation(litNotP, MutexType.LiteralNegation);
             litP.ConnectTo(a);
             litNotP.ConnectTo(b);
 
@@ -75,8 +75,8 @@ namespace AIPlanningTests {
             var b = new GpActionNode(new GpAction("B", new() { L("P(Obj)") }, new() { L("L2(Obj)"), L("M(Obj)") }));
 
             var actionNodes = new List<GpNode> { a, b };
-            actionNodes.CheckMutexRelations();
-            Assert.That(a.MutexRelation, Is.Not.Empty, "sanity: the action mutex must be recorded");
+            actionNodes.ComputeMutexRelations();
+            Assert.That(a.MutexRelations, Is.Not.Empty, "sanity: the action mutex must be recorded");
 
             var lit1 = new GpLiteralNode(L("L1(Obj)"));
             var lit2 = new GpLiteralNode(L("L2(Obj)"));
@@ -95,7 +95,7 @@ namespace AIPlanningTests {
             var c = new GpActionNode(new GpAction("C", new() { L("P(Obj)") }, new() { L("L2(Obj)") }));
 
             var actionNodes = new List<GpNode> { a, b, c };
-            actionNodes.CheckMutexRelations();
+            actionNodes.ComputeMutexRelations();
 
             var lit1 = new GpLiteralNode(L("L1(Obj)"));
             var lit2 = new GpLiteralNode(L("L2(Obj)"));

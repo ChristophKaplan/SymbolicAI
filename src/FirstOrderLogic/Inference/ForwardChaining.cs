@@ -18,23 +18,23 @@ namespace FirstOrderLogic
         // Entails passes the query's constants so instances only mentioning them are reachable.
         private static List<ISentence> Saturate(IEnumerable<ISentence> kb, IEnumerable<Term> extraConstants)
         {
-            var clauses = Rule.FromAll(kb);
-            var rules = clauses.Where(c => !c.IsFact).ToList();
+            var allRules = Rule.FromAll(kb);
+            var rules = allRules.Where(c => !c.IsFact).ToList();
 
             var known = new HashSet<ISentence>();
-            foreach (var fact in clauses.Where(c => c.IsFact))
+            foreach (var fact in allRules.Where(c => c.IsFact))
             {
                 known.Add(Canonical(fact.Head));
             }
 
-            var constants = clauses
+            var constants = allRules
                 .SelectMany(c => c.Premises.Concat(c.NafPremises).Append(c.Head))
                 .SelectMany(ConstantsOf)
                 .Concat(extraConstants)
                 .Distinct()
                 .ToList();
 
-            var rename = new BackwardChaining.Counter();
+            var counter = new BackwardChaining.Counter();
 
             // A round reads a snapshot frozen at its start: `known` grows while Match lazily walks
             // `facts`, and a round-stable view is what gives the NAF tests below a fixed world to
@@ -51,8 +51,8 @@ namespace FirstOrderLogic
                     derived.Clear();
                     foreach (var rule in stratum)
                     {
-                        var fresh = rule.Renamed(rename.Next++);
-                        var matches = Match(fresh.Premises, 0, Substitution.Empty, facts, rename);
+                        var fresh = rule.Renamed(counter.Next++);
+                        var matches = Match(fresh.Premises, 0, Substitution.Empty, facts, counter);
                         foreach (var theta in matches)
                         {
                             // NAF fails when any instance is derivable — Holds unifies, so a
@@ -197,8 +197,8 @@ namespace FirstOrderLogic
                 throw new ArgumentException($"Holds is literal-only; got non-literal query '{query}'.");
             }
 
-            var sig = query.Signature();
-            return facts.Any(f => f.Signature() == sig &&
+            var sig = query.PolaritySignature();
+            return facts.Any(f => f.PolaritySignature() == sig &&
                                   Unificator.TryUnify(query, StandardizedApart(f, query), out _));
         }
 
@@ -211,12 +211,12 @@ namespace FirstOrderLogic
                 throw new ArgumentException($"Answers is literal-only; got non-literal query '{query}'.");
             }
 
-            var sig = query.Signature();
+            var sig = query.PolaritySignature();
             var queryVariables = query.VariablesOf().ToList();
             var answers = new List<Dictionary<Variable, Term>>();
             foreach (var fact in facts)
             {
-                if (fact.Signature() != sig)
+                if (fact.PolaritySignature() != sig)
                 {
                     continue;
                 }
@@ -262,9 +262,9 @@ namespace FirstOrderLogic
             }
 
             var strata = new Dictionary<string, int>();
-            int StratumOf(ISentence literal) => strata.GetValueOrDefault(literal.Signature(), 0);
+            int StratumOf(ISentence literal) => strata.GetValueOrDefault(literal.PolaritySignature(), 0);
 
-            var headCount = rules.Select(r => r.Head.Signature()).Distinct().Count();
+            var headCount = rules.Select(r => r.Head.PolaritySignature()).Distinct().Count();
             bool changed;
             do
             {
@@ -282,7 +282,7 @@ namespace FirstOrderLogic
                         required = Math.Max(required, StratumOf(n) + 1);
                     }
 
-                    var key = rule.Head.Signature();
+                    var key = rule.Head.PolaritySignature();
                     if (required > strata.GetValueOrDefault(key, 0))
                     {
                         if (required > headCount)
@@ -297,7 +297,7 @@ namespace FirstOrderLogic
             }
             while (changed);
 
-            return rules.GroupBy(r => strata.GetValueOrDefault(r.Head.Signature(), 0))
+            return rules.GroupBy(r => strata.GetValueOrDefault(r.Head.PolaritySignature(), 0))
                 .OrderBy(g => g.Key)
                 .Select(g => g.ToList())
                 .ToList();
@@ -305,7 +305,7 @@ namespace FirstOrderLogic
 
         private static IEnumerable<Substitution> Match(
             IReadOnlyList<ISentence> premises, int index,
-            Substitution theta, List<ISentence> facts, BackwardChaining.Counter rename)
+            Substitution theta, List<ISentence> facts, BackwardChaining.Counter counter)
         {
             if (index == premises.Count)
             {
@@ -316,13 +316,13 @@ namespace FirstOrderLogic
             var goal = theta.Apply(premises[index]);
             foreach (var fact in facts)
             {
-                if (!Unificator.TryMatch(goal, RenamedApart(fact, rename.Next++), out var match))
+                if (!Unificator.TryMatch(goal, RenamedApart(fact, counter.Next++), out var match))
                 {
                     continue;
                 }
 
                 var extended = theta.Extend(match.Substitutions);
-                foreach (var solution in Match(premises, index + 1, extended, facts, rename))
+                foreach (var solution in Match(premises, index + 1, extended, facts, counter))
                 {
                     yield return solution;
                 }

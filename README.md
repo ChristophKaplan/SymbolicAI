@@ -156,7 +156,7 @@ using AIPlanning.Planning.GraphPlan;
 
 var factory = new GpActionFactory();
 
-var initialState = factory.StringToSentence(new() {
+var initialState = factory.ParseSentences(new() {
     "At(Subject1, MyLocation)",
     "-At(Subject1, Supermarket)",
     "-At(Subject1, Home)",
@@ -165,7 +165,7 @@ var initialState = factory.StringToSentence(new() {
     "Subject(Subject1)"
 });
 
-var goals = factory.StringToSentence(new() {
+var goals = factory.ParseSentences(new() {
     "Have(Cake)",
     "At(Subject1, Home)"
 });
@@ -203,7 +203,7 @@ A runnable version lives in `examples/AIPlanning.Example/Program.cs`.
   per-agent grounded instances solvable in one pass (see
   `tests/AIPlanning.Tests/MultiAgentPlanningTests.cs`; works for small N,
   scales super-linearly).
-- **`GpSolution`** — distinguishes "no plan exists" from a trivially-satisfied zero-step plan.
+- **`GpSolutionSet`** — distinguishes "no plan exists" from a trivially-satisfied zero-step plan.
 
 ## Action syntax
 

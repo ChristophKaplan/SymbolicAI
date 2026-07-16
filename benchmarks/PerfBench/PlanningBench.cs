@@ -16,7 +16,7 @@ namespace PerfBench {
     //     §3.2 incremental supporter selection (GpBeliefState.SelectSupporters): ~64 s →
     //     ~0.5 s for the 8-tree case. Residual cost is exhaustive grounding plus the
     //     O(groundings²) mutex check per layer.
-    //   - A lifted planner is NOT worth building. Instrumenting CheckMutexRelations showed
+    //   - A lifted planner is NOT worth building. Instrumenting ComputeMutexRelations showed
     //     lifting could only remove pair-checks between independent agents (hit rate falls
     //     17.75% → 7.62% as agents grow), while under contention the hit rate stays ~30% —
     //     those conflicts must be grounded out anyway. Per-agent decomposition removes the
@@ -93,15 +93,15 @@ namespace PerfBench {
                 }
             }
 
-            var initialState = Factory.StringToSentence(state.ToList());
+            var initialState = Factory.ParseSentences(state.ToList());
             var goals        = agents.Select(a => $"Have({a}, Wage)").ToList();
-            var goalSentences = Factory.StringToSentence(goals);
+            var goalSentences = Factory.ParseSentences(goals);
 
             return new GpProblem(initialState, goalSentences,
                 new() { MakeMove(), MakeChop(), MakeWork() });
         }
 
-        static GpSolution SolveOrThrow(GpProblem problem, string label) {
+        static GpSolutionSet SolveOrThrow(GpProblem problem, string label) {
             var solution = problem.Solve();
             if (solution.IsEmpty) {
                 throw new InvalidOperationException($"expected a plan for: {label}");
@@ -239,8 +239,8 @@ namespace PerfBench {
                     initial.Add($"Tree(Tree{i})");
                     initial.Add($"-At(Bob, Tree{i})");
                 }
-                var initialState = Factory.StringToSentence(initial);
-                var goals = Factory.StringToSentence(new() { "Have(Bob, Wage)" });
+                var initialState = Factory.ParseSentences(initial);
+                var goals = Factory.ParseSentences(new() { "Have(Bob, Wage)" });
                 var move = MakeMove();
                 var chop = Factory.Create("Chop",
                     new() { "At(z, x)", "Subject(z)", "Tree(x)", "-Carries(z, Wood)" },

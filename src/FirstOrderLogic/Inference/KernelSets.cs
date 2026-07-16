@@ -21,22 +21,22 @@ namespace FirstOrderLogic
         }
 
         // One minimal X ⊆ B with X ⊨ α, or null if B ⊭ α.
-        public List<ISentence>? FindKernel(IList<ISentence> B, ISentence α)
+        public List<ISentence>? FindKernel(IList<ISentence> beliefs, ISentence target)
         {
-            if (!Entails(B, α))
+            if (!Entails(beliefs, target))
             {
                 return null;
             }
 
-            return Shrink(new List<ISentence>(B), α);
+            return Shrink(new List<ISentence>(beliefs), target);
         }
 
         // All minimal X ⊆ B with X ⊨ α. Complete: any other kernel omits some element of a found
         // kernel, so recursing on B\{e} finds them all.
-        public List<List<ISentence>> FindAllKernels(IEnumerable<ISentence> B, ISentence α)
+        public List<List<ISentence>> FindAllKernels(IEnumerable<ISentence> beliefs, ISentence target)
         {
             var results = new List<List<ISentence>>();
-            FindAllKernelsRec(new List<ISentence>(B), α, results,
+            FindAllKernelsRec(new List<ISentence>(beliefs), target, results,
                 explored: new HashSet<string>(), emitted: new HashSet<string>());
             return results;
         }
@@ -47,13 +47,13 @@ namespace FirstOrderLogic
         // Precondition: Entails(sentences, α) == true. Standard single downward-deletion pass:
         // when index i is tested, the set is a superset of the final result, so by monotonicity
         // every survivor is still load-bearing at the end — one pass suffices for minimality.
-        private List<ISentence> Shrink(List<ISentence> sentences, ISentence α)
+        private List<ISentence> Shrink(List<ISentence> sentences, ISentence target)
         {
             for (var i = sentences.Count - 1; i >= 0; i--)
             {
                 var candidate = new List<ISentence>(sentences);
                 candidate.RemoveAt(i);
-                if (Entails(candidate, α))
+                if (Entails(candidate, target))
                 {
                     sentences = candidate;
                 }
@@ -63,7 +63,7 @@ namespace FirstOrderLogic
 
         // `explored` and `emitted` must be separate: a kernel can equal the subset it was found in,
         // and conflating the two would silently drop it.
-        private void FindAllKernelsRec(List<ISentence> sentences, ISentence α,
+        private void FindAllKernelsRec(List<ISentence> sentences, ISentence target,
             List<List<ISentence>> results, HashSet<string> explored, HashSet<string> emitted)
         {
             if (!explored.Add(Key(sentences)))
@@ -71,12 +71,12 @@ namespace FirstOrderLogic
                 return;
             }
 
-            if (!Entails(sentences, α))
+            if (!Entails(sentences, target))
             {
                 return;
             }
 
-            var kernel = Shrink(sentences, α);
+            var kernel = Shrink(sentences, target);
             if (emitted.Add(Key(kernel)))
             {
                 results.Add(kernel);
@@ -85,7 +85,7 @@ namespace FirstOrderLogic
             foreach (var e in kernel)
             {
                 var without = sentences.Where(s => !s.Equals(e)).ToList();
-                FindAllKernelsRec(without, α, results, explored, emitted);
+                FindAllKernelsRec(without, target, results, explored, emitted);
             }
         }
 

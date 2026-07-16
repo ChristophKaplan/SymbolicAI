@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace FirstOrderLogic {
-    public class SatSolvers {
+    public class SatSolver {
         readonly Random _random = new();
         public PossibleWorld? WalkSAT(List<Clause> clauses, float p, int maxFlips) {
             if(!IsPropositional(clauses))
@@ -16,11 +16,11 @@ namespace FirstOrderLogic {
                 return null;
             }
 
-            var model = new PossibleWorld(GetRandomAssigmentFor(clauses));
+            var model = new PossibleWorld(GetRandomAssignmentFor(clauses));
 
             for (var i = 0; i < maxFlips; i++) {
-                var eval = model.Evaluate(clauses);
-                if (eval)
+                var satisfied = model.Evaluate(clauses);
+                if (satisfied)
                 {
                     return model;
                 }
@@ -29,14 +29,14 @@ namespace FirstOrderLogic {
          
                 if (_random.NextDouble() < p) {
                     var literal = clause.Literals[_random.Next(0, clause.Literals.Count)];
-                    model.Switch(literal.GetProposition());
+                    model.Toggle(literal.GetProposition());
                 } else {
                     var bestModel = model.Clone();
                     var bestModelScore = 0;
                     foreach (var literal in clause.Literals) {
                         var newModel = model.Clone();
-                        newModel.Switch(literal.GetProposition());
-                        var newModelScore = clauses.Count(cls => newModel.Evaluate(cls));
+                        newModel.Toggle(literal.GetProposition());
+                        var newModelScore = clauses.Count(eachClause => newModel.Evaluate(eachClause));
                         if (newModelScore > bestModelScore) {
                             bestModel = newModel;
                             bestModelScore = newModelScore;
@@ -59,7 +59,7 @@ namespace FirstOrderLogic {
             return unsatisfiedClauses[_random.Next(0, unsatisfiedClauses.Count)];
         }
     
-        private Dictionary<IProposition, bool> GetRandomAssigmentFor(List<Clause> clauses) {
+        private Dictionary<IProposition, bool> GetRandomAssignmentFor(List<Clause> clauses) {
             var assignment = new Dictionary<IProposition, bool>();
             foreach (var clause in clauses) {
                 foreach (var literal in clause.Literals) {

@@ -3,8 +3,8 @@ using System.Linq;
 using System.Threading;
 
 namespace FirstOrderLogic {
-    public static class TransformationFOL {
-        public enum EquivType {
+    public static class Transformations {
+        public enum RewriteRule {
             SimplifyConstants,
             DissolveImplication,
             PushNegation,
@@ -19,24 +19,24 @@ namespace FirstOrderLogic {
             DistributionOfConjunction
         }
 
-        public static void Transform(EquivType equivType, ref ISentence sentence) {
-            sentence = Apply(equivType, sentence);
+        public static void Transform(RewriteRule rule, ref ISentence sentence) {
+            sentence = Apply(rule, sentence);
         }
 
-        private static ISentence Apply(EquivType equivType, ISentence sentence) {
-            switch (equivType) {
-                case EquivType.SimplifyConstants:         return RewriteBottomUp(sentence, SimplifyConstants);
-                case EquivType.DissolveBiconditional:     return RewriteBottomUp(sentence, DissolveBiconditional);
-                case EquivType.DissolveImplication:       return RewriteBottomUp(sentence, DissolveImplication);
-                case EquivType.PushNegation:              return RewriteBottomUp(sentence, PushNegation);
-                case EquivType.DoubleNegation:            return RewriteBottomUp(sentence, DoubleNegation);
-                case EquivType.Absorption:                return RewriteBottomUp(sentence, Absorption);
-                case EquivType.AssociationAndIdem:        return RewriteBottomUp(sentence, AssociationAndIdem);
-                case EquivType.PullQuantifier:            return RewriteBottomUp(sentence, PullQuantifier);
-                case EquivType.RemoveDuplicateQuantifier: return RewriteTopDown(sentence, RemoveDuplicateQuantifier);
-                case EquivType.RemoveQuantifier:          return RewriteBottomUp(sentence, RemoveQuantifier);
-                case EquivType.DistributionOfDisjunction: return RewriteBottomUp(sentence, DistributionOfDisjunction);
-                case EquivType.DistributionOfConjunction: return RewriteBottomUp(sentence, DistributionOfConjunction);
+        private static ISentence Apply(RewriteRule rule, ISentence sentence) {
+            switch (rule) {
+                case RewriteRule.SimplifyConstants:         return RewriteBottomUp(sentence, SimplifyConstants);
+                case RewriteRule.DissolveBiconditional:     return RewriteBottomUp(sentence, DissolveBiconditional);
+                case RewriteRule.DissolveImplication:       return RewriteBottomUp(sentence, DissolveImplication);
+                case RewriteRule.PushNegation:              return RewriteBottomUp(sentence, PushNegation);
+                case RewriteRule.DoubleNegation:            return RewriteBottomUp(sentence, DoubleNegation);
+                case RewriteRule.Absorption:                return RewriteBottomUp(sentence, Absorption);
+                case RewriteRule.AssociationAndIdem:        return RewriteBottomUp(sentence, AssociationAndIdem);
+                case RewriteRule.PullQuantifier:            return RewriteBottomUp(sentence, PullQuantifier);
+                case RewriteRule.RemoveDuplicateQuantifier: return RewriteTopDown(sentence, RemoveDuplicateQuantifier);
+                case RewriteRule.RemoveQuantifier:          return RewriteBottomUp(sentence, RemoveQuantifier);
+                case RewriteRule.DistributionOfDisjunction: return RewriteBottomUp(sentence, DistributionOfDisjunction);
+                case RewriteRule.DistributionOfConjunction: return RewriteBottomUp(sentence, DistributionOfConjunction);
                 default:                                  return sentence;
             }
         }
@@ -244,25 +244,25 @@ namespace FirstOrderLogic {
         private static int _captureRenameCounter;
 
         private static ISentence PullQuantifier(ISentence sentence) {
-            if (sentence is not IComplexSentence { IsBinary: true } connective) {
+            if (sentence is not IComplexSentence { IsBinary: true } binary) {
                 return sentence;
             }
 
             // Only ∧/∨ preserve the quantifier when its scope widens; pulling out of an implication
             // antecedent would have to flip it (∀x P(x) ⇒ Q is ∃x (P(x) ⇒ Q)), so ⇒/⇔ stay
             // untouched (the prenex pipeline dissolves them first anyway).
-            if (connective.Connective != Connective.LogicSymbol.CONJUNCTION &&
-                connective.Connective != Connective.LogicSymbol.DISJUNCTION) {
+            if (binary.Connective != Connective.LogicSymbol.CONJUNCTION &&
+                binary.Connective != Connective.LogicSymbol.DISJUNCTION) {
                 return sentence;
             }
 
-            foreach (var child in connective.Children) {
+            foreach (var child in binary.Children) {
                 if (child is not IComplexSentence { IsQuantifier: true } quantified) {
                     continue;
                 }
 
                 var quantifier = (Quantifier)quantified.Connective;
-                var sibling = connective.GetSiblingOf(quantified);
+                var sibling = binary.GetSiblingOf(quantified);
                 var body = quantified.Children[0];
 
                 // Capture avoidance: pulling widens the quantifier's scope over the sibling, so the
@@ -276,7 +276,7 @@ namespace FirstOrderLogic {
                     quantifier = new Quantifier(quantifier.Symbol, fresh);
                 }
 
-                var newBody = new ComplexSentence(body, connective.Connective.Symbol, sibling);
+                var newBody = new ComplexSentence(body, binary.Connective.Symbol, sibling);
                 return new ComplexSentence(quantifier.Clone(), newBody);
             }
 
